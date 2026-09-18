@@ -1,0 +1,353 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&family=Open+Sans:wght@400;600;700&display=swap');
+
+:root {
+  /* ---------- Color tokens (gold-on-near-black — matches colorlib's
+     "Course" template palette, see UI.md) ---------- */
+  --bg: #ffffff;
+  --bg-soft: #f8f9fb;      /* card backgrounds */
+  --bg-sunken: #eaebec;    /* price boxes, inset surfaces, input fills */
+  --line: #ececec;
+  --line-strong: #dcdcdc;
+
+  --gold: #ffb606;         /* primary brand + primary actions */
+  --gold-dark: #c88e00;    /* hover/active shade */
+  --gold-light: #ffd266;   /* lighter tint */
+  --gold-soft: #fff6e0;    /* very light tinted background */
+  --red: #ff6347;          /* danger, destructive actions */
+  --red-dark: #db5246;
+  --red-soft: #fdecea;
+
+  --ink-strong: #1a1a1a;   /* headings — near-black, not pure black */
+  --ink: #3a3a3a;          /* body text */
+  --ink-muted: #a5a5a5;    /* secondary/meta text */
+
+  --radius-sm: 2px;    /* buttons, inputs, cards read as sharp/square */
+  --radius-md: 2px;
+  --radius-lg: 2px;
+  --radius-pill: 999px; /* reserved for true pills/circles: avatars, tags */
+
+  --shadow-soft: 0px 10px 20px rgba(0, 0, 0, 0.15);
+  --shadow-elevated: 0px 20px 49px rgba(0, 0, 0, 0.17);
+
+  --font-display: 'Roboto', sans-serif;   /* headings, buttons, body */
+  --font-body: 'Roboto', sans-serif;
+  --font-accent: 'Open Sans', sans-serif; /* nav links, logo wordmark, labels */
+
+  --header-h: 76px;
+}
+
+* { box-sizing: border-box; }
+
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  margin: 0;
+  line-height: 1.2;
+  font-weight: 500;
+  color: var(--ink-strong);
+}
+
+p { margin: 0; }
+
+a { color: inherit; text-decoration: none; }
+
+button { font-family: inherit; cursor: pointer; }
+
+input, textarea, select {
+  font-family: inherit;
+  color: inherit;
+}
+
+ul { list-style: none; margin: 0; padding: 0; }
+
+img { max-width: 100%; display: block; }
+
+::selection { background: var(--gold); color: var(--ink-strong); }
+
+:focus-visible {
+  outline: 2px solid var(--gold-dark);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+.app-shell main {
+  flex: 1;
+}
+
+.container {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 32px;
+}
+
+@media (max-width: 720px) {
+  .container { padding: 0 20px; }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: var(--gold); }
+
+/* ---------- Buttons ----------
+   Sharp rectangles, uppercase bold label, no shadow at rest — a soft dark
+   shadow lifts in on hover instead. This replaces the old "chunky pressed"
+   3D-border language entirely; nothing here should read as a game button. */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 15px 30px;
+  border-radius: var(--radius-sm);
+  border: 2px solid transparent;
+  transition: box-shadow 0.2s ease, background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+  white-space: nowrap;
+}
+.btn:hover { box-shadow: var(--shadow-soft); }
+
+.btn-primary {
+  background: var(--gold);
+  color: var(--ink-strong);
+  border-color: var(--gold);
+}
+.btn-primary:hover { background: var(--gold-dark); border-color: var(--gold-dark); }
+
+.btn-secondary {
+  background: var(--ink-strong);
+  color: #fff;
+  border-color: var(--ink-strong);
+}
+.btn-secondary:hover { background: #000; border-color: #000; }
+
+.btn-outline {
+  background: transparent;
+  border-color: var(--gold);
+  color: var(--ink-strong);
+}
+.btn-outline:hover { background: var(--gold); }
+
+.btn-danger {
+  background: var(--red);
+  color: #fff;
+  border-color: var(--red);
+}
+.btn-danger:hover { background: var(--red-dark); border-color: var(--red-dark); }
+
+.btn-sm { padding: 10px 20px; font-size: 0.76rem; }
+.btn-lg { padding: 18px 38px; font-size: 0.92rem; }
+.btn-block { width: 100%; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none !important; }
+
+/* ---------- Elevated overlay panel (dropdowns, menus) ---------- */
+.glass {
+  background: #fff;
+  border: none;
+  box-shadow: var(--shadow-soft);
+}
+
+/* ---------- Card ---------- */
+.card {
+  background: var(--bg-soft);
+  border: none;
+  border-radius: var(--radius-md);
+  box-shadow: none;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+.card:hover {
+  box-shadow: var(--shadow-soft);
+  transform: translateY(-2px);
+}
+
+/* Static info card — same panel styling, no hover lift. Use for
+   non-interactive content (info tiles, testimonials, stat tiles) so motion
+   is reserved for things that are actually clickable. */
+.card-plain {
+  background: var(--bg-soft);
+  border: none;
+  border-radius: var(--radius-md);
+}
+
+/* ---------- Section basics ---------- */
+.section { padding: 100px 0; position: relative; }
+@media (max-width: 720px) { .section { padding: 60px 0; } }
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-accent);
+  color: var(--gold-dark);
+  font-weight: 700;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 18px;
+}
+.eyebrow::before {
+  content: '';
+  width: 24px;
+  height: 3px;
+  background: var(--gold);
+}
+
+.section-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 44px;
+  flex-wrap: wrap;
+}
+
+.section-title { font-size: clamp(1.7rem, 2.6vw, 2.3rem); font-weight: 500; }
+.section-sub { color: var(--ink-muted); font-size: 1rem; margin-top: 12px; max-width: 560px; }
+
+/* ---------- Badges / tags ---------- */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 6px 13px;
+  border-radius: var(--radius-pill);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.badge-bestseller { background: var(--gold); color: var(--ink-strong); }
+.badge-new { background: var(--ink-strong); color: #fff; }
+
+/* ---------- Skeleton loading ---------- */
+.skeleton {
+  background: linear-gradient(90deg, var(--bg-sunken) 25%, var(--line) 37%, var(--bg-sunken) 63%);
+  background-size: 400% 100%;
+  animation: skeleton-loading 1.4s ease infinite;
+  border-radius: var(--radius-sm);
+}
+@keyframes skeleton-loading {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
+}
+
+/* ---------- Fade in page ---------- */
+.page-enter { animation: pageFade 0.5s ease both; }
+@keyframes pageFade {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Form elements */
+.field { margin-bottom: 20px; text-align: left; }
+.field label {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 8px;
+}
+.input-wrap { position: relative; }
+.input-wrap svg {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--ink-muted);
+}
+.field input, .field textarea, .field select {
+  width: 100%;
+  background: var(--bg-sunken);
+  border: 2px solid transparent;
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--ink-strong);
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+.field input.has-icon { padding-left: 44px; }
+.field input:focus, .field textarea:focus, .field select:focus {
+  border-color: var(--gold);
+  background: #fff;
+  outline: none;
+}
+.field input::placeholder, .field textarea::placeholder { color: var(--ink-muted); font-weight: 400; }
+
+/* ---------- Toasts ---------- */
+.toast-stack {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 900;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #fff;
+  border-left: 3px solid var(--line-strong);
+  padding: 14px 16px;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-soft);
+  font-size: 0.9rem;
+  font-weight: 500;
+  min-width: 260px;
+  max-width: 340px;
+  animation: toastIn 0.3s ease both;
+}
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(30px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+.toast-success { border-left-color: var(--gold); }
+.toast-success svg { color: var(--gold-dark); flex-shrink: 0; }
+.toast-error { border-left-color: var(--red); }
+.toast-error svg { color: var(--red-dark); flex-shrink: 0; }
+.toast-info { border-left-color: var(--ink-strong); }
+.toast-info svg { color: var(--ink-strong); flex-shrink: 0; }
+.toast span { flex: 1; color: var(--ink-strong); }
+.toast-close { background: none; border: none; color: var(--ink-muted); padding: 2px; display: flex; }
+.toast-close:hover { color: var(--ink-strong); }
+
+@media (max-width: 520px) {
+  .toast-stack { left: 16px; right: 16px; top: 16px; }
+  .toast { min-width: 0; max-width: none; }
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px; height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}

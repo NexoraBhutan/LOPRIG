@@ -1,0 +1,175 @@
+/* ---------- Course thumbnail ---------- */
+.course-thumb {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: 20px;
+  overflow: hidden;
+}
+.course-thumb-pattern {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle at 85% 15%, rgba(255,255,255,0.28) 0, transparent 45%);
+  mix-blend-mode: overlay;
+}
+.course-thumb-icon {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  color: rgba(255,255,255,0.85);
+}
+.course-thumb-cat {
+  position: relative;
+  color: #fff;
+  font-weight: 800;
+  font-size: 0.82rem;
+  text-transform: capitalize;
+  letter-spacing: 0.01em;
+  background: rgba(15, 20, 25, 0.55);
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+}
+
+/* ---------- Rating ---------- */
+.rating { display: inline-flex; align-items: center; gap: 5px; font-size: 0.85rem; color: var(--ink-strong); font-weight: 700; }
+.rating-count { color: var(--ink-muted); font-weight: 500; }
+
+/* ---------- Progress bar ---------- */
+.progress-wrap { display: flex; flex-direction: column; gap: 6px; }
+.progress-track {
+  width: 100%;
+  height: 10px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-sunken);
+  border: 2px solid var(--line);
+  overflow: hidden;
+}
+.progress-sm .progress-track { height: 7px; }
+.progress-fill {
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: var(--gold);
+  transition: width 0.8s cubic-bezier(.2,.8,.2,1);
+}
+.progress-label { font-size: 0.78rem; color: var(--ink-muted); font-weight: 700; }
+
+/* ---------- Progress ring (segmented dial — rhymes with the Logo mark) ----------
+   flex-shrink: 0 matters here, not just style: without it a flex row under space
+   pressure (e.g. player-topbar on a long course title) shrinks the ring's WIDTH
+   only — the cross-axis height stays fixed — turning the circle into an oval and
+   pushing the centered percentage text out past its own edge into the sibling
+   label next to it. That was the ring/label overlap bug; this line is the fix. */
+.progress-ring { position: relative; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.progress-ring svg { display: block; overflow: visible; flex-shrink: 0; }
+.progress-ring-seg { opacity: 0.35; transition: opacity 0.5s ease, stroke 0.5s ease; }
+.progress-ring-seg.is-filled { opacity: 1; }
+.progress-ring-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  font-family: var(--font-display);
+  color: var(--ink-strong);
+  pointer-events: none;
+}
+.progress-ring-center strong { font-weight: 800; line-height: 1; }
+.progress-ring-center small { color: var(--ink-muted); font-weight: 700; margin-left: 1px; }
+
+/* ---------- Course card ---------- */
+.course-card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+.course-card-media { position: relative; }
+.course-card-badge { position: absolute; top: 14px; left: 14px; }
+/* Solid semi-opaque circle, no blur — crisp flat overlay control. */
+.course-card-save {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(20, 24, 28, 0.55);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.15s ease;
+}
+.course-card-save:hover { background: rgba(20, 24, 28, 0.78); transform: scale(1.08); }
+.course-card-save.is-saved { background: var(--red); color: #fff; }
+.course-card-save.is-saved:hover { background: var(--red-dark); }
+
+.course-card-body { padding: 24px 26px 26px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+.course-card-cat { font-size: 0.82rem; text-transform: capitalize; color: var(--gold-dark); font-weight: 800; letter-spacing: 0.02em; }
+.course-card-title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  line-height: 1.32;
+  min-height: 2.65em;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  color: var(--ink-strong);
+}
+.course-card-instructor { font-size: 0.96rem; color: var(--ink-muted); margin-bottom: 2px; }
+.course-card-meta { display: flex; align-items: center; gap: 16px; row-gap: 6px; font-size: 0.86rem; color: var(--ink-muted); margin-top: 6px; flex-wrap: wrap; }
+.course-card-meta-sub span { display: inline-flex; align-items: center; gap: 5px; text-transform: capitalize; }
+.course-card-price { margin-top: auto; padding-top: 14px; display: flex; align-items: baseline; gap: 12px; }
+.course-card-price strong { font-size: 1.5rem; font-family: var(--font-display); color: var(--ink-strong); }
+.course-card-price span { font-size: 1rem; color: var(--ink-muted); text-decoration: line-through; }
+
+/* ---------- Course grid ----------
+   3 columns (was 4) with a larger gap — the "much bigger cards" pass. This
+   single grid/card pair is shared by every course listing in the app (Home,
+   Courses, Category, Search, Dashboard recommended, CourseDetails related),
+   so the size increase cascades everywhere at once by design. */
+.course-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 32px;
+}
+@media (max-width: 980px) { .course-grid { grid-template-columns: repeat(2, 1fr); gap: 24px; } }
+@media (max-width: 620px) { .course-grid { grid-template-columns: 1fr; } }
+
+/* ---------- Category card ---------- */
+.category-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 18px;
+}
+@media (max-width: 1024px) { .category-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 640px) { .category-grid { grid-template-columns: repeat(2, 1fr); } }
+
+/* Layout only — border/shadow/hover-lift come from the shared .card
+   class applied alongside .category-card in JSX (it's a whole clickable card). */
+.category-card {
+  padding: 26px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.category-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--icon-bg, var(--gold));
+  color: var(--icon-fg, var(--ink-strong));
+}
+.category-card h3 { font-size: 1.02rem; color: var(--ink-strong); }
+.category-card span { color: var(--ink-muted); font-size: 0.85rem; }

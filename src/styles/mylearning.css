@@ -1,0 +1,41 @@
+.mylearning-page { padding: 48px 32px 100px; }
+
+/* ---------- Continue-learning hero (ring-led) ---------- */
+.mylearning-continue {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  overflow: hidden;
+  margin-bottom: 40px;
+}
+.mylearning-continue-thumb { border-radius: 0; height: 100%; aspect-ratio: auto; }
+.mylearning-continue-body { padding: 26px 30px; display: flex; flex-direction: column; gap: 18px; }
+.mylearning-continue-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; }
+.mylearning-continue-eyebrow { margin-bottom: 8px; }
+.mylearning-continue-head h2 { font-size: 1.2rem; margin-bottom: 8px; }
+.mylearning-continue-lesson { color: var(--ink-muted); font-size: 0.85rem; font-weight: 600; }
+.mylearning-continue-cta { align-self: flex-start; }
+@media (max-width: 720px) {
+  .mylearning-continue { grid-template-columns: 1fr; }
+  .mylearning-continue-thumb { aspect-ratio: 16/9; }
+  .mylearning-continue-body { padding: 22px; }
+  .mylearning-continue-head { gap: 16px; }
+}
+
+.tab-row { display: flex; gap: 8px; margin-bottom: 34px; border-bottom: 2px solid var(--line); flex-wrap: wrap; }
+.tab-btn {
+  background: none; border: none; color: var(--ink-muted);
+  padding: 12px 18px; font-weight: 700; font-size: 0.9rem;
+  border-bottom: 3px solid transparent; margin-bottom: -2px;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+.tab-btn:hover { color: var(--ink-strong); background: var(--bg-sunken); }
+.tab-btn.active { color: var(--gold-dark); border-bottom-color: var(--gold); }
+.mylearning-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+.mylearning-body { padding: 20px; }
+.mylearning-body h3 { font-size: 1rem; margin-bottom: 6px; min-height: 2.6em; }
+.mylearning-lesson { color: var(--ink-muted); font-size: 0.8rem; margin-bottom: 14px; font-weight: 600; }
+.mylearning-saved-note { display: flex; align-items: center; gap: 6px; }
+.mylearning-cta { margin-top: 16px; }
+@media (max-width: 980px) { .mylearning-grid { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 620px) { .mylearning-grid { grid-template-columns: 1fr; } }
