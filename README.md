@@ -1,4 +1,4 @@
-# Zorig — Online Learning Platform for Bhutan
+# LOPRIG — Online Learning Platform for Bhutan
 
 A premium, student-facing e-learning platform concept built with React + Vite.
 
