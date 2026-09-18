@@ -1,19 +1,16 @@
 import { createContext, useContext, useEffect, useState } from "react";
+import { safeSetItem, safeRemoveItem, safeParseJSON } from "../utils/storage";
 
 const AuthContext = createContext(null);
 const STORAGE_KEY = "loprig_user";
 const USERS_KEY = "loprig_users";
 
 function readUsers() {
-  try {
-    return JSON.parse(localStorage.getItem(USERS_KEY)) || [];
-  } catch {
-    return [];
-  }
+  return safeParseJSON(USERS_KEY, []);
 }
 
 function writeUsers(users) {
-  localStorage.setItem(USERS_KEY, JSON.stringify(users));
+  safeSetItem(USERS_KEY, JSON.stringify(users));
 }
 
 export function AuthProvider({ children }) {
@@ -21,19 +18,15 @@ export function AuthProvider({ children }) {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-      if (saved) setUser(saved);
-    } catch {
-      /* ignore */
-    }
+    const saved = safeParseJSON(STORAGE_KEY);
+    if (saved) setUser(saved);
     setReady(true);
   }, []);
 
   const persist = (u) => {
     setUser(u);
-    if (u) localStorage.setItem(STORAGE_KEY, JSON.stringify(u));
-    else localStorage.removeItem(STORAGE_KEY);
+    if (u) safeSetItem(STORAGE_KEY, JSON.stringify(u));
+    else safeRemoveItem(STORAGE_KEY);
   };
 
   const signup = ({ name, email, password }) => {

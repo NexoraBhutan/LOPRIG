@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { useAuth } from "./AuthContext";
 import { getCourseById } from "../data/courses";
+import { safeSetItem, safeParseJSON } from "../utils/storage";
 
 const EnrollmentContext = createContext(null);
 
@@ -13,19 +14,11 @@ function streakKey(userId) {
 }
 
 function readEnrollments(userId) {
-  try {
-    return JSON.parse(localStorage.getItem(storageKey(userId))) || {};
-  } catch {
-    return {};
-  }
+  return safeParseJSON(storageKey(userId), {});
 }
 
 function readStreak(userId) {
-  try {
-    return JSON.parse(localStorage.getItem(streakKey(userId))) || { count: 0, lastActive: null };
-  } catch {
-    return { count: 0, lastActive: null };
-  }
+  return safeParseJSON(streakKey(userId), { count: 0, lastActive: null });
 }
 
 function todayISO() {
@@ -57,7 +50,7 @@ export function EnrollmentProvider({ children }) {
   const persist = useCallback(
     (next) => {
       setEnrollments(next);
-      localStorage.setItem(storageKey(user?.id), JSON.stringify(next));
+      safeSetItem(storageKey(user?.id), JSON.stringify(next));
     },
     [user?.id]
   );
@@ -66,7 +59,7 @@ export function EnrollmentProvider({ children }) {
     setStreak((prev) => {
       const next = bumpStreak(prev);
       if (next === prev) return prev;
-      localStorage.setItem(streakKey(user?.id), JSON.stringify(next));
+      safeSetItem(streakKey(user?.id), JSON.stringify(next));
       return next;
     });
   }, [user?.id]);

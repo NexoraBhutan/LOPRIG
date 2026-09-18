@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
+import ErrorBoundary from "./components/ErrorBoundary";
 import { ScrollToTop, ProtectedRoute } from "./components/RouteUtils";
 
 import Home from "./pages/Home";
@@ -27,28 +28,30 @@ export default function App() {
       <div className="app-shell">
         <Navbar />
         <main>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/courses" element={<Courses />} />
-            <Route path="/courses/:id" element={<CourseDetails />} />
-            <Route path="/categories" element={<Category />} />
-            <Route path="/categories/:id" element={<Category />} />
-            <Route path="/search" element={<Search />} />
-            <Route path="/about" element={<About />} />
+          <ErrorBoundary>
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/courses" element={<Courses />} />
+              <Route path="/courses/:id" element={<CourseDetails />} />
+              <Route path="/categories" element={<Category />} />
+              <Route path="/categories/:id" element={<Category />} />
+              <Route path="/search" element={<Search />} />
+              <Route path="/about" element={<About />} />
 
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/signup" element={<Signup />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
 
-            <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-            <Route path="/my-learning" element={<ProtectedRoute><MyLearning /></ProtectedRoute>} />
-            <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-            <Route path="/learn/:id" element={<ProtectedRoute><CoursePlayer /></ProtectedRoute>} />
-            <Route path="/checkout/:id" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
-            <Route path="/payment-success/:id" element={<ProtectedRoute><PaymentSuccess /></ProtectedRoute>} />
+              <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+              <Route path="/my-learning" element={<ProtectedRoute><MyLearning /></ProtectedRoute>} />
+              <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+              <Route path="/learn/:id" element={<ProtectedRoute><CoursePlayer /></ProtectedRoute>} />
+              <Route path="/checkout/:id" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
+              <Route path="/payment-success/:id" element={<ProtectedRoute><PaymentSuccess /></ProtectedRoute>} />
 
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </ErrorBoundary>
         </main>
         <Footer />
       </div>
