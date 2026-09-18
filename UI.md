@@ -50,6 +50,7 @@ these tokens — never hardcode a hex color, radius, or shadow that already has 
 token.**
 
 ```css
+/* Colors */
 --bg: #ffffff;
 --bg-soft: #f8f9fb;      /* card backgrounds */
 --bg-sunken: #eaebec;    /* price boxes, inset surfaces, input fills */
@@ -68,16 +69,71 @@ token.**
 --ink: #3a3a3a;          /* body text */
 --ink-muted: #a5a5a5;    /* secondary/meta text */
 
+/* Spacing scale (4px base) */
+--space-1: 4px;
+--space-2: 8px;
+--space-3: 12px;
+--space-4: 16px;
+--space-5: 20px;
+--space-6: 24px;
+--space-8: 32px;
+--space-10: 40px;
+--space-12: 48px;
+--space-16: 64px;
+--space-20: 80px;
+--space-24: 96px;
+
+/* Typography scale */
+--text-xs: 0.75rem;      /* 12px */
+--text-sm: 0.82rem;      /* ~13px */
+--text-base: 0.95rem;    /* ~15px */
+--text-md: 1rem;         /* 16px */
+--text-lg: 1.1rem;       /* ~18px */
+--text-xl: 1.25rem;      /* 20px */
+--text-2xl: 1.5rem;      /* 24px */
+--text-3xl: 1.75rem;     /* 28px */
+--text-4xl: 2.25rem;     /* 36px */
+--text-5xl: 3rem;        /* 48px */
+
+/* Z-index layers */
+--z-base: 0;
+--z-dropdown: 100;
+--z-sticky: 200;
+--z-overlay: 300;
+--z-modal: 400;
+--z-toast: 500;
+--z-tooltip: 600;
+
+/* Responsive breakpoints (use in media queries) */
+--bp-sm: 480px;
+--bp-md: 768px;
+--bp-lg: 1024px;
+--bp-xl: 1280px;
+
+/* Border radius */
 --radius-sm: 2px;   --radius-md: 2px;   --radius-lg: 2px;   --radius-pill: 999px;
 
+/* Shadows */
 --shadow-soft: 0px 10px 20px rgba(0, 0, 0, 0.15);
 --shadow-elevated: 0px 20px 49px rgba(0, 0, 0, 0.17);
 
+/* Transitions */
+--transition-fast: 0.15s ease;
+--transition-base: 0.2s ease;
+--transition-slow: 0.3s ease;
+
+/* Typography */
 --font-display: 'Roboto', sans-serif;   /* headings, buttons, body */
 --font-body: 'Roboto', sans-serif;
 --font-accent: 'Open Sans', sans-serif; /* nav links, logo wordmark, labels */
 
+/* Layout */
 --header-h: 76px;
+--max-w-sm: 440px;
+--max-w-md: 640px;
+--max-w-lg: 800px;
+--max-w-xl: 1024px;
+--max-w-2xl: 1280px;
 ```
 
 - This is a **single light theme only** — recreates the palette, type, and
@@ -127,8 +183,8 @@ token.**
 
 | Class | Use |
 |---|---|
-| `.container` | max-width 1280px, centered, side padding — wrap section content in this |
-| `.section` | vertical page-section padding (96px, 60px on mobile) |
+| `.container` | max-width `var(--max-w-2xl)` (1280px), centered, side padding (`var(--space-8)`, `var(--space-5)` on mobile) — wrap section content in this |
+| `.section` | vertical page-section padding (`var(--space-24)`, `var(--space-16)` on mobile) |
 | `.section-head` / `.section-title` / `.section-sub` | heading row pattern used at the top of every content section |
 | `.eyebrow` | small uppercase label above a heading, gold, with a short gold tick mark before it |
 | `.card` | base panel: `--bg-soft` background, no border, no shadow at rest — lifts with `var(--shadow-soft)` and a slight `translateY` on hover — use only when the whole card is itself clickable (course card, category card) |
@@ -152,6 +208,7 @@ loading state, check this table first — it's very likely already covered.
 
 - Prefer plain CSS: keyframes + `transition`, following the existing patterns
   (`pageFade`, `skeleton-loading`, `toastIn` in `index.css`).
+- Use transition tokens: `--transition-fast` (0.15s), `--transition-base` (0.2s), `--transition-slow` (0.3s).
 - `@media (prefers-reduced-motion: reduce)` is already handled globally — don't
   fight it or add motion that ignores it.
 - Reach for `framer-motion` only for something CSS genuinely can't do well
