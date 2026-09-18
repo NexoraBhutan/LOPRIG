@@ -200,6 +200,9 @@ token.**
 | `Mascot` (`components/Mascot.jsx`) | original Takin mascot SVG, `{ pose, size, className }` — see §3 for the pose vocabulary and established call sites |
 | `StatCard` (`components/StatCard.jsx`) | labeled icon+value stat tile, `{ icon, value, label, tone }` (`tone` one of `green`/`blue`/`gold` — legacy prop names kept for callers, but each maps to a gold/near-black/red *color*, not the hue its name suggests; see `.dash-stat-icon-*` in `dashboard.css`) or pass `ring` (a `<ProgressRing/>`) instead of `icon` — used by Dashboard and Profile instead of each repeating the same markup |
 | `ProgressRing` (`components/ProgressRing.jsx`) | segmented-dial "how far along" indicator, `{ value, size, tone, showValue, label }` — reserve for the one progress number that matters most on a surface (Dashboard overall completion, MyLearning/CoursePlayer's current course); use `ProgressBar` everywhere else. Always leave `flex-shrink: 0` on its wrapper in any new flex layout — see the comment on `.progress-ring` in `components.css` for why |
+| `SkeletonCard` (`components/SkeletonCard.jsx`) | shimmer loading placeholder for course cards — use when content is loading, wraps the existing `.skeleton` class from `index.css` |
+| `SkeletonRow` (`components/SkeletonRow.jsx`) | shimmer loading placeholder for list items, `{ lines }` — use for loading states in sidebars, menus, or list views |
+| `EmptyState` (`components/EmptyState.jsx`) | reusable empty state with mascot, `{ pose, title, description, ctaLabel, ctaTo, className }` — replaces inline empty state markup across Dashboard, MyLearning, Courses, Search, Category |
 
 Before adding new CSS for a button, card, badge, form field, section header, or
 loading state, check this table first — it's very likely already covered.
