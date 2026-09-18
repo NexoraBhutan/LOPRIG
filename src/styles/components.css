@@ -248,3 +248,23 @@
   width: 50%;
   height: 12px;
 }
+
+/* ---------- Error boundary ---------- */
+.error-boundary-content {
+  padding: var(--space-24) 0;
+  text-align: center;
+}
+.error-boundary-content h1 {
+  margin-top: var(--space-6);
+}
+.error-boundary-desc {
+  color: var(--ink-muted);
+  max-width: var(--max-w-sm);
+  margin: var(--space-3) auto 0;
+}
+.error-boundary-actions {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: center;
+  margin-top: var(--space-8);
+}

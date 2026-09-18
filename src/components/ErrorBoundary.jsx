@@ -20,13 +20,13 @@ export default class ErrorBoundary extends Component {
     if (this.state.hasError) {
       return (
         <div className="error-boundary page-enter">
-          <div className="container" style={{ padding: "100px 0", textAlign: "center" }}>
+          <div className="container error-boundary-content">
             <Mascot pose="sad" size={120} />
-            <h1 style={{ marginTop: 24 }}>Something went wrong</h1>
-            <p style={{ color: "var(--ink-muted)", maxWidth: 480, margin: "12px auto 0" }}>
+            <h1>Something went wrong</h1>
+            <p className="error-boundary-desc">
               An unexpected error occurred. Please try again or return to the home page.
             </p>
-            <div style={{ display: "flex", gap: 12, justifyContent: "center", marginTop: 28 }}>
+            <div className="error-boundary-actions">
               <button className="btn btn-primary" onClick={() => this.setState({ hasError: false, error: null })}>
                 Try Again
               </button>
@@ -40,3 +40,4 @@ export default class ErrorBoundary extends Component {
     return this.props.children;
   }
 }
+
