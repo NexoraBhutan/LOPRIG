@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
-  FaPlay, FaPause, FaVolumeUp, FaExpand, FaCog, FaCheckCircle, FaRegCircle, FaPlayCircle,
+  FaPlay, FaPause, FaCheckCircle, FaRegCircle, FaPlayCircle,
   FaChevronLeft, FaChevronRight, FaDownload, FaArrowLeft, FaTimes, FaBars,
 } from "react-icons/fa";
 import { getCourseById } from "../data/courses";
@@ -78,6 +78,13 @@ export default function CoursePlayer() {
     if (activeIndex < allLessons.length - 1) goNext();
   };
 
+  const handleLessonKeyDown = (e, lessonId) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      goTo(lessonId);
+    }
+  };
+
   return (
     <div className="player-page page-enter">
       <div className="player-topbar">
@@ -102,13 +109,14 @@ export default function CoursePlayer() {
               <span className="video-lesson-label">{activeLesson?.title}</span>
             </div>
             <div className="video-controls">
-              <button onClick={() => setPlaying((p) => !p)} aria-label="Play/pause">{playing ? <FaPause size={15} /> : <FaPlay size={15} />}</button>
-              <div className="video-scrubber"><div className="video-scrubber-fill" style={{ width: playing ? "38%" : "12%" }} /></div>
-              <span className="video-time">{playing ? "4:12" : "1:20"} / {activeLesson?.duration}</span>
-              <FaVolumeUp size={15} />
+              <button onClick={() => setPlaying((p) => !p)} aria-label={playing ? "Pause" : "Play"}>
+                {playing ? <FaPause size={15} /> : <FaPlay size={15} />}
+              </button>
+              <div className="video-scrubber">
+                <div className="video-scrubber-fill" style={{ width: `${progress}%` }} />
+              </div>
+              <span className="video-time">{activeLesson?.duration}</span>
               <button className="speed-btn" onClick={() => setSpeed((s) => (s >= 2 ? 0.5 : s + 0.25))}>{speed}x</button>
-              <FaCog size={15} />
-              <FaExpand size={15} />
             </div>
           </div>
 
@@ -153,6 +161,7 @@ export default function CoursePlayer() {
                           key={l.id}
                           className={`player-lesson-item ${isActive ? "active" : ""}`}
                           onClick={() => goTo(l.id)}
+                          onKeyDown={(e) => handleLessonKeyDown(e, l.id)}
                           role="button"
                           tabIndex={0}
                         >
