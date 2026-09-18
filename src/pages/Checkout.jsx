@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useState, useRef, useEffect } from "react";
+import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import { FaPhone, FaUniversity, FaCreditCard, FaWallet, FaShieldAlt, FaSpinner } from "react-icons/fa";
 import { getCourseById } from "../data/courses";
 import { useAuth } from "../context/AuthContext";
@@ -21,10 +21,16 @@ export default function Checkout() {
   const navigate = useNavigate();
   const [method, setMethod] = useState("mobile");
   const [processing, setProcessing] = useState(false);
+  const timeoutRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, []);
 
   if (!user) {
-    navigate("/login", { state: { from: `/checkout/${id}` } });
-    return null;
+    return <Navigate to="/login" state={{ from: `/checkout/${id}` }} replace />;
   }
   if (!course) {
     return (
@@ -39,7 +45,7 @@ export default function Checkout() {
 
   const handlePay = () => {
     setProcessing(true);
-    setTimeout(() => {
+    timeoutRef.current = setTimeout(() => {
       enroll(course.id);
       navigate(`/payment-success/${course.id}`);
     }, 1800);

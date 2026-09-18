@@ -85,7 +85,7 @@ export function AuthProvider({ children }) {
 }
 
 function publicUser(u) {
-  const { password, ...rest } = u;
+  const { password: _password, ...rest } = u;
   return rest;
 }
 

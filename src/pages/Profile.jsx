@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaPencilAlt, FaBook, FaAward, FaClock, FaBell, FaLock, FaShieldAlt, FaSignOutAlt } from "react-icons/fa";
 import { useAuth } from "../context/AuthContext";
@@ -14,6 +14,12 @@ export default function Profile() {
   const navigate = useNavigate();
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({ name: user?.name || "", bio: user?.bio || "" });
+
+  useEffect(() => {
+    if (user) {
+      setForm({ name: user.name || "", bio: user.bio || "" });
+    }
+  }, [user]);
 
   if (!user) return null;
 

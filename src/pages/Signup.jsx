@@ -70,7 +70,7 @@ export default function Signup() {
             <div className="input-wrap">
               <FaLock size={15} />
               <input id="password" name="password" type={showPw ? "text" : "password"} className="has-icon" placeholder="Create a password" value={form.password} onChange={onChange} required />
-              <button type="button" className="input-eye" onClick={() => setShowPw((s) => !s)} aria-label="Toggle password visibility">
+              <button type="button" className="input-eye" onClick={() => setShowPw((s) => !s)} aria-label={showPw ? "Hide password" : "Show password"}>
                 {showPw ? <FaEyeSlash size={15} /> : <FaEye size={15} />}
               </button>
             </div>
