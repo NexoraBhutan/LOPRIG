@@ -136,15 +136,15 @@ export default function Navbar() {
       <div className={`mobile-menu ${menuOpen ? "open" : ""}`}>
         <nav>
           {NAV_LINKS.map((link) => (
-            <NavLink key={link.to} to={link.to} onClick={() => setMenuOpen(false)} className={({ isActive }) => (isActive ? "active" : "")}>
+            <NavLink key={link.to} to={link.to} onClick={() => setMenuOpen(false)} className={({ isActive }) => `mobile-nav-link ${isActive ? "active" : ""}`} end={link.to === "/"}>
               {link.label}
             </NavLink>
           ))}
           {user ? (
             <>
-              <NavLink to="/my-learning" onClick={() => setMenuOpen(false)}>My Learning</NavLink>
-              <NavLink to="/dashboard" onClick={() => setMenuOpen(false)}>Dashboard</NavLink>
-              <NavLink to="/profile" onClick={() => setMenuOpen(false)}>Profile</NavLink>
+              <NavLink to="/my-learning" onClick={() => setMenuOpen(false)} className={({ isActive }) => `mobile-nav-link ${isActive ? "active" : ""}`}>My Learning</NavLink>
+              <NavLink to="/dashboard" onClick={() => setMenuOpen(false)} className={({ isActive }) => `mobile-nav-link ${isActive ? "active" : ""}`}>Dashboard</NavLink>
+              <NavLink to="/profile" onClick={() => setMenuOpen(false)} className={({ isActive }) => `mobile-nav-link ${isActive ? "active" : ""}`}>Profile</NavLink>
               <button className="btn btn-outline btn-block" onClick={() => { logout(); setMenuOpen(false); navigate("/"); }}>Log out</button>
             </>
           ) : (

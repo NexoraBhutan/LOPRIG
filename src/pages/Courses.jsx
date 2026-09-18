@@ -1,14 +1,40 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { FaSlidersH, FaTimes } from "react-icons/fa";
 import CourseCard from "../components/CourseCard";
 import FilterSidebar, { applyFilters, DEFAULT_FILTERS } from "../components/FilterSidebar";
 import Mascot from "../components/Mascot";
 import { courses } from "../data/courses";
 
+function filtersToParams(filters) {
+  const params = new URLSearchParams();
+  if (filters.categories.length) params.set("cat", filters.categories.join(","));
+  if (filters.levels.length) params.set("lvl", filters.levels.join(","));
+  if (filters.price !== "all") params.set("price", filters.price);
+  if (filters.minRating) params.set("rating", String(filters.minRating));
+  return params;
+}
+
+function paramsToFilters(params) {
+  return {
+    categories: params.get("cat") ? params.get("cat").split(",") : [],
+    levels: params.get("lvl") ? params.get("lvl").split(",") : [],
+    price: params.get("price") || "all",
+    minRating: Number(params.get("rating")) || 0,
+  };
+}
+
 export default function Courses() {
-  const [filters, setFilters] = useState(DEFAULT_FILTERS);
-  const [sort, setSort] = useState("popular");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [filters, setFilters] = useState(() => paramsToFilters(searchParams));
+  const [sort, setSort] = useState(searchParams.get("sort") || "popular");
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+
+  useEffect(() => {
+    const params = filtersToParams(filters);
+    if (sort !== "popular") params.set("sort", sort);
+    setSearchParams(params, { replace: true });
+  }, [filters, sort, setSearchParams]);
 
   const results = useMemo(() => applyFilters(courses, filters, sort), [filters, sort]);
 
