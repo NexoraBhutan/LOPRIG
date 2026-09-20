@@ -1,9 +1,12 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { useGSAP } from "@gsap/react";
 import {
   Clock, Users, ChartBar, Globe, CheckCircle, PlayCircle, Download, Infinity as InfinityIcon,
-  Trophy, CaretDown, Heart, Star,
+  Trophy, CaretDown, CaretRight, Heart, Star, ArrowRight,
 } from "@phosphor-icons/react";
 import CourseThumb from "../components/CourseThumb";
 import Rating from "../components/Rating";
@@ -13,6 +16,8 @@ import { getCourseById, courses } from "../data/courses";
 import { useEnrollment } from "../context/EnrollmentContext";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
+
+gsap.registerPlugin(ScrollTrigger, useGSAP);
 
 function ratingBreakdown(rating) {
   const clamped = Math.min(5, Math.max(1, rating));
@@ -33,11 +38,30 @@ export default function CourseDetails() {
   const { isEnrolled, toggleSaved, enrollments } = useEnrollment();
   const { push } = useToast();
   const [openSections, setOpenSections] = useState({ s1: true });
+  const rootRef = useRef(null);
 
-  const related = useMemo(
-    () => courses.filter((c) => c.category === course?.category && c.id !== course?.id).slice(0, 4),
-    [course]
-  );
+  const related = useMemo(() => {
+    if (!course) return [];
+    const same = courses.filter((c) => c.category === course.category && c.id !== course.id);
+    const rest = courses
+      .filter((c) => c.category !== course.category && c.id !== course.id)
+      .sort((a, b) => b.rating - a.rating);
+    return [...same, ...rest].slice(0, 4);
+  }, [course]);
+
+  useGSAP(() => {
+    const ctx = gsap.context(() => {
+      gsap.fromTo(".cd-art", { scale: 1.15 }, {
+        scale: 1, ease: "none",
+        scrollTrigger: { trigger: ".cd-band", start: "top top", end: "bottom top", scrub: 0.8 },
+      });
+      gsap.to(".cd-art-wrap", {
+        opacity: 0.25, ease: "none",
+        scrollTrigger: { trigger: ".cd-band", start: "center 60%", end: "bottom top", scrub: 0.8 },
+      });
+    }, rootRef);
+    return () => ctx.revert();
+  }, { scope: rootRef });
 
   if (!course) {
     return (
@@ -55,6 +79,7 @@ export default function CourseDetails() {
   const enrolled = isEnrolled(course.id);
   const saved = Boolean(enrollments[course.id]?.saved);
   const totalLessons = course.curriculum.reduce((s, sec) => s + sec.lessons.length, 0);
+  const oddOutcomes = course.whatYouLearn.length % 2 === 1;
 
   const handleEnroll = () => {
     if (!user) {
@@ -79,25 +104,40 @@ export default function CourseDetails() {
   };
 
   return (
-    <main className="overflow-x-hidden w-full max-w-full">
+    <main ref={rootRef} className="overflow-x-hidden w-full max-w-full">
 
-      {/* HERO — Wide editorial, 2-3 line max */}
-      <section className="min-h-[88dvh] flex items-center px-8 lg:px-16 pt-36 pb-20 bg-white aw-gold-wash">
-        <div className="max-w-[1280px] mx-auto w-full grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-16 lg:gap-20 items-center">
+      {/* ATTENTION — Cinematic band: full-bleed art, dark wash, max-w-6xl title */}
+      <section className="cd-band relative px-8 lg:px-16 pt-40 pb-56 bg-ink-strong overflow-hidden">
+        <div className="cd-art-wrap absolute inset-0 overflow-hidden">
+          <img
+            src={`https://picsum.photos/seed/course${course.id}/1920/900`}
+            alt=""
+            aria-hidden="true"
+            className="cd-art w-full h-full object-cover grayscale contrast-125 opacity-90"
+          />
+          <div className="absolute inset-0 aw-dark-wash" />
+        </div>
+
+        <div className="max-w-[1280px] mx-auto w-full relative">
           <motion.div
-            initial={{ opacity: 0, x: -50 }}
-            animate={{ opacity: 1, x: 0 }}
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
           >
-            <span className="inline-flex items-center gap-2 text-xs font-bold tracking-widest uppercase text-gold-dark mb-6 before:content-[''] before:w-6 before:h-[3px] before:bg-gold">
-              {course.category.replace("-", " ")} &middot; {course.level}
-            </span>
-            <h1 className="aw-hero-h1 font-display text-ink-strong w-full max-w-5xl mb-6" style={{ fontSize: "clamp(2.2rem,4vw,3.8rem)" }}>
+            <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-white/50 mb-8">
+              <Link to="/courses" className="hover:text-gold transition-colors">Courses</Link>
+              <CaretRight size={11} />
+              <Link to={`/categories/${course.category}`} className="hover:text-gold transition-colors">{course.category.replace("-", " ")}</Link>
+              <CaretRight size={11} />
+              <span className="text-white/80">{course.level}</span>
+            </nav>
+
+            <h1 className="aw-hero-h1 font-display text-white w-full max-w-6xl" style={{ fontSize: "clamp(2.4rem,4.5vw,4.2rem)" }}>
               {course.title}
             </h1>
-            <p className="text-ink-muted text-lg leading-relaxed max-w-[640px] mb-8">{course.description}</p>
+            <p className="text-white/70 text-lg leading-relaxed max-w-[680px] mt-6">{course.description}</p>
 
-            <div className="flex flex-wrap items-center gap-5 text-sm text-ink-muted mb-6">
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-3 text-sm text-white/75 mt-8">
               <Rating value={course.rating} count={course.students} />
               <span className="flex items-center gap-1.5"><Users size={15} /> {course.students.toLocaleString()} students</span>
               <span className="flex items-center gap-1.5"><Clock size={15} /> {course.duration}</span>
@@ -105,76 +145,36 @@ export default function CourseDetails() {
               <span className="flex items-center gap-1.5"><Globe size={15} /> {course.language}</span>
             </div>
 
-            <p className="text-sm text-ink-muted">
-              Created by <strong className="text-ink-strong">{course.instructor.name}</strong>, {course.instructor.title}
+            <p className="text-sm text-white/60 mt-6">
+              Created by <strong className="text-white">{course.instructor.name}</strong>, {course.instructor.title}
             </p>
-          </motion.div>
-
-          {/* BUY CARD */}
-          <motion.div
-            initial={{ opacity: 0, x: 50, y: 20 }}
-            animate={{ opacity: 1, x: 0, y: 0 }}
-            transition={{ duration: 0.9, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
-            className="lg:sticky lg:top-32"
-          >
-            <div className="bg-white border-2 border-line rounded-xl overflow-hidden shadow-elevated">
-              <CourseThumb course={course} />
-              <div className="p-7">
-                <div className="flex items-baseline gap-3 mb-5">
-                  <strong className="text-2xl font-bold text-ink-strong">Nu. {course.discountPrice.toLocaleString()}</strong>
-                  {course.discountPrice < course.price && (
-                    <>
-                      <span className="text-sm text-ink-muted line-through">Nu. {course.price.toLocaleString()}</span>
-                      <span className="bg-red-soft text-red text-[0.65rem] font-bold px-2 py-0.5 rounded">{Math.round((1 - course.discountPrice / course.price) * 100)}% off</span>
-                    </>
-                  )}
-                </div>
-
-                {enrolled ? (
-                  <Link to={`/learn/${course.id}`} className="btn btn-primary btn-lg btn-block">
-                    <PlayCircle size={17} /> Go to Course
-                  </Link>
-                ) : (
-                  <button className="btn btn-primary btn-lg btn-block" onClick={handleEnroll}>
-                    Enroll Now
-                  </button>
-                )}
-
-                <button
-                  className="flex items-center justify-center gap-2 w-full mt-4 bg-transparent border-none text-sm font-bold text-gold-dark hover:text-gold transition-colors cursor-pointer"
-                  onClick={handleSave}
-                >
-                  <Heart size={14} weight={saved ? "fill" : "regular"} /> {saved ? "Saved" : "Save for later"}
-                </button>
-
-                <ul className="flex flex-col gap-3 mt-6 pt-6 border-t border-line text-sm text-ink-muted">
-                  <li className="flex items-center gap-2.5"><PlayCircle size={15} className="text-gold-dark" /> {course.duration} on-demand video</li>
-                  <li className="flex items-center gap-2.5"><CheckCircle size={15} className="text-gold-dark" /> {totalLessons} lessons</li>
-                  <li className="flex items-center gap-2.5"><Download size={15} className="text-gold-dark" /> Downloadable resources</li>
-                  <li className="flex items-center gap-2.5"><Trophy size={15} className="text-gold-dark" /> Certificate of completion</li>
-                  <li className="flex items-center gap-2.5"><InfinityIcon size={15} className="text-gold-dark" /> Lifetime access</li>
-                </ul>
-              </div>
-            </div>
           </motion.div>
         </div>
       </section>
 
-      {/* DETAILS BODY */}
-      <section className="py-32 md:py-48 px-8 lg:px-16 bg-bg-soft">
-        <div className="max-w-[1280px] mx-auto grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-16">
+      {/* INTEREST — Editorial body with overlapping commerce rail */}
+      <section className="px-8 lg:px-16 pb-32 md:pb-48 bg-bg-soft">
+        <div className="max-w-[1280px] mx-auto grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-12 lg:gap-16 items-start">
+
           <motion.div
             initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-50px" }}
             variants={stagger}
-            className="flex flex-col gap-16"
+            className="flex flex-col gap-20 pt-16 lg:pt-20"
           >
-            {/* What you'll learn */}
+            {/* Outcomes — gapless bento: 2 cols, odd last item spans 2 */}
             <motion.div variants={fadeUp}>
-              <h2 className="text-2xl md:text-3xl tracking-tighter font-medium text-ink-strong mb-8">What you&apos;ll learn</h2>
-              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {course.whatYouLearn.map((item) => (
-                  <li key={item} className="flex items-start gap-3 text-sm text-ink">
-                    <CheckCircle size={18} weight="fill" className="text-gold-dark mt-0.5 flex-shrink-0" />
+              <h2 className="font-display text-2xl md:text-4xl tracking-tighter font-semibold text-ink-strong mb-8">
+                What you&apos;ll
+                <span className="aw-inline-pill mx-2" style={{ backgroundImage: `url(https://picsum.photos/seed/${course.id}win/400/200)` }} aria-hidden="true" />
+                learn
+              </h2>
+              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-4 grid-flow-dense">
+                {course.whatYouLearn.map((item, i) => (
+                  <li
+                    key={item}
+                    className={`group flex items-start gap-3 p-5 bg-white border border-line rounded-2xl hover:border-gold hover:shadow-[0_8px_32px_rgba(255,182,6,0.1)] hover:-translate-y-0.5 transition-all duration-300 text-sm text-ink ${oddOutcomes && i === course.whatYouLearn.length - 1 ? "sm:col-span-2" : ""}`}
+                  >
+                    <CheckCircle size={18} weight="fill" className="text-gold-dark mt-0.5 flex-shrink-0 transition-transform duration-500 group-hover:scale-110" />
                     <span>{item}</span>
                   </li>
                 ))}
@@ -183,13 +183,13 @@ export default function CourseDetails() {
 
             {/* Curriculum */}
             <motion.div variants={fadeUp}>
-              <h2 className="text-2xl md:text-3xl tracking-tighter font-medium text-ink-strong mb-3">Course curriculum</h2>
+              <h2 className="font-display text-2xl md:text-4xl tracking-tighter font-semibold text-ink-strong mb-3">Course curriculum</h2>
               <p className="text-sm text-ink-muted mb-8">{course.curriculum.length} sections &middot; {totalLessons} lessons &middot; {course.duration} total</p>
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-3">
                 {course.curriculum.map((section) => (
-                  <div key={section.id} className="border-2 border-line rounded-xl bg-white overflow-hidden">
+                  <div key={section.id} className="border-2 border-line rounded-2xl bg-white overflow-hidden hover:border-gold transition-colors duration-300">
                     <button
-                      className="w-full flex items-center justify-between gap-4 px-6 py-4 bg-transparent border-none cursor-pointer text-left font-semibold text-ink-strong hover:bg-bg-soft transition-colors"
+                      className="w-full flex items-center justify-between gap-4 px-6 py-4 bg-transparent border-none cursor-pointer text-left font-semibold text-ink-strong hover:bg-gold-soft/50 transition-colors"
                       onClick={() => setOpenSections((s) => ({ ...s, [section.id]: !s[section.id] }))}
                       aria-expanded={!!openSections[section.id]}
                     >
@@ -222,40 +222,35 @@ export default function CourseDetails() {
               </div>
             </motion.div>
 
-            {/* Requirements */}
-            <motion.div variants={fadeUp}>
-              <h2 className="text-2xl md:text-3xl tracking-tighter font-medium text-ink-strong mb-6">Requirements</h2>
-              <ul className="flex flex-col gap-3">
-                {course.requirements.map((r) => (
-                  <li key={r} className="flex items-start gap-3 text-sm text-ink">
-                    <span className="w-1.5 h-1.5 rounded-full bg-gold-dark mt-2 flex-shrink-0" />
-                    {r}
-                  </li>
-                ))}
-              </ul>
-            </motion.div>
-
-            {/* Description */}
-            <motion.div variants={fadeUp}>
-              <h2 className="text-2xl md:text-3xl tracking-tighter font-medium text-ink-strong mb-6">Description</h2>
-              <p className="text-ink-muted leading-relaxed">{course.description}</p>
-            </motion.div>
-
-            {/* Who this is for */}
-            <motion.div variants={fadeUp}>
-              <h2 className="text-2xl md:text-3xl tracking-tighter font-medium text-ink-strong mb-6">Who this course is for</h2>
-              <p className="text-ink-muted leading-relaxed">
-                Students, working professionals, and lifelong learners in Bhutan who want practical,
-                job-ready {course.category.replace("-", " ")} skills, no matter their starting point.
-              </p>
+            {/* Requirements + Description */}
+            <motion.div variants={fadeUp} className="grid grid-cols-1 md:grid-cols-2 gap-10">
+              <div>
+                <h2 className="font-display text-2xl tracking-tighter font-semibold text-ink-strong mb-6">Requirements</h2>
+                <ul className="flex flex-col gap-3">
+                  {course.requirements.map((r) => (
+                    <li key={r} className="flex items-start gap-3 text-sm text-ink">
+                      <span className="w-1.5 h-1.5 rounded-full bg-gold-dark mt-2 flex-shrink-0" />
+                      {r}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <h2 className="font-display text-2xl tracking-tighter font-semibold text-ink-strong mb-6">Description</h2>
+                <p className="text-sm text-ink-muted leading-relaxed">{course.description}</p>
+                <p className="text-sm text-ink-muted leading-relaxed mt-4">
+                  Built for students, working professionals, and lifelong learners in Bhutan who want practical,
+                  job-ready {course.category.replace("-", " ")} skills, no matter their starting point.
+                </p>
+              </div>
             </motion.div>
 
             {/* Reviews */}
             <motion.div variants={fadeUp}>
-              <h2 className="text-2xl md:text-3xl tracking-tighter font-medium text-ink-strong mb-8">Student reviews</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-8 mb-8">
-                <div className="flex flex-col items-center justify-center py-8 bg-white border-2 border-line rounded-xl">
-                  <strong className="text-4xl font-bold text-ink-strong">{course.rating.toFixed(1)}</strong>
+              <h2 className="font-display text-2xl md:text-4xl tracking-tighter font-semibold text-ink-strong mb-8">Student reviews</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-6 mb-6">
+                <div className="flex flex-col items-center justify-center py-8 bg-white border-2 border-line rounded-2xl">
+                  <strong className="font-display text-5xl font-bold text-ink-strong">{course.rating.toFixed(1)}</strong>
                   <div className="flex gap-0.5 my-2">
                     {Array.from({ length: 5 }).map((_, i) => (
                       <Star key={i} size={15} weight={i < Math.round(course.rating) ? "fill" : "regular"} className="text-gold" />
@@ -276,12 +271,12 @@ export default function CourseDetails() {
                 </div>
               </div>
 
-              <div className="flex flex-col gap-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 {[
                   { name: "Sonam Choki", text: "Very clear explanations and practical exercises. Helped me a lot with my studies.", rating: 5, color: "bg-ink-strong" },
                   { name: "Pema Tobgay", text: "Good pacing and the instructor explains concepts step by step.", rating: 4.5, color: "bg-gold-dark" },
                 ].map((r) => (
-                  <div key={r.name} className="flex gap-4 p-6 bg-white border-2 border-line rounded-xl">
+                  <div key={r.name} className="group flex gap-4 p-6 bg-white border-2 border-line rounded-2xl hover:border-gold hover:-translate-y-0.5 transition-all duration-300">
                     <span className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0 ${r.color}`}>
                       {r.name.charAt(0)}
                     </span>
@@ -298,26 +293,95 @@ export default function CourseDetails() {
             </motion.div>
           </motion.div>
 
-          {/* Sticky sidebar spacer */}
-          <div className="hidden lg:block" />
+          {/* COMMERCE RAIL — overlaps the band, sticks on scroll */}
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.9, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            className="lg:sticky lg:top-28 lg:-mt-40"
+          >
+            <div className="group bg-white border-2 border-line rounded-3xl overflow-hidden shadow-elevated">
+              <div className="overflow-hidden">
+                <CourseThumb course={course} className="!rounded-none transition-transform duration-700 ease-out group-hover:scale-[1.02]" />
+              </div>
+              <div className="p-7">
+                <div className="flex items-baseline gap-3 mb-5">
+                  <strong className="font-display text-3xl font-bold text-ink-strong">Nu. {course.discountPrice.toLocaleString()}</strong>
+                  {course.discountPrice < course.price && (
+                    <>
+                      <span className="text-sm text-ink-muted line-through">Nu. {course.price.toLocaleString()}</span>
+                      <span className="bg-red-soft text-red text-[0.65rem] font-bold px-2 py-0.5 rounded-full">{Math.round((1 - course.discountPrice / course.price) * 100)}% off</span>
+                    </>
+                  )}
+                </div>
+
+                {enrolled ? (
+                  <Link to={`/learn/${course.id}`} className="btn btn-primary btn-lg btn-block">
+                    <PlayCircle size={17} /> Go to Course
+                  </Link>
+                ) : (
+                  <button className="btn btn-primary btn-lg btn-block" onClick={handleEnroll}>
+                    Enroll Now
+                  </button>
+                )}
+
+                <button
+                  className="flex items-center justify-center gap-2 w-full mt-4 bg-transparent border-none text-sm font-bold text-gold-dark hover:text-gold transition-colors cursor-pointer"
+                  onClick={handleSave}
+                  aria-pressed={saved}
+                >
+                  <Heart size={14} weight={saved ? "fill" : "regular"} /> {saved ? "Saved" : "Save for later"}
+                </button>
+
+                <ul className="flex flex-col gap-3 mt-6 pt-6 border-t border-line text-sm text-ink-muted">
+                  <li className="flex items-center gap-2.5"><PlayCircle size={15} className="text-gold-dark" /> {course.duration} on-demand video</li>
+                  <li className="flex items-center gap-2.5"><CheckCircle size={15} className="text-gold-dark" /> {totalLessons} lessons</li>
+                  <li className="flex items-center gap-2.5"><Download size={15} className="text-gold-dark" /> Downloadable resources</li>
+                  <li className="flex items-center gap-2.5"><Trophy size={15} className="text-gold-dark" /> Certificate of completion</li>
+                  <li className="flex items-center gap-2.5"><InfinityIcon size={15} className="text-gold-dark" /> Lifetime access</li>
+                </ul>
+              </div>
+            </div>
+          </motion.div>
         </div>
       </section>
 
-      {/* RELATED */}
+      {/* DESIRE — Instructor strip */}
+      <section className="px-8 lg:px-16 pb-32 md:pb-48 bg-bg-soft">
+        <div className="max-w-[1280px] mx-auto">
+          <div className="relative flex flex-col md:flex-row items-start md:items-center gap-6 p-10 md:p-12 bg-ink-strong rounded-3xl overflow-hidden aw-grain">
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_15%_20%,rgba(255,182,6,0.22)_0%,transparent_55%)]" />
+            <span className="relative w-16 h-16 rounded-full bg-gold flex items-center justify-center font-display font-bold text-2xl text-ink-strong flex-shrink-0">
+              {course.instructor.name.charAt(0)}
+            </span>
+            <div className="relative flex-1">
+              <h2 className="font-display text-xl md:text-2xl font-semibold text-white">Learn from {course.instructor.name}</h2>
+              <p className="text-sm text-white/60 mt-1">{course.instructor.title} — teaching {course.category.replace("-", " ")} for real outcomes.</p>
+            </div>
+            {!enrolled && (
+              <button className="btn btn-primary btn-lg relative flex-shrink-0" onClick={handleEnroll}>
+                Enroll Now <ArrowRight size={14} weight="bold" />
+              </button>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* ACTION — Gapless related row: always exactly 4 */}
       {related.length > 0 && (
         <section className="py-32 md:py-48 px-8 lg:px-16 bg-white">
           <div className="max-w-[1280px] mx-auto">
             <motion.h2
               initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-100px" }}
               variants={fadeUp} transition={{ duration: 0.6 }}
-              className="text-3xl md:text-5xl tracking-tighter font-medium text-ink-strong mb-20"
+              className="font-display text-3xl md:text-5xl tracking-tighter font-semibold text-ink-strong mb-16 md:mb-20 max-w-[640px]"
             >
-              Related Courses
+              Keep exploring
             </motion.h2>
             <motion.div
               initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-50px" }}
               variants={stagger}
-              className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6"
+              className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6 grid-flow-dense"
             >
               {related.map((c) => (
                 <motion.div key={c.id} variants={fadeUp}>

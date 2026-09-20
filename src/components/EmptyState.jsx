@@ -11,7 +11,7 @@ export default function EmptyState({
   ctaOnClick,
   className = "",
 }) {
-  const btnClass = ctaOutlined ? "btn btn-outline" : "btn btn-primary";
+  const btnClass = ctaOutlined ? "btn btn-outline btn-lg" : "btn btn-primary btn-lg";
 
   return (
     <div className={`flex flex-col items-center justify-center text-center py-20 gap-5 ${className}`}>

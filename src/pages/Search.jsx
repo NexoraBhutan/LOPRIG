@@ -39,7 +39,7 @@ export default function Search() {
         </div>
       </section>
 
-      <section className="pb-40 px-8 lg:px-16 bg-white">
+      <section className="pb-32 md:pb-48 px-8 lg:px-16 bg-white">
         <div className="max-w-[1280px] mx-auto grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-10">
           <div className="hidden lg:block">
             <FilterSidebar filters={filters} setFilters={setFilters} resultCount={results.length} />

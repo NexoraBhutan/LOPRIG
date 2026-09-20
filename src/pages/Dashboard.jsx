@@ -32,7 +32,7 @@ export default function Dashboard() {
   const recommended = courses.filter((c) => !enrollments[c.id]?.enrolledAt).slice(0, 4);
 
   return (
-    <main className="overflow-x-hidden w-full max-w-full px-8 lg:px-16 pt-32 pb-40">
+    <main className="overflow-x-hidden w-full max-w-full px-8 lg:px-16 pt-36 pb-32 md:pb-48 aw-gold-wash">
       <div className="max-w-[1280px] mx-auto">
 
         {/* Greeting */}
@@ -43,13 +43,10 @@ export default function Dashboard() {
           className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-16"
         >
           <div>
-            <span className="inline-flex items-center gap-2 text-xs font-bold tracking-widest uppercase text-gold-dark mb-4 before:content-[''] before:w-6 before:h-[3px] before:bg-gold">
-              Dashboard
-            </span>
-            <h1 className="text-3xl md:text-5xl tracking-tighter font-semibold text-ink-strong">
+            <h1 className="font-display text-3xl md:text-5xl tracking-tighter font-semibold text-ink-strong w-full max-w-4xl">
               Welcome back, {user?.name?.split(" ")[0] || "Learner"}
             </h1>
-            <p className="text-ink-muted text-lg mt-2">Continue learning and reach your goals.</p>
+            <p className="text-ink-muted text-lg mt-3">Continue learning and reach your goals.</p>
           </div>
           <div className="flex gap-3">
             <span className="inline-flex items-center gap-2 bg-gold-soft text-gold-dark text-xs font-bold px-4 py-2 rounded-full">
@@ -80,9 +77,11 @@ export default function Dashboard() {
             variants={fadeUp} transition={{ duration: 0.6 }}
             className="mb-16"
           >
-            <h2 className="text-2xl md:text-3xl tracking-tighter font-medium text-ink-strong mb-8">Continue Learning</h2>
-            <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.5fr] gap-0 bg-white border-2 border-line rounded-xl overflow-hidden">
-              <CourseThumb course={continueCourse.course} className="!aspect-auto !min-h-[220px]" />
+            <h2 className="font-display text-2xl md:text-3xl tracking-tighter font-semibold text-ink-strong mb-8">Continue learning</h2>
+            <div className="group grid grid-cols-1 lg:grid-cols-[1fr_1.5fr] gap-0 bg-white border-2 border-line rounded-2xl overflow-hidden hover:border-gold hover:shadow-elevated transition-all duration-300">
+              <div className="overflow-hidden min-h-[220px]">
+                <CourseThumb course={continueCourse.course} className="!aspect-auto !min-h-[220px] !h-full transition-transform duration-700 ease-out group-hover:scale-[1.02]" />
+              </div>
               <div className="p-8 flex flex-col gap-4">
                 <span className="text-[0.7rem] font-bold text-gold-dark uppercase tracking-wider">{continueCourse.course.category.replace("-", " ")}</span>
                 <h3 className="text-lg font-semibold">{continueCourse.course.title}</h3>

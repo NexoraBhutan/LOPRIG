@@ -38,7 +38,7 @@ export default function Profile() {
   };
 
   return (
-    <main className="overflow-x-hidden w-full max-w-full px-8 lg:px-16 pt-32 pb-40">
+    <main className="overflow-x-hidden w-full max-w-full px-8 lg:px-16 pt-36 pb-32 md:pb-48 aw-gold-wash">
       <div className="max-w-[1280px] mx-auto">
 
         {/* Header */}
@@ -46,12 +46,13 @@ export default function Profile() {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-          className="flex flex-col sm:flex-row items-start gap-6 mb-16 p-8 bg-white border-2 border-line rounded-xl"
+          className="relative flex flex-col sm:flex-row items-start gap-6 mb-16 p-8 md:p-10 bg-white border-2 border-line rounded-3xl overflow-hidden"
         >
-          <span className="w-20 h-20 rounded-full flex items-center justify-center text-white font-bold text-2xl flex-shrink-0" style={{ background: user.avatarColor }}>
+          <div className="absolute inset-x-0 top-0 h-24 bg-[linear-gradient(120deg,var(--gold-soft)_0%,transparent_60%)]" aria-hidden="true" />
+          <span className="relative w-20 h-20 rounded-full flex items-center justify-center text-white font-bold text-2xl flex-shrink-0" style={{ background: user.avatarColor }}>
             {user.name.charAt(0).toUpperCase()}
           </span>
-          <div className="flex-1">
+          <div className="flex-1 relative">
             {editing ? (
               <input className="w-full text-2xl font-semibold text-ink-strong bg-transparent border-b-2 border-gold outline-none pb-1 mb-2" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
             ) : (
@@ -65,9 +66,9 @@ export default function Profile() {
             )}
           </div>
           {editing ? (
-            <button className="btn btn-primary btn-sm" onClick={save}>Save changes</button>
+            <button className="btn btn-primary btn-sm relative" onClick={save}>Save changes</button>
           ) : (
-            <button className="btn btn-outline-neutral btn-sm" onClick={() => setEditing(true)}>
+            <button className="btn btn-outline-neutral btn-sm relative" onClick={() => setEditing(true)}>
               <Pencil size={13} /> Edit Profile
             </button>
           )}

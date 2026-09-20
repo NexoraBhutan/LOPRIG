@@ -54,7 +54,7 @@ export default function Checkout() {
   };
 
   return (
-    <main className="overflow-x-hidden w-full max-w-full px-8 lg:px-16 pt-32 pb-40">
+    <main className="overflow-x-hidden w-full max-w-full px-8 lg:px-16 pt-36 pb-32 md:pb-48 aw-gold-wash">
       <div className="max-w-[1280px] mx-auto">
 
         {/* Hero */}
@@ -64,10 +64,8 @@ export default function Checkout() {
           transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
           className="mb-16"
         >
-          <span className="inline-flex items-center gap-2 text-xs font-bold tracking-widest uppercase text-gold-dark mb-4 before:content-[''] before:w-6 before:h-[3px] before:bg-gold">
-            Checkout
-          </span>
-          <h1 className="text-3xl md:text-5xl tracking-tighter font-semibold text-ink-strong">Complete your enrollment</h1>
+          <h1 className="font-display text-3xl md:text-5xl tracking-tighter font-semibold text-ink-strong w-full max-w-4xl">Complete your enrollment</h1>
+          <p className="text-ink-muted text-lg mt-3">Secure checkout. Lifetime access, starting today.</p>
         </motion.div>
 
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-12">

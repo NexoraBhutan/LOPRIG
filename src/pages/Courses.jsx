@@ -67,42 +67,51 @@ export default function Courses() {
   return (
     <main className="overflow-x-hidden w-full max-w-full">
 
-      {/* LISTING HERO */}
-      <section className="min-h-[52dvh] flex items-end px-8 lg:px-16 pt-36 pb-16 bg-white aw-gold-wash">
-        <div className="max-w-[1280px] mx-auto w-full grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-10 items-end">
+      {/* LISTING HERO — Editorial Split with massive negative space */}
+      <section className="px-8 lg:px-16 pt-36 pb-16 bg-white aw-gold-wash overflow-hidden">
+        <div className="max-w-[1280px] mx-auto w-full grid grid-cols-1 lg:grid-cols-[1.2fr_0.8fr] gap-16 items-center">
           <motion.div
             initial={{ opacity: 0, x: -40 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
           >
-            <h1 className="aw-hero-h1 font-display text-ink-strong w-full max-w-5xl mb-4">
+            <h1 className="aw-hero-h1 font-display text-ink-strong w-full max-w-5xl">
               Explore courses
             </h1>
-            <p className="text-ink-muted text-lg max-w-[560px]">{courses.length} courses across programming, business, design, languages, and more.</p>
+            <p className="text-ink-muted text-lg max-w-[520px] mt-5">{courses.length} courses across programming, business, design, languages, and more.</p>
           </motion.div>
 
-          <div className="flex items-center gap-3">
-            <button
-              className="lg:hidden btn btn-outline-neutral btn-sm"
-              onClick={() => setMobileFiltersOpen(true)}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.94 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.9, delay: 0.12, ease: [0.16, 1, 0.3, 1] }}
+            className="hidden lg:block rounded-3xl overflow-hidden aspect-[4/3] group"
+          >
+            <img src="https://picsum.photos/seed/catalog/800/600" alt="Learners browsing course materials together" className="w-full h-full object-cover grayscale-[12%] contrast-110 transition-transform duration-700 ease-out group-hover:scale-105" />
+          </motion.div>
+        </div>
+
+        <div className="max-w-[1280px] mx-auto w-full flex items-center justify-end gap-3 mt-12">
+          <button
+            className="lg:hidden btn btn-outline-neutral btn-sm"
+            onClick={() => setMobileFiltersOpen(true)}
+          >
+            <SlidersHorizontal size={14} /> Filters
+          </button>
+          <label className="flex items-center gap-2">
+            <span className="text-xs font-bold text-ink-muted uppercase tracking-wider">Sort</span>
+            <select
+              className="border-2 border-line-strong rounded-[4px] bg-white px-4 py-2.5 text-xs font-bold text-ink-strong appearance-none cursor-pointer hover:border-gold transition-colors"
+              value={sort}
+              onChange={(e) => setSort(e.target.value)}
             >
-              <SlidersHorizontal size={14} /> Filters
-            </button>
-            <label className="flex items-center gap-2">
-              <span className="text-xs font-bold text-ink-muted uppercase tracking-wider">Sort</span>
-              <select
-                className="border-2 border-line-strong rounded-[4px] bg-white px-4 py-2.5 text-xs font-bold text-ink-strong appearance-none cursor-pointer hover:border-gold transition-colors"
-                value={sort}
-                onChange={(e) => setSort(e.target.value)}
-              >
-              <option value="popular">Most Popular</option>
-              <option value="rating">Highest Rated</option>
-              <option value="newest">Newest</option>
-              <option value="price-asc">Price: Low to High</option>
-              <option value="price-desc">Price: High to Low</option>
-            </select>
-            </label>
-          </div>
+            <option value="popular">Most Popular</option>
+            <option value="rating">Highest Rated</option>
+            <option value="newest">Newest</option>
+            <option value="price-asc">Price: Low to High</option>
+            <option value="price-desc">Price: High to Low</option>
+          </select>
+          </label>
         </div>
       </section>
 

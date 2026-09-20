@@ -118,18 +118,25 @@ export default function CoursePlayer() {
         {/* Main */}
         <div className="flex-1 flex flex-col overflow-y-auto min-w-0">
           {/* Video Shell */}
-          <div className="relative w-full aspect-video bg-black">
-            <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${course.gradient[0]}, ${course.gradient[1]})`, opacity: 0.3 }} />
+          <div className="relative w-full aspect-video bg-black overflow-hidden group/vid">
+            <img
+              src={`https://picsum.photos/seed/lesson${activeLessonId}/1280/720`}
+              alt=""
+              aria-hidden="true"
+              className="absolute inset-0 w-full h-full object-cover opacity-50 grayscale-[30%] contrast-125"
+            />
+            <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${course.gradient[0]}, ${course.gradient[1]})`, opacity: 0.35 }} />
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_30%,rgba(0,0,0,0.55)_100%)]" />
             <button
               className="absolute inset-0 flex items-center justify-center w-full h-full bg-transparent border-none cursor-pointer group"
               onClick={() => setPlaying((p) => !p)}
               aria-label={playing ? "Pause" : "Play"}
             >
-              <span className="w-20 h-20 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/30 transition-colors">
-                {playing ? <Pause size={30} className="text-white" /> : <Play size={30} className="text-white ml-1" />}
+              <span className="w-20 h-20 rounded-full bg-gold flex items-center justify-center transition-transform duration-300 group-hover:scale-110 shadow-glow">
+                {playing ? <Pause size={30} className="text-ink-strong" /> : <Play size={30} className="text-ink-strong ml-1" />}
               </span>
             </button>
-            <span className="absolute bottom-6 left-6 text-white/60 text-sm">{activeLesson?.title}</span>
+            <span className="absolute bottom-6 left-6 text-white/80 text-sm font-medium bg-black/40 backdrop-blur-sm px-3 py-1.5 rounded-full">{activeLesson?.title}</span>
           </div>
 
           {/* Controls */}
