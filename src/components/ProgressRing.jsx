@@ -40,8 +40,8 @@ export default function ProgressRing({
         {tone === "brand" && (
           <defs>
             <linearGradient id={gradId} x1="0" y1="0" x2={size} y2={size} gradientUnits="userSpaceOnUse">
-              <stop offset="0%" stopColor="var(--gold)" />
-              <stop offset="100%" stopColor="var(--gold-dark)" />
+              <stop offset="0%" stopColor="#ffb606" />
+              <stop offset="100%" stopColor="#c88e00" />
             </linearGradient>
           </defs>
         )}
@@ -57,7 +57,7 @@ export default function ProgressRing({
               y2={cy - innerR}
               strokeWidth={strokeW}
               strokeLinecap="round"
-              stroke={isFilled ? (tone === "brand" ? `url(#${gradId})` : "var(--gold)") : "var(--line-strong)"}
+              stroke={isFilled ? (tone === "brand" ? `url(#${gradId})` : "#ffb606") : "#dcdcdc"}
               transform={`rotate(${angle} ${cx} ${cy})`}
               className={`progress-ring-seg ${isFilled ? "is-filled" : ""}`}
               style={{ transitionDelay: `${Math.min(i, 30) * 12}ms` }}

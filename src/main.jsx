@@ -13,6 +13,7 @@ import "./styles/player.css";
 import "./styles/checkout.css";
 import "./styles/profile.css";
 import "./styles/about.css";
+import "./styles/awwwards.css";
 import App from "./App.jsx";
 import { AuthProvider } from "./context/AuthContext";
 import { EnrollmentProvider } from "./context/EnrollmentContext";

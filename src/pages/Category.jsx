@@ -1,109 +1,125 @@
 import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { motion } from "framer-motion";
 import {
-  FaBook, FaCode, FaChartBar, FaCalculator, FaBriefcase, FaPalette, FaBullhorn,
-  FaShieldAlt, FaGlobe, FaLanguage, FaRocket,
-} from "react-icons/fa";
+  Book, Code, ChartBar, Calculator, Briefcase, Palette, Megaphone,
+  Shield, Globe, Rocket,
+} from "@phosphor-icons/react";
 import CourseCard from "../components/CourseCard";
 import FilterSidebar, { applyFilters, DEFAULT_FILTERS } from "../components/FilterSidebar";
-import Mascot from "../components/Mascot";
+import EmptyState from "../components/EmptyState";
 import { categories, courses } from "../data/courses";
 
-// Explicit map (not a wildcard `import * as Icons`) — a namespace import used
-// with dynamic property access defeats Rollup's tree-shaking and pulls the
-// entire icon library into the bundle. Keep this list in sync with the
-// `icon` values in data/courses.js's `categories` array.
 const ICONS = {
-  Book: FaBook, Code: FaCode, ChartBar: FaChartBar, Calculator: FaCalculator, Briefcase: FaBriefcase,
-  Palette: FaPalette, Bullhorn: FaBullhorn, ShieldAlt: FaShieldAlt, Globe: FaGlobe, Language: FaLanguage,
-  Rocket: FaRocket,
+  Code, ChartBar, Calculator, Briefcase, Palette, Bullhorn: Megaphone,
+  ShieldAlt: Shield, Globe, Language: Globe, Rocket, Book,
 };
 
-// colorlib's Course template is essentially monochrome (gold on near-black),
-// not multi-hue — so category icon badges rotate between the two brand tones
-// instead of a rainbow, alternating for scannability without breaking the
-// restrained palette.
-const ICON_COLORS = [
-  { bg: "var(--gold)", fg: "var(--ink-strong)" },
-  { bg: "var(--ink-strong)", fg: "#fff" },
-];
-const iconColorFor = (index) => ICON_COLORS[index % ICON_COLORS.length];
+const fadeUp = { hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0 } };
+const stagger = { visible: { transition: { staggerChildren: 0.06 } } };
+
+function CategoryIndex() {
+  return (
+    <main className="overflow-x-hidden w-full max-w-full">
+      <section className="min-h-[50dvh] flex items-end px-8 lg:px-16 pt-36 pb-16 bg-white aw-gold-wash">
+        <div className="max-w-[1280px] mx-auto w-full">
+          <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}>
+            <h1 className="aw-hero-h1 font-display text-ink-strong w-full max-w-5xl mb-2" style={{ fontSize: "clamp(2.2rem,4vw,3.8rem)" }}>Browse Categories</h1>
+            <p className="text-ink-muted text-lg">Choose an area of interest to start exploring courses.</p>
+          </motion.div>
+        </div>
+      </section>
+
+      <section className="pb-40 px-8 lg:px-16 bg-white">
+        <div className="max-w-[1280px] mx-auto">
+          <motion.div
+            initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-50px" }}
+            variants={stagger}
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5"
+          >
+            {categories.map((cat, i) => {
+              const Icon = ICONS[cat.icon] || Book;
+              const isGold = i % 2 === 0;
+              return (
+                <motion.div key={cat.id} variants={fadeUp}>
+                  <Link to={`/categories/${cat.id}`} className="flex items-center gap-4 p-6 bg-white border-2 border-line rounded-xl hover:border-gold hover:shadow-[0_8px_32px_rgba(255,182,6,0.1)] transition-all duration-300 hover:-translate-y-1 no-underline">
+                    <span className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${isGold ? "bg-gold text-ink-strong" : "bg-ink-strong text-white"}`}>
+                      <Icon size={20} weight="duotone" />
+                    </span>
+                    <div>
+                      <h3 className="text-sm font-semibold text-ink-strong">{cat.title}</h3>
+                      <span className="text-xs text-ink-muted">{cat.count} courses</span>
+                    </div>
+                  </Link>
+                </motion.div>
+              );
+            })}
+          </motion.div>
+        </div>
+      </section>
+    </main>
+  );
+}
 
 export default function Category() {
   const { id } = useParams();
-
-  // Hooks must run unconditionally on every render — the "no id -> index
-  // view" branch has to come after them, not before, or React loses track
-  // of hook order the moment a user navigates between /categories and
-  // /categories/:id.
-  const categoryIndex = categories.findIndex((c) => c.id === id);
-  const category = categories[categoryIndex];
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const inCategory = useMemo(() => courses.filter((c) => c.category === id), [id]);
   const results = useMemo(() => applyFilters(inCategory, filters, "popular"), [inCategory, filters]);
 
   if (!id) return <CategoryIndex />;
 
-  const Icon = category ? ICONS[category.icon] : FaBook;
-  const { bg, fg } = iconColorFor(categoryIndex >= 0 ? categoryIndex : 0);
+  const category = categories.find((c) => c.id === id);
+  const Icon = category ? (ICONS[category.icon] || Book) : Book;
+  const catIndex = categories.findIndex((c) => c.id === id);
+  const isGold = catIndex % 2 === 0;
 
   return (
-    <div className="page-enter container listing-page">
-      <div className="category-hero">
-        <span className="category-hero-icon" style={{ "--icon-bg": bg, "--icon-fg": fg }}>
-          <Icon size={24} />
-        </span>
-        <h1 className="section-title">{category ? category.title : "Category"}</h1>
-        <p className="section-sub">{inCategory.length} course{inCategory.length !== 1 ? "s" : ""} in this category.</p>
-      </div>
-
-      <div className="listing-body">
-        <div className="listing-sidebar-desktop">
-          <FilterSidebar filters={filters} setFilters={setFilters} resultCount={results.length} />
+    <main className="overflow-x-hidden w-full max-w-full">
+      <section className="min-h-[50dvh] flex items-end px-8 lg:px-16 pt-32 pb-20 bg-white">
+        <div className="max-w-[1280px] mx-auto w-full">
+          <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}>
+            <span className={`inline-flex items-center justify-center w-14 h-14 rounded-xl mb-6 ${isGold ? "bg-gold text-ink-strong" : "bg-ink-strong text-white"}`}>
+              <Icon size={24} weight="duotone" />
+            </span>
+            <h1 className="text-3xl md:text-5xl tracking-tighter font-semibold text-ink-strong mb-2">{category ? category.title : "Category"}</h1>
+            <p className="text-ink-muted text-lg">{inCategory.length} course{inCategory.length !== 1 ? "s" : ""} in this category.</p>
+          </motion.div>
         </div>
-        <div className="listing-results">
-          {results.length ? (
-            <div className="course-grid">
-              {results.map((c) => <CourseCard key={c.id} course={c} />)}
-            </div>
-          ) : (
-            <div className="empty-state">
-              <Mascot pose="sad" size={100} />
-              <h3>No courses yet in this category</h3>
-              <p>Check back soon, or explore our full catalog.</p>
-              <Link to="/courses" className="btn btn-outline">Browse all courses</Link>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
+      </section>
 
-function CategoryIndex() {
-  return (
-    <div className="page-enter container listing-page">
-      <div className="category-hero">
-        <h1 className="section-title">Browse Categories</h1>
-        <p className="section-sub">Choose an area of interest to start exploring courses.</p>
-      </div>
-      <div className="category-grid">
-        {categories.map((cat, i) => {
-          const Icon = ICONS[cat.icon];
-          const { bg, fg } = iconColorFor(i);
-          return (
-            <Link to={`/categories/${cat.id}`} key={cat.id} className="category-card card">
-              <span className="category-icon" style={{ "--icon-bg": bg, "--icon-fg": fg }}>
-                <Icon size={20} />
-              </span>
-              <div>
-                <h3>{cat.title}</h3>
-                <span>{cat.count} courses</span>
-              </div>
-            </Link>
-          );
-        })}
-      </div>
-    </div>
+      <section className="pb-40 px-8 lg:px-16 bg-white">
+        <div className="max-w-[1280px] mx-auto grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-10">
+          <div className="hidden lg:block">
+            <FilterSidebar filters={filters} setFilters={setFilters} resultCount={results.length} />
+          </div>
+
+          <div>
+            {results.length ? (
+              <motion.div
+                initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-50px" }}
+                variants={stagger}
+                className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6"
+              >
+                {results.map((c) => (
+                  <motion.div key={c.id} variants={fadeUp}>
+                    <CourseCard course={c} />
+                  </motion.div>
+                ))}
+              </motion.div>
+            ) : (
+              <EmptyState
+                pose="sad"
+                title="No courses yet in this category"
+                description="Check back soon, or explore our full catalog."
+                ctaLabel="Browse all courses"
+                ctaTo="/courses"
+                ctaOutlined
+              />
+            )}
+          </div>
+        </div>
+      </section>
+    </main>
   );
 }

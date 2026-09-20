@@ -1,63 +1,69 @@
 import { Link } from "react-router-dom";
-import { FaExternalLinkAlt } from "react-icons/fa";
+import { ArrowUpRight } from "@phosphor-icons/react";
 import { FacebookGlyph, InstagramGlyph, LinkedinGlyph, YoutubeGlyph } from "./SocialGlyphs";
 import Logo from "./Logo";
 
 export default function Footer() {
   return (
-    <footer className="site-footer">
-      <div className="container footer-top">
-        <div className="footer-brand">
-          <Logo />
-          <p>
-            Lop-rig is Bhutan's home for practical, skills-first online learning — built for students,
-            professionals, and lifelong learners across the Kingdom.
-          </p>
-          <div className="footer-social">
-            <a href="#" aria-label="Facebook"><FacebookGlyph /></a>
-            <a href="#" aria-label="Instagram"><InstagramGlyph /></a>
-            <a href="#" aria-label="LinkedIn"><LinkedinGlyph /></a>
-            <a href="#" aria-label="YouTube"><YoutubeGlyph /></a>
+    <footer className="bg-ink-strong text-white relative overflow-hidden aw-grain">
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,rgba(255,182,6,0.12)_0%,transparent_55%)] pointer-events-none" />
+      <div className="max-w-[1280px] mx-auto px-8 lg:px-16 pt-24 pb-10 relative">
+        <Link to="/courses" className="block group">
+          <span className="block font-display font-bold tracking-tighter leading-none text-[clamp(3rem,9vw,8rem)] text-white group-hover:text-gold transition-colors duration-500">
+            Start learning today
+          </span>
+          <span className="mt-4 inline-flex items-center gap-2 text-sm font-bold uppercase tracking-widest text-gold">
+            Browse all courses <ArrowUpRight size={16} weight="bold" className="transition-transform duration-500 group-hover:translate-x-1 group-hover:-translate-y-1" />
+          </span>
+        </Link>
+
+        <div className="mt-16 pt-12 border-t border-white/10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[1.2fr_1fr_1fr_1fr] gap-12">
+        <div className="flex flex-col gap-5">
+          <Logo tone="light" />
+            <p className="text-white/50 text-sm leading-relaxed max-w-[320px]">
+              Lop-rig is Bhutan&apos;s home for practical, skills-first online learning, built for students,
+              professionals, and lifelong learners across the Kingdom.
+            </p>
+            <div className="flex gap-3">
+              {[FacebookGlyph, InstagramGlyph, LinkedinGlyph, YoutubeGlyph].map((Glyph, i) => (
+                <span key={i} role="link" aria-label={["Facebook", "Instagram", "LinkedIn", "YouTube"][i]} aria-disabled="true" className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white/60 cursor-default hover:bg-gold hover:text-ink-strong transition-colors" title="Coming soon">
+                  <Glyph />
+                </span>
+              ))}
+            </div>
           </div>
-        </div>
 
-        <div className="footer-col">
-          <h4>Platform</h4>
-          <Link to="/">Home</Link>
-          <Link to="/courses">Courses</Link>
-          <Link to="/categories">Categories</Link>
-          <Link to="/about">About</Link>
-        </div>
+          <div className="flex flex-col gap-4">
+            <h4 className="text-xs font-bold text-white/40 uppercase tracking-widest">Platform</h4>
+            {["Home", "Courses", "Categories", "About"].map((label) => (
+              <Link key={label} to={`/${label === "Home" ? "" : label.toLowerCase()}`} className="text-sm text-white/60 hover:text-gold transition-colors no-underline w-fit">{label}</Link>
+            ))}
+          </div>
 
-        <div className="footer-col">
-          <h4>Categories</h4>
-          <Link to="/categories/programming">Programming</Link>
-          <Link to="/categories/data-science">Data Science</Link>
-          <Link to="/categories/business">Business</Link>
-          <Link to="/categories/design">Design</Link>
-        </div>
+          <div className="flex flex-col gap-4">
+            <h4 className="text-xs font-bold text-white/40 uppercase tracking-widest">Categories</h4>
+            {[["Programming", "programming"], ["Data Science", "data-science"], ["Business", "business"], ["Design", "design"]].map(([label, slug]) => (
+              <Link key={slug} to={`/categories/${slug}`} className="text-sm text-white/60 hover:text-gold transition-colors no-underline w-fit">{label}</Link>
+            ))}
+          </div>
 
-        <div className="footer-col">
-          <h4>Support</h4>
-          <Link to="/about">Contact</Link>
-          <Link to="/about">FAQ</Link>
-          <Link to="/about">Terms</Link>
-          <Link to="/about">Privacy Policy</Link>
-          <Link to="/about">Help Center</Link>
+          <div className="flex flex-col gap-4">
+            <h4 className="text-xs font-bold text-white/40 uppercase tracking-widest">Support</h4>
+            {[["Contact", "/about"], ["FAQ", "/about"], ["Terms", "/about"], ["Privacy Policy", "/about"], ["Help Center", "/about"]].map(([label, to]) => (
+              <Link key={label} to={to} className="text-sm text-white/60 hover:text-gold transition-colors no-underline w-fit">{label}</Link>
+            ))}
+          </div>
         </div>
       </div>
 
-      <div className="container footer-bottom">
-        <span>© 2026 Lop-rig. All rights reserved.</span>
-        <span>Built for learners in Bhutan</span>
-        <a
-          href="https://nexero-p6zr.onrender.com"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="footer-credit"
-        >
-          A Nexora product <FaExternalLinkAlt size={12} />
-        </a>
+      <div className="border-t border-white/10 relative">
+        <div className="max-w-[1280px] mx-auto px-8 lg:px-16 py-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <span className="text-xs text-white/40">&copy; 2026 Lop-rig. All rights reserved.</span>
+          <span className="text-xs text-white/40">Built for learners in Bhutan</span>
+          <a href="https://nexero-p6zr.onrender.com" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-white/40 hover:text-gold transition-colors no-underline">
+            A Nexora product <ArrowUpRight size={11} />
+          </a>
+        </div>
       </div>
     </footer>
   );

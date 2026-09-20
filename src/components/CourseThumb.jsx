@@ -1,19 +1,18 @@
-import { FaBook } from "react-icons/fa";
+import { Book } from "@phosphor-icons/react";
 
-// Renders a deterministic gradient "thumbnail" for a course, avoiding
-// external image dependencies while keeping every card visually distinct.
 export default function CourseThumb({ course, className = "" }) {
   const [c1, c2] = course.gradient || ["#ffb606", "#c88e00"];
   return (
     <div
-      className={`course-thumb ${className}`}
-      style={{ background: `linear-gradient(135deg, ${c1}, ${c2})` }}
+      className={`relative overflow-hidden flex items-center justify-center ${className}`}
+      style={{ background: `linear-gradient(135deg, ${c1}, ${c2})`, aspectRatio: "16/9" }}
       role="img"
       aria-label={`${course.title} thumbnail`}
     >
-      <div className="course-thumb-pattern" />
-      <FaBook size={36} className="course-thumb-icon" />
-      <span className="course-thumb-cat">{course.category.replace("-", " ")}</span>
+      <Book size={40} weight="duotone" className="text-white/30" />
+      <span className="absolute bottom-3 left-3 bg-white/90 backdrop-blur-sm text-ink-strong text-[0.65rem] font-bold px-2.5 py-1 rounded tracking-wider uppercase">
+        {course.category.replace("-", " ")}
+      </span>
     </div>
   );
 }

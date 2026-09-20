@@ -10,12 +10,11 @@ a convention below actually changes in the code.
 - **React 19** + **Vite 8**, plain JSX (no TypeScript).
 - **react-router-dom v7** — `BrowserRouter` with a flat `<Routes>` tree in
   [src/App.jsx](src/App.jsx).
-- **Plain CSS** — no Tailwind, no CSS-in-JS, no CSS modules. One global stylesheet
-  ([src/index.css](src/index.css)) plus one hand-written CSS file per feature area
+- **Tailwind CSS v4** — utility classes plus custom CSS variables via `@theme` in
+  [src/index.css](src/index.css). One hand-written CSS file per feature area
   under [src/styles/](src/styles/), all imported once in
   [src/main.jsx](src/main.jsx).
-- **react-icons/fa** (Font Awesome 5 Free) for all icons — matches the
-  colorlib "Course" template's icon library (see §3).
+- **@phosphor-icons/react** for all icons — lightweight, tree-shakeable icon set.
 - **framer-motion** is a dependency but barely used yet — prefer plain CSS
   transitions/animations (see §5) unless a gesture/spring truly needs it.
 - **No backend.** All data is local: static demo content in
@@ -123,9 +122,9 @@ token.**
 --transition-slow: 0.3s ease;
 
 /* Typography */
---font-display: 'Roboto', sans-serif;   /* headings, buttons, body */
---font-body: 'Roboto', sans-serif;
---font-accent: 'Open Sans', sans-serif; /* nav links, logo wordmark, labels */
+--font-display: 'Space Grotesk', 'Outfit', sans-serif;   /* headings, buttons */
+--font-body: 'Outfit', sans-serif;
+--font-accent: 'Space Grotesk', 'Outfit', sans-serif; /* nav links, logo wordmark, labels */
 
 /* Layout */
 --header-h: 76px;
@@ -222,17 +221,14 @@ loading state, check this table first — it's very likely already covered.
 
 - **Function components**, default export, named the same as the file
   (`export default function CourseCard(...)`).
-- Icons from `react-icons/fa` (Font Awesome 5 Free), sized explicitly
-  (`<FaHeart size={16} />`), imported by name. Font Awesome splits outline
-  and filled variants into separate components (`FaHeart`/`FaRegHeart`,
-  `FaStar`/`FaRegStar`, `FaBookmark`/`FaRegBookmark`, `FaCircle`/`FaRegCircle`)
-  rather than a single icon with a `fill` toggle like some other icon sets —
-  swap the *component* for a saved/active/filled state, don't try to pass a
-  `fill="none"` prop. Never `import * as Icons from "react-icons/fa"` with
-  dynamic property access for a category/config-driven icon lookup — that
-  defeats tree-shaking and pulls a large chunk of the library into the
-  bundle; build an explicit `{ Key: FaIcon, ... }` map instead (see `ICONS`
-  in `Category.jsx`/`Home.jsx`).
+- Icons from `@phosphor-icons/react`, sized explicitly
+  (`<Heart size={16} />`), imported by name. Phosphor uses `weight` prop for
+  variants (`"regular"`, `"fill"`, `"duotone"`, `"light"`, `"thin"`) — swap
+  the `weight` prop for a saved/active/filled state. Never
+  `import * as Icons from "@phosphor-icons/react"` with dynamic property access
+  for a category/config-driven icon lookup — that defeats tree-shaking and
+  pulls a large chunk of the library into the bundle; build an explicit
+  `{ Key: Icon, ... }` map instead (see `ICONS` in `Category.jsx`/`Home.jsx`).
 - Class names are hand-written, kebab-case, **component-name-prefixed**
   (`course-card`, `course-card-media`, `course-card-save`, `course-card-badge`,
   etc.) — this prevents collisions between per-page CSS files since there's no

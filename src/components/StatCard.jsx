@@ -1,16 +1,18 @@
-// Shared stat tile — used by Dashboard and Profile, which previously
-// repeated the exact same 4-card markup independently. Pass `ring` (a
-// <ProgressRing/> element) instead of `icon` for the one stat that represents
-// a "how far along" percentage rather than a raw count.
 export default function StatCard({ icon: Icon, value, label, tone = "green", ring }) {
+  const toneBg = { green: "bg-gold-soft text-gold-dark", blue: "bg-bg-sunken text-ink", gold: "bg-gold-soft text-gold-dark" };
   return (
-    <div className="dash-stat card-plain">
+    <div className="bg-white border-2 border-line rounded-xl p-6 flex items-center gap-4 hover:border-gold transition-colors">
       {ring ? (
-        <span className="dash-stat-ring">{ring}</span>
+        <span className="flex-shrink-0">{ring}</span>
       ) : (
-        <span className={`dash-stat-icon dash-stat-icon-${tone}`}><Icon size={20} /></span>
+        <span className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${toneBg[tone] || toneBg.green}`}>
+          <Icon size={20} weight="duotone" />
+        </span>
       )}
-      <div><strong>{value}</strong><span>{label}</span></div>
+      <div>
+        <strong className="block text-xl font-bold text-ink-strong">{value}</strong>
+        <span className="text-xs text-ink-muted">{label}</span>
+      </div>
     </div>
   );
 }

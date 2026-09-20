@@ -1,13 +1,16 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { FaPlayCircle, FaBookmark } from "react-icons/fa";
+import { motion } from "framer-motion";
+import { PlayCircle, Bookmark } from "@phosphor-icons/react";
 import { useEnrollment } from "../context/EnrollmentContext";
 import CourseThumb from "../components/CourseThumb";
 import ProgressBar from "../components/ProgressBar";
 import ProgressRing from "../components/ProgressRing";
-import Mascot from "../components/Mascot";
+import EmptyState from "../components/EmptyState";
 
 const TABS = ["All", "In Progress", "Completed", "Saved"];
+const fadeUp = { hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0 } };
+const stagger = { visible: { transition: { staggerChildren: 0.06 } } };
 
 export default function MyLearning() {
   const { enrollments, enrolledCourses, savedCourses, isEnrolled, getProgress } = useEnrollment();
@@ -21,9 +24,6 @@ export default function MyLearning() {
     return withProgress;
   }, [tab, enrolledCourses, savedCourses, getProgress]);
 
-  // The one course most worth resuming — mirrors Dashboard's pick logic
-  // (lowest-progress in-progress course, falling back to any enrolled one)
-  // so the two pages agree on "what's next".
   const continueCourse = useMemo(() => {
     const inProgress = enrolledCourses
       .map((c) => ({ course: c, progress: getProgress(c.id) }))
@@ -32,85 +32,120 @@ export default function MyLearning() {
   }, [enrolledCourses, getProgress]);
 
   return (
-    <div className="page-enter container mylearning-page">
-      <div className="listing-head">
-        <div>
-          <h1 className="section-title">My Learning</h1>
-          <p className="section-sub">Track your progress and jump back into your courses.</p>
-        </div>
-      </div>
+    <main className="overflow-x-hidden w-full max-w-full px-8 lg:px-16 pt-32 pb-40">
+      <div className="max-w-[1280px] mx-auto">
 
-      {tab === "All" && continueCourse && (
-        <div className="mylearning-continue card-plain">
-          <CourseThumb course={continueCourse.course} className="mylearning-continue-thumb" />
-          <div className="mylearning-continue-body">
-            <div className="mylearning-continue-head">
-              <div>
-                <span className="eyebrow mylearning-continue-eyebrow">Continue learning</span>
-                <h2>{continueCourse.course.title}</h2>
-                <p className="mylearning-continue-lesson">
-                  {enrollments[continueCourse.course.id]?.lastLesson
-                    ? "Pick up where you left off"
-                    : "Ready to start your first lesson"}
-                </p>
-              </div>
-              <ProgressRing value={continueCourse.progress} size={64} label={`${continueCourse.progress}% complete`} />
-            </div>
-            <Link to={`/learn/${continueCourse.course.id}`} className="btn btn-primary mylearning-continue-cta">
-              <FaPlayCircle size={15} /> Continue Learning
-            </Link>
-          </div>
-        </div>
-      )}
+        {/* Hero */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+          className="mb-16"
+        >
+          <span className="inline-flex items-center gap-2 text-xs font-bold tracking-widest uppercase text-gold-dark mb-4 before:content-[''] before:w-6 before:h-[3px] before:bg-gold">
+            My Learning
+          </span>
+          <h1 className="text-3xl md:text-5xl tracking-tighter font-semibold text-ink-strong mb-2">Track your progress</h1>
+          <p className="text-ink-muted text-lg">Jump back into your courses and keep building.</p>
+        </motion.div>
 
-      <div className="tab-row">
-        {TABS.map((t) => (
-          <button key={t} className={`tab-btn ${tab === t ? "active" : ""}`} onClick={() => setTab(t)}>{t}</button>
-        ))}
-      </div>
-
-      {items.length ? (
-        <div className="mylearning-grid">
-          {items.map(({ course, progress }) => {
-            const enrolled = isEnrolled(course.id);
-            return (
-              <div className="mylearning-card card-plain" key={course.id}>
-                <CourseThumb course={course} />
-                <div className="mylearning-body">
-                  <h3>{course.title}</h3>
-                  {enrolled ? (
-                    <>
-                      <p className="mylearning-lesson">
-                        {enrollments[course.id]?.lastLesson ? "Last watched a lesson" : "Not started yet"}
-                      </p>
-                      <ProgressBar value={progress} />
-                      <Link to={`/learn/${course.id}`} className="btn btn-primary btn-block mylearning-cta">
-                        <FaPlayCircle size={14} /> {progress > 0 ? "Continue" : "Start"} Learning
-                      </Link>
-                    </>
-                  ) : (
-                    <>
-                      <p className="mylearning-lesson mylearning-saved-note">
-                        <FaBookmark size={12} /> Saved &middot; not enrolled yet
-                      </p>
-                      <Link to={`/courses/${course.id}`} className="btn btn-outline btn-block mylearning-cta">
-                        View Course
-                      </Link>
-                    </>
-                  )}
+        {/* Continue Card */}
+        {tab === "All" && continueCourse && (
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.1 }}
+            className="mb-12"
+          >
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.5fr] gap-0 bg-white border-2 border-line rounded-xl overflow-hidden">
+              <CourseThumb course={continueCourse.course} className="!aspect-auto !min-h-[220px]" />
+              <div className="p-8 flex flex-col gap-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <span className="text-[0.7rem] font-bold text-gold-dark uppercase tracking-wider">Continue learning</span>
+                    <h2 className="text-lg font-semibold mt-1">{continueCourse.course.title}</h2>
+                    <p className="text-sm text-ink-muted mt-1">
+                      {enrollments[continueCourse.course.id]?.lastLesson
+                        ? "Pick up where you left off"
+                        : "Ready to start your first lesson"}
+                    </p>
+                  </div>
+                  <ProgressRing value={continueCourse.progress} size={64} label={`${continueCourse.progress}% complete`} />
                 </div>
+                <Link to={`/learn/${continueCourse.course.id}`} className="btn btn-primary self-start mt-2">
+                  <PlayCircle size={15} /> Continue Learning
+                </Link>
               </div>
-            );
-          })}
+            </div>
+          </motion.div>
+        )}
+
+        {/* Tabs */}
+        <div className="flex gap-2 mb-10 border-b-2 border-line pb-px overflow-x-auto">
+          {TABS.map((t) => (
+            <button
+              key={t}
+              className={`px-5 py-3 text-sm font-bold border-b-2 transition-all cursor-pointer bg-transparent ${
+                tab === t
+                  ? "border-gold text-gold-dark"
+                  : "border-transparent text-ink-muted hover:text-ink-strong"
+              }`}
+              onClick={() => setTab(t)}
+            >
+              {t}
+            </button>
+          ))}
         </div>
-      ) : (
-        <div className="empty-state">
-          <Mascot pose="sad" size={100} />
-          <h3>Nothing here yet</h3>
-          <p>Courses you enroll in or save will show up in this tab.</p>
-          <Link to="/courses" className="btn btn-primary">Browse Courses</Link>
-        </div>
-      )}
-    </div>
+
+        {/* Grid */}
+        {items.length ? (
+          <motion.div
+            initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-50px" }}
+            variants={stagger}
+            className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6"
+          >
+            {items.map(({ course, progress }) => {
+              const enrolled = isEnrolled(course.id);
+              return (
+                <motion.div key={course.id} variants={fadeUp} className="bg-white border-2 border-line rounded-xl overflow-hidden hover:border-gold hover:shadow-[0_8px_32px_rgba(255,182,6,0.1)] transition-all duration-300">
+                  <CourseThumb course={course} />
+                  <div className="p-5 flex flex-col gap-3">
+                    <h3 className="text-sm font-semibold text-ink-strong leading-snug line-clamp-2">{course.title}</h3>
+                    {enrolled ? (
+                      <>
+                        <p className="text-xs text-ink-muted">
+                          {enrollments[course.id]?.lastLesson ? "Last watched a lesson" : "Not started yet"}
+                        </p>
+                        <ProgressBar value={progress} />
+                        <Link to={`/learn/${course.id}`} className="btn btn-primary btn-sm mt-1">
+                          <PlayCircle size={14} /> {progress > 0 ? "Continue" : "Start"} Learning
+                        </Link>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-xs text-ink-muted flex items-center gap-1.5">
+                          <Bookmark size={12} weight="fill" className="text-gold-dark" /> Saved &middot; not enrolled yet
+                        </p>
+                        <Link to={`/courses/${course.id}`} className="btn btn-outline-neutral btn-sm mt-1">
+                          View Course
+                        </Link>
+                      </>
+                    )}
+                  </div>
+                </motion.div>
+              );
+            })}
+          </motion.div>
+        ) : (
+          <EmptyState
+            pose="sad"
+            title="Nothing here yet"
+            description="Courses you enroll in or save will show up in this tab."
+            ctaLabel="Browse Courses"
+            ctaTo="/courses"
+          />
+        )}
+      </div>
+    </main>
   );
 }

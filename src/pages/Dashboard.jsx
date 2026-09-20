@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
-import { FaBook, FaClock, FaAward, FaPlayCircle, FaArrowRight, FaFire, FaGem } from "react-icons/fa";
+import { motion } from "framer-motion";
+import { Book, Clock, Trophy, PlayCircle, ArrowRight, Fire, Diamond } from "@phosphor-icons/react";
 import { useAuth } from "../context/AuthContext";
 import { useEnrollment } from "../context/EnrollmentContext";
 import CourseThumb from "../components/CourseThumb";
@@ -7,8 +8,11 @@ import ProgressBar from "../components/ProgressBar";
 import CourseCard from "../components/CourseCard";
 import StatCard from "../components/StatCard";
 import ProgressRing from "../components/ProgressRing";
-import Mascot from "../components/Mascot";
+import EmptyState from "../components/EmptyState";
 import { courses } from "../data/courses";
+
+const fadeUp = { hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0 } };
+const stagger = { visible: { transition: { staggerChildren: 0.06 } } };
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -28,71 +32,109 @@ export default function Dashboard() {
   const recommended = courses.filter((c) => !enrollments[c.id]?.enrolledAt).slice(0, 4);
 
   return (
-    <div className="page-enter container dash-page">
-      <div className="dash-greeting">
-        <div>
-          <h1>Welcome back, {user?.name?.split(" ")[0] || "Learner"}</h1>
-          <p>Continue learning and reach your goals.</p>
-        </div>
-        <div className="dash-gamify">
-          <span className="nav-stat-pill nav-stat-streak"><FaFire size={16} /> {streak}-day streak</span>
-          <span className="nav-stat-pill nav-stat-xp"><FaGem size={15} /> {xp} XP</span>
-        </div>
-      </div>
+    <main className="overflow-x-hidden w-full max-w-full px-8 lg:px-16 pt-32 pb-40">
+      <div className="max-w-[1280px] mx-auto">
 
-      <div className="dash-stats">
-        <StatCard icon={FaBook} value={enrolledCourses.length} label="Courses Enrolled" tone="green" />
-        <StatCard
-          ring={<ProgressRing value={overallCompletion} size={46} showValue={false} />}
-          value={`${overallCompletion}%`}
-          label="Overall Completion"
-        />
-        <StatCard icon={FaClock} value={`${totalHours ? totalHours.toFixed(0) : 0}h`} label="Learning Hours" tone="blue" />
-        <StatCard icon={FaAward} value={completedCount} label="Certificates" tone="gold" />
-      </div>
+        {/* Greeting */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+          className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-16"
+        >
+          <div>
+            <span className="inline-flex items-center gap-2 text-xs font-bold tracking-widest uppercase text-gold-dark mb-4 before:content-[''] before:w-6 before:h-[3px] before:bg-gold">
+              Dashboard
+            </span>
+            <h1 className="text-3xl md:text-5xl tracking-tighter font-semibold text-ink-strong">
+              Welcome back, {user?.name?.split(" ")[0] || "Learner"}
+            </h1>
+            <p className="text-ink-muted text-lg mt-2">Continue learning and reach your goals.</p>
+          </div>
+          <div className="flex gap-3">
+            <span className="inline-flex items-center gap-2 bg-gold-soft text-gold-dark text-xs font-bold px-4 py-2 rounded-full">
+              <Fire size={15} weight="fill" /> {streak}-day streak
+            </span>
+            <span className="inline-flex items-center gap-2 bg-ink-strong text-white text-xs font-bold px-4 py-2 rounded-full">
+              <Diamond size={14} weight="fill" /> {xp} XP
+            </span>
+          </div>
+        </motion.div>
 
-      {continueCourse ? (
-        <section className="dash-section">
-          <h2 className="dash-section-title">Continue Learning</h2>
-          <div className="continue-card card-plain">
-            <CourseThumb course={continueCourse.course} className="continue-thumb" />
-            <div className="continue-body">
-              <span className="eyebrow continue-eyebrow">{continueCourse.course.category.replace("-", " ")}</span>
-              <h3>{continueCourse.course.title}</h3>
-              <p className="continue-lesson">
-                {enrollments[continueCourse.course.id]?.lastLesson
-                  ? "Pick up where you left off"
-                  : "Ready to start your first lesson"}
-              </p>
-              <ProgressBar value={continueCourse.progress} />
-              <Link to={`/learn/${continueCourse.course.id}`} className="btn btn-primary continue-cta">
-                <FaPlayCircle size={15} /> Continue Learning
+        {/* Stats */}
+        <motion.div
+          initial="hidden" animate="visible"
+          variants={stagger}
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-16"
+        >
+          <motion.div variants={fadeUp}><StatCard icon={Book} value={enrolledCourses.length} label="Courses Enrolled" tone="green" /></motion.div>
+          <motion.div variants={fadeUp}><StatCard ring={<ProgressRing value={overallCompletion} size={46} showValue={false} />} value={`${overallCompletion}%`} label="Overall Completion" /></motion.div>
+          <motion.div variants={fadeUp}><StatCard icon={Clock} value={`${totalHours ? totalHours.toFixed(0) : 0}h`} label="Learning Hours" tone="blue" /></motion.div>
+          <motion.div variants={fadeUp}><StatCard icon={Trophy} value={completedCount} label="Certificates" tone="gold" /></motion.div>
+        </motion.div>
+
+        {/* Continue Learning */}
+        {continueCourse ? (
+          <motion.section
+            initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-50px" }}
+            variants={fadeUp} transition={{ duration: 0.6 }}
+            className="mb-16"
+          >
+            <h2 className="text-2xl md:text-3xl tracking-tighter font-medium text-ink-strong mb-8">Continue Learning</h2>
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.5fr] gap-0 bg-white border-2 border-line rounded-xl overflow-hidden">
+              <CourseThumb course={continueCourse.course} className="!aspect-auto !min-h-[220px]" />
+              <div className="p-8 flex flex-col gap-4">
+                <span className="text-[0.7rem] font-bold text-gold-dark uppercase tracking-wider">{continueCourse.course.category.replace("-", " ")}</span>
+                <h3 className="text-lg font-semibold">{continueCourse.course.title}</h3>
+                <p className="text-sm text-ink-muted">
+                  {enrollments[continueCourse.course.id]?.lastLesson
+                    ? "Pick up where you left off"
+                    : "Ready to start your first lesson"}
+                </p>
+                <ProgressBar value={continueCourse.progress} />
+                <Link to={`/learn/${continueCourse.course.id}`} className="btn btn-primary self-start mt-2">
+                  <PlayCircle size={15} /> Continue Learning
+                </Link>
+              </div>
+            </div>
+          </motion.section>
+        ) : (
+          <motion.section
+            initial="hidden" whileInView="visible" viewport={{ once: true }}
+            variants={fadeUp} className="mb-16"
+          >
+            <EmptyState
+              pose="sad"
+              title="You haven't enrolled in any courses yet"
+              description="Explore our catalog and start learning something new today."
+              ctaLabel="Explore Courses"
+              ctaTo="/courses"
+            />
+          </motion.section>
+        )}
+
+        {/* Recommended */}
+        {recommended.length > 0 && (
+          <motion.section
+            initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-50px" }}
+            variants={stagger}
+          >
+            <div className="flex items-end justify-between mb-8">
+              <h2 className="text-2xl md:text-3xl tracking-tighter font-medium text-ink-strong">Recommended for you</h2>
+              <Link to="/courses" className="inline-flex items-center gap-2 text-gold-dark font-bold text-xs tracking-widest uppercase hover:text-gold transition-colors">
+                View all <ArrowRight size={13} weight="bold" />
               </Link>
             </div>
-          </div>
-        </section>
-      ) : (
-        <section className="dash-section">
-          <div className="empty-state">
-            <Mascot pose="sad" size={100} />
-            <h3>You haven't enrolled in any courses yet</h3>
-            <p>Explore our catalog and start learning something new today.</p>
-            <Link to="/courses" className="btn btn-primary">Explore Courses</Link>
-          </div>
-        </section>
-      )}
-
-      {recommended.length > 0 && (
-        <section className="dash-section">
-          <div className="section-head">
-            <h2 className="dash-section-title">Recommended for you</h2>
-            <Link to="/courses" className="btn btn-outline btn-sm">View all <FaArrowRight size={13} /></Link>
-          </div>
-          <div className="course-grid">
-            {recommended.map((c) => <CourseCard key={c.id} course={c} />)}
-          </div>
-        </section>
-      )}
-    </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+              {recommended.map((c) => (
+                <motion.div key={c.id} variants={fadeUp}>
+                  <CourseCard course={c} />
+                </motion.div>
+              ))}
+            </div>
+          </motion.section>
+        )}
+      </div>
+    </main>
   );
 }

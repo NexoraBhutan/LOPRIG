@@ -1,11 +1,11 @@
-import { FaStar, FaRegStar } from "react-icons/fa";
+import { Star } from "@phosphor-icons/react";
 import { categories } from "../data/courses";
 
 const LEVELS = ["Beginner", "Intermediate", "All Levels"];
 const PRICES = [
   { id: "all", label: "All prices" },
   { id: "under500", label: "Under Nu. 500" },
-  { id: "500-1000", label: "Nu. 500 – 1,000" },
+  { id: "500-1000", label: "Nu. 500 - 1,000" },
   { id: "over1000", label: "Over Nu. 1,000" },
 ];
 const RATINGS = [4.5, 4.0, 3.5];
@@ -28,74 +28,86 @@ export default function FilterSidebar({ filters, setFilters, resultCount }) {
     setFilters({ categories: [], levels: [], price: "all", minRating: 0 });
 
   return (
-    <aside className="filter-sidebar card-plain">
-      <div className="filter-sidebar-head">
-        <h3>Filters</h3>
-        <button className="filter-clear" onClick={clearAll}>Clear all</button>
+    <aside className="bg-white border-2 border-line rounded-xl p-6 flex flex-col gap-6">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-bold text-ink-strong">Filters</h3>
+        <button className="text-xs font-bold text-gold-dark hover:text-gold transition-colors bg-transparent border-none cursor-pointer" onClick={clearAll}>Clear all</button>
       </div>
 
-      <div className="filter-group">
-        <h4>Category</h4>
+      <div className="flex flex-col gap-3">
+        <h4 className="text-xs font-bold text-ink-strong uppercase tracking-wider">Category</h4>
         {categories.map((cat) => (
-          <label className="filter-check" key={cat.id}>
-            <input type="checkbox" checked={filters.categories.includes(cat.id)} onChange={() => toggleCategory(cat.id)} />
+          <label key={cat.id} className="flex items-center gap-2.5 text-sm text-ink cursor-pointer hover:text-gold-dark transition-colors">
+            <input
+              type="checkbox"
+              checked={filters.categories.includes(cat.id)}
+              onChange={() => toggleCategory(cat.id)}
+              className="w-4 h-4 accent-gold rounded"
+            />
             <span>{cat.title}</span>
           </label>
         ))}
       </div>
 
-      <div className="filter-group">
-        <h4>Level</h4>
+      <div className="flex flex-col gap-3">
+        <h4 className="text-xs font-bold text-ink-strong uppercase tracking-wider">Level</h4>
         {LEVELS.map((lvl) => (
-          <label className="filter-check" key={lvl}>
-            <input type="checkbox" checked={filters.levels.includes(lvl)} onChange={() => toggleLevel(lvl)} />
+          <label key={lvl} className="flex items-center gap-2.5 text-sm text-ink cursor-pointer hover:text-gold-dark transition-colors">
+            <input
+              type="checkbox"
+              checked={filters.levels.includes(lvl)}
+              onChange={() => toggleLevel(lvl)}
+              className="w-4 h-4 accent-gold rounded"
+            />
             <span>{lvl}</span>
           </label>
         ))}
       </div>
 
-      <div className="filter-group">
-        <h4>Price</h4>
+      <div className="flex flex-col gap-3">
+        <h4 className="text-xs font-bold text-ink-strong uppercase tracking-wider">Price</h4>
         {PRICES.map((p) => (
-          <label className="filter-radio" key={p.id}>
+          <label key={p.id} className="flex items-center gap-2.5 text-sm text-ink cursor-pointer hover:text-gold-dark transition-colors">
             <input
               type="radio"
               name="price"
               checked={filters.price === p.id}
               onChange={() => setFilters((f) => ({ ...f, price: p.id }))}
+              className="w-4 h-4 accent-gold"
             />
             <span>{p.label}</span>
           </label>
         ))}
       </div>
 
-      <div className="filter-group">
-        <h4>Rating</h4>
+      <div className="flex flex-col gap-3">
+        <h4 className="text-xs font-bold text-ink-strong uppercase tracking-wider">Rating</h4>
         {RATINGS.map((r) => (
-          <label className="filter-radio" key={r}>
+          <label key={r} className="flex items-center gap-2.5 text-sm text-ink cursor-pointer hover:text-gold-dark transition-colors">
             <input
               type="radio"
               name="rating"
               checked={filters.minRating === r}
               onChange={() => setFilters((f) => ({ ...f, minRating: r }))}
+              className="w-4 h-4 accent-gold"
             />
-            <span className="filter-stars">
-              {[1, 2, 3, 4, 5].map((i) =>
-                i <= Math.round(r)
-                  ? <FaStar key={i} size={14} color="var(--gold)" />
-                  : <FaRegStar key={i} size={14} color="var(--gold)" />
-              )}
+            <span className="inline-flex items-center gap-0.5">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <Star key={i} size={12} weight={i <= Math.round(r) ? "fill" : "regular"} className="text-gold" />
+              ))}
             </span>
             <span>{r}+ &amp; up</span>
           </label>
         ))}
-        <label className="filter-radio">
-          <input type="radio" name="rating" checked={filters.minRating === 0} onChange={() => setFilters((f) => ({ ...f, minRating: 0 }))} />
+        <label className="flex items-center gap-2.5 text-sm text-ink cursor-pointer hover:text-gold-dark transition-colors">
+          <input type="radio" name="rating" checked={filters.minRating === 0} onChange={() => setFilters((f) => ({ ...f, minRating: 0 }))} className="w-4 h-4 accent-gold" />
           <span>Any rating</span>
         </label>
       </div>
 
-      {resultCount != null && <p className="filter-count">{resultCount} course{resultCount !== 1 ? "s" : ""} found</p>}
+      {resultCount != null && (
+        <p className="text-xs text-ink-muted border-t border-line pt-4">{resultCount} course{resultCount !== 1 ? "s" : ""} found</p>
+      )}
     </aside>
   );
 }
