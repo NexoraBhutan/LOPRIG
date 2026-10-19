@@ -1,0 +1,2013 @@
+================================================================================
+ LOP-RIG FRONTEND MIGRATION — COMPLETE CHANGE LOG
+ Vite + JavaScript (SPA)  ->  Next.js 16 + TypeScript (App Router)
+================================================================================
+ Project   : D:\LOPRIG-frontend  (npm package name: "lop-rig")
+ Date      : 2026-10-02
+ Status    : COMPLETE — typecheck clean, production build clean, dev server live
+ Location  : http://localhost:3000
+
+ Scope requested by user:
+   "Full rewrite" approach, App Router (v13+), Keep Tailwind v4.
+
+--------------------------------------------------------------------------------
+TABLE OF CONTENTS
+--------------------------------------------------------------------------------
+  01. SUMMARY AT A GLANCE
+  02. STACK: BEFORE vs AFTER
+  03. PACKAGE.JSON — FULL FINAL CONTENT
+  04. PACKAGE CHANGES (ADDED / REMOVED / KEPT)
+  05. CONFIG FILES — FULL FINAL CONTENT
+      05a. tsconfig.json
+      05b. next.config.ts
+      05c. postcss.config.mjs
+      05d. .gitignore
+      05e. .oxlintrc.json (unchanged)
+  06. FILE STRUCTURE — FINAL TREE
+  07. FILES DELETED (47 + 2 moved) — WITH REASONS
+  08. FILES CREATED — WITH PURPOSE
+  09. FILES MODIFIED — WHAT CHANGED AND WHY
+  10. ROUTE MAP: OLD (react-router) -> NEW (App Router)
+  11. API MAPPING: react-router -> next/navigation
+  12. TYPE SYSTEM: src/types/index.ts (FULL CONTENT)
+  13. ROOT LAYOUT — src/app/layout.tsx (FULL CONTENT)
+  14. GLOBAL STYLES — src/app/globals.css (HEAD + NOTES)
+  15. GSAP SSR SAFETY WRAPPER — src/utils/gsap.ts (FULL CONTENT)
+  16. ROUTE GUARDS — src/components/RouteUtils.tsx (FULL CONTENT)
+  17. KEY CODE CHANGES (BEFORE / AFTER SNIPPETS)
+  18. ISSUES ENCOUNTERED — 4 MAJOR, WITH ROOT CAUSE + FIX
+  19. BEHAVIORAL DECISIONS AND TRADE-OFFS
+  20. VERIFICATION RESULTS (EXACT NUMBERS)
+  21. CAVEATS — WHAT NOT TO BREAK
+  22. COMMANDS REFERENCE
+================================================================================
+
+
+================================================================================
+01. SUMMARY AT A GLANCE
+================================================================================
+  TypeScript files (.ts + .tsx) ............ 62
+  JavaScript files (.js + .jsx) ............ 0   <-- fully eliminated
+  React Router files ....................... 0   <-- fully eliminated
+  Vite config files ......................... 0   <-- fully eliminated
+
+  Total source lines (hand-authored code) .. 5,796
+      (4,919 in 55 .tsx + 717 in 5 .ts + 153 in src\app\globals.css
+       + 7 in next.config.ts. The 14 files in src\styles\ (228 lines)
+       were carried over unchanged and are not counted as newly written.)
+  App Router routes ......................... 16
+  Client components ("use client") .......... 28
+  "use server" files ......................... 0   (no Server Actions used)
+  Typecheck (tsc --noEmit) .................. exit 0, zero errors
+  Production build ......................... SUCCESS
+  Lint (oxlint) ............................ warnings only, 0 errors
+  HTTP smoke test .......................... 14 routes checked, all correct
+
+  Dependencies added:  next, @tailwindcss/postcss, typescript,
+                       @types/node, @types/react, @types/react-dom
+  Dependencies removed: vite, @vitejs/plugin-react, @tailwindcss/vite,
+                       react-router-dom
+  Dependencies kept:   react, react-dom, framer-motion, gsap, @gsap/react,
+                       @phosphor-icons/react, tailwindcss, oxlint,
+                       playwright-core
+
+
+================================================================================
+02. STACK: BEFORE vs AFTER
+================================================================================
+  AREA          BEFORE (Vite SPA)              AFTER (Next.js App Router)
+  -----------   ---------------------------    --------------------------------
+  Framework     Vite 8.2.2                     Next.js 16.3.8 (Turbopack)
+  Language      JavaScript (.jsx / .js)        TypeScript (strict)
+  Router        react-router-dom 7.18.3        App Router (src/app/**)
+                BrowserRouter + <Routes>       <Link> + next/navigation hooks
+  Entry         index.html + src/main.jsx      src/app/layout.tsx
+  Build tool    Vite                           Next.js build (Turbopack default)
+  Styling       Tailwind v4 (@tailwindcss/vite) Tailwind v4 (@tailwindcss/postcss)
+  Fonts         Google Fonts @import url(...)  next/font/google (self-hosted)
+  Metadata      <meta> tags in index.html      export const metadata + viewport
+  Error boundary Custom class ErrorBoundary    src/app/error.tsx (Next built-in)
+  404 page      <Route path="*"> NotFound      src/app/not-found.tsx
+  Code splitting lazy(() => import(...))      Automatic per-route + Suspense
+  State         React Context (3 providers)    Same 3 providers, ported to .tsx
+  Lint          oxlint                         oxlint (unchanged)
+  Type check    none                           tsc --noEmit (new script)
+  Dev server    npm run dev -> :5173           npm run dev -> :3000
+  Production    npm run build + preview        npm run build + npm run start
+
+
+================================================================================
+03. PACKAGE.JSON — FULL FINAL CONTENT
+================================================================================
+  File: package.json (32 lines)
+
+{
+  "name": "lop-rig",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "oxlint",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@gsap/react": "^2.1.2",
+    "@phosphor-icons/react": "^2.1.10",
+    "framer-motion": "^13.2.0",
+    "gsap": "^3.15.0",
+    "next": "^16.3.8",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "tailwindcss": "^4.3.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/node": "^24.10.1",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "oxlint": "^1.79.0",
+    "playwright-core": "^1.63.0",
+    "typescript": "^5.9.3"
+  }
+}
+
+  Note: "type": "module" was already present in the original project and was
+        preserved. Next.js 16 supports it fine.
+
+
+================================================================================
+04. PACKAGE CHANGES (ADDED / REMOVED / KEPT)
+================================================================================
+
+  --- ADDED ------------------------------------------------------------------
+  next                  ^16.3.8   Installed version: 16.3.8
+                                  Latest stable at time of migration.
+                                  Turbopack is the default bundler in v16
+                                  (no --turbopack flag needed anymore).
+
+  @tailwindcss/postcss  ^4.3.3    Replaces @tailwindcss/vite. Wired up via
+                                  postcss.config.mjs. This is how Tailwind v4
+                                  integrates with Next.js.
+
+  typescript            ^5.9.3    Required for the .ts/.tsx migration.
+                                  Next.js 16 minimum is 5.1.0.
+
+  @types/node           ^24.10.1  Types for Node built-ins. Required because
+                                  tsconfig targets ES2022 with node types.
+
+  @types/react          ^19.2.18  React 19 type definitions.
+
+  @types/react-dom      ^19.2.4   React DOM type definitions.
+
+  --- REMOVED ----------------------------------------------------------------
+  vite                  was ^8.2.2    Next.js replaces Vite as the
+                                      build/dev tool entirely.
+
+  @vitejs/plugin-react  was ^6.1.0    React plugin for Vite. Next has its
+                                      own React compilation built in.
+
+  @tailwindcss/vite     was ^4.3.3    Tailwind's Vite plugin. Replaced by
+                                      @tailwindcss/postcss.
+
+  react-router-dom      was ^7.18.3   Replaced by the Next.js App Router:
+                                      next/link for <Link>, next/navigation
+                                      for useRouter/usePathname/useParams/
+                                      useSearchParams.
+
+  --- KEPT (UNCHANGED) -------------------------------------------------------
+  react                 ^19.2.8    Next 16 uses React 19.2 features
+                                   (View Transitions, useEffectEvent, Activity).
+  react-dom             ^19.2.8    Paired with react.
+  framer-motion         ^13.2.0    Used for entrance animations and the
+                                   AnimatePresence mobile menu / search panel.
+  gsap                  ^3.15.0    ScrollTrigger scrub animations on Home,
+                                   CourseDetails, About, MyLearning.
+  @gsap/react           ^2.1.2     useGSAP() hook, same as before.
+  @phosphor-icons/react ^2.1.10    All UI icons, unchanged.
+  tailwindcss           ^4.3.3     Same major version, different integration.
+  oxlint                ^1.79.0    Same linter, same .oxlintrc.json.
+  playwright-core       ^1.63.0    Left in place — was already present in the
+                                   original devDependencies and is not
+                                   referenced anywhere in src/. Removing it
+                                   was not part of the migration request.
+
+  --- SCRIPT CHANGES ---------------------------------------------------------
+  Before                        After
+  ------------------------      ------------------------------
+  "dev": "vite"                 "dev": "next dev"
+  "build": "vite build"         "build": "next build"
+  "lint": "oxlint"              "lint": "oxlint"              (unchanged)
+  "preview": "vite preview"     "start": "next start"         (renamed)
+                                "typecheck": "tsc --noEmit"   (NEW)
+
+
+================================================================================
+05. CONFIG FILES — FULL FINAL CONTENT
+================================================================================
+
+--------------------------------------------------------------------------------
+05a. tsconfig.json  (43 lines)
+--------------------------------------------------------------------------------
+  IMPORTANT: Next.js AUTO-REWROTE this file during the first build. The
+  following mandatory change was applied by Next, not by hand:
+      jsx: "preserve"   ->   jsx: "react-jsx"
+  And the following suggested change was added:
+      include += ".next/dev/types/**/*.ts"
+
+  "react-jsx" is the React automatic runtime and is REQUIRED by Next.js.
+  Do not change it back to "preserve" — the build will fail.
+
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "allowJs": false,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+    "incremental": true,
+    "verbatimModuleSyntax": true,
+    "noUncheckedIndexedAccess": false,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ]
+    }
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}
+
+  Key decisions in this config:
+  - strict: true            -> full type safety, no implicit any
+  - allowJs: false          -> JavaScript is fully gone; do not allow .js back
+  - verbatimModuleSyntax: true -> requires `import type` for type-only imports
+  - moduleResolution: bundler  -> matches how Next/Turbopack resolves modules
+  - paths: "@/*" -> "./src/*"  -> all internal imports use the @/ alias
+  - target ES2022             -> matches the browsers Next 16 supports
+                                  (Chrome 111+, Edge 111+, Firefox 111+,
+                                   Safari 16.4+)
+
+
+--------------------------------------------------------------------------------
+05b. next.config.ts  (5 lines, NEW FILE)
+--------------------------------------------------------------------------------
+  Next.js 16 supports TypeScript config files natively. Written in TS to match
+  the rest of the project.
+
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  reactStrictMode: true,
+};
+
+export default nextConfig;
+
+  - reactStrictMode: true  -> double-invokes effects in development, the same
+                              behaviour the Vite app had via React StrictMode
+                              in main.jsx.
+
+  NOTE: Next 16 removed the `eslint` option from next.config and also removed
+        the `next lint` command entirely. Do not add an `eslint` key here.
+        Linting is handled by oxlint via `npm run lint`.
+
+
+--------------------------------------------------------------------------------
+05c. postcss.config.mjs  (6 lines, NEW FILE)
+--------------------------------------------------------------------------------
+  This is what wires Tailwind v4 into Next.js now that @tailwindcss/vite is
+  gone. Without this file, all Tailwind utility classes would silently stop
+  being generated.
+
+const config = {
+  plugins: {
+    "@tailwindcss/postcss": {},
+  },
+};
+
+export default config;
+
+  The file uses .mjs (ES module) because package.json has "type": "module".
+
+
+--------------------------------------------------------------------------------
+05d. .gitignore  (28 lines)
+--------------------------------------------------------------------------------
+  Added a "# Next.js" block to the original Vite-era ignore list.
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Next.js
+.next
+out
+next-env.d.ts
+tsconfig.tsbuildinfo
+.turbo
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+  What each new entry covers:
+  .next              Next.js build output (also .next/dev for the dev server)
+  out                Export output for `next build --output standalone` / static
+  next-env.d.ts      Auto-generated by Next.js; must not be hand-edited
+  tsconfig.tsbuildinfo  TypeScript incremental build cache (tsc --incremental)
+  .turbo             Turbopack cache
+
+
+--------------------------------------------------------------------------------
+05e. .oxlintrc.json  (8 lines, UNCHANGED)
+--------------------------------------------------------------------------------
+  This file was NOT modified. The original React rules still apply:
+
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["react", "oxc"],
+  "rules": {
+    "react/rules-of-hooks": "error",
+    "react/only-export-components": ["warn", { "allowConstantExport": true }]
+  }
+}
+
+  "allowConstantExport": true is what allows pages such as src/views/Category.tsx
+  to export both `CategoryIndex` (a component) and `DEFAULT_FILTERS` (a
+  constant) from the same file without an error — only a warning.
+
+
+================================================================================
+06. FILE STRUCTURE — FINAL TREE
+================================================================================
+
+  D:\LOPRIG-frontend\
+  |
+  +-- .gitignore                     31 lines   (modified)
+  +-- .oxlintrc.json                  8 lines   (unchanged)
+  +-- next.config.ts                  7 lines   (NEW)
+  +-- next-env.d.ts                   7 lines   (auto-generated by Next, gitignored)
+  +-- package.json                   32 lines   (rewritten)
+  +-- postcss.config.mjs              7 lines   (NEW)
+  +-- tsconfig.json                  43 lines   (NEW, then auto-rewritten by Next)
+  +-- README.md                      56 lines   (untouched)
+  +-- UI.md                         388 lines   (untouched)
+  |
+  +-- plans\
+  |     +-- audit-report.md         343 lines   (untouched)
+  |     +-- lop rig-frontend-mvp.md 487 lines   (untouched)
+  |
+  +-- public\
+  |     +-- favicon.svg              12 lines   (untouched, still referenced)
+  |
+  +-- src\
+        |
+        +-- app\                     <-- App Router (NEW — replaces index.html + App.jsx)
+        |     +-- layout.tsx         60 lines   root layout + providers + fonts + metadata
+        |     +-- globals.css       153 lines   Tailwind v4 theme + base styles
+        |     +-- error.tsx          40 lines   route error boundary (replaces ErrorBoundary.jsx)
+        |     +-- not-found.tsx      44 lines   404 page (replaces NotFound.jsx)
+        |     +-- page.tsx            10 lines   "/" -> Home
+        |     +-- about\page.tsx      10 lines
+        |     +-- categories\page.tsx         11 lines
+        |     +-- categories\[id]\page.tsx    11 lines
+        |     +-- checkout\[id]\page.tsx      13 lines
+        |     +-- courses\page.tsx           13 lines
+        |     +-- courses\[id]\page.tsx      11 lines
+        |     +-- dashboard\page.tsx         13 lines
+        |     +-- forgot-password\page.tsx    10 lines
+        |     +-- learn\[id]\page.tsx        13 lines
+        |     +-- login\page.tsx             12 lines
+        |     +-- my-learning\page.tsx       13 lines
+        |     +-- payment-success\[id]\page.tsx 13 lines
+        |     +-- profile\page.tsx           13 lines
+        |     +-- search\page.tsx            12 lines
+        |     +-- signup\page.tsx             10 lines
+        |
+        +-- components\              19 files, all .tsx
+        |     +-- CourseCard.tsx      66 lines   ("use client")
+        |     +-- CourseThumb.tsx     25 lines
+        |     +-- EmptyState.tsx      41 lines   ("use client")
+        |     +-- FilterSidebar.tsx  156 lines   ("use client") + applyFilters + DEFAULT_FILTERS
+        |     +-- Footer.tsx          75 lines   ("use client")
+        |     +-- HeroVisual.tsx      19 lines
+        |     +-- Logo.tsx            24 lines
+        |     +-- Mascot.tsx         149 lines   original SVG takin mascot
+        |     +-- Navbar.tsx         225 lines   ("use client")
+        |     +-- PageLoader.tsx       7 lines   (NEW — extracted from App.jsx)
+        |     +-- ProgressBar.tsx     21 lines
+        |     +-- ProgressRing.tsx    85 lines   ("use client")
+        |     +-- Rating.tsx          23 lines
+        |     +-- RouteUtils.tsx      41 lines   ("use client") ScrollToTop + ProtectedRoute
+        |     +-- SkeletonCard.tsx    17 lines
+        |     +-- SkeletonRow.tsx     15 lines
+        |     +-- SocialGlyphs.tsx    43 lines   original abstract social SVGs
+        |     +-- StatCard.tsx        40 lines
+        |
+        +-- context\                  3 files, all .tsx, all "use client"
+        |     +-- AuthContext.tsx    132 lines   localStorage-backed auth
+        |     +-- EnrollmentContext.tsx 230 lines enrollments + streak + XP
+        |     +-- ToastContext.tsx    64 lines   toast notification system
+        |
+        +-- data\
+        |     +-- courses.ts         495 lines   all demo data, fully typed
+        |
+        +-- hooks\
+        |     +-- useDebounce.ts       12 lines   generic useDebounce<T>
+        |
+        +-- styles\                   14 files (UNCHANGED from original)
+        |     +-- awwwards.css        82 lines   cinematic helpers — IMPORTED by globals.css
+        |     +-- components.css     135 lines   .btn / .btn-* / .carousel-dot — IMPORTED by globals.css
+        |     +-- about.css            1 line    comment-only stub
+        |     +-- auth.css             1 line    comment-only stub
+        |     +-- checkout.css         1 line    comment-only stub
+        |     +-- course-details.css   1 line    comment-only stub
+        |     +-- dashboard.css        1 line    comment-only stub
+        |     +-- home.css             1 line    comment-only stub
+        |     +-- layout.css           1 line    comment-only stub
+        |     +-- listing.css          1 line    comment-only stub
+        |     +-- mylearning.css       1 line    comment-only stub
+        |     +-- player.css           1 line    comment-only stub
+        |     +-- profile.css          1 line    comment-only stub
+        |
+        +-- types\
+        |     +-- index.ts           153 lines   ALL shared TypeScript types
+        |
+        +-- utils\
+        |     +-- gsap.ts             13 lines   ("use client") SSR-safe GSAP re-export
+        |     +-- storage.ts          44 lines   safe localStorage wrappers
+        |
+        +-- views\                   15 files, all .tsx   (renamed from src\pages)
+              +-- About.tsx          153 lines   ("use client")
+              +-- Category.tsx       208 lines   ("use client") index + detail
+              +-- Checkout.tsx       257 lines   ("use client")
+              +-- CourseDetails.tsx  397 lines   ("use client")
+              +-- CoursePlayer.tsx   284 lines   ("use client")
+              +-- Courses.tsx        186 lines   ("use client")
+              +-- Dashboard.tsx      141 lines   ("use client")
+              +-- ForgotPassword.tsx  92 lines   ("use client")
+              +-- Home.tsx           427 lines   ("use client")
+              +-- Login.tsx          134 lines   ("use client")
+              +-- MyLearning.tsx     177 lines   ("use client")
+              +-- PaymentSuccess.tsx 120 lines   ("use client")
+              +-- Profile.tsx        237 lines   ("use client")
+              +-- Search.tsx          79 lines   ("use client")
+              +-- Signup.tsx         197 lines   ("use client")
+
+  Why src/views/ instead of src/pages/ :
+    Next.js treats ANY directory named "pages" (at the root OR under src/)
+    as the Pages Router. Having src/pages/ next to src/app/ made Next load
+    the Pages-Router compatibility type layer, which types usePathname(),
+    useParams() and useSearchParams() as possibly-null, and would also have
+    tried to build a second Pages-Router tree from those files. Renaming to
+    src/views/ removes that conflict entirely.
+
+
+================================================================================
+07. FILES DELETED (with reasons)
+================================================================================
+
+  --- DELETED: 47 files in one batch ------------------------------------------
+  The following files were removed. All had TypeScript .tsx/.ts replacements
+  already written, except where noted.
+
+  ROOT
+    index.html                          Vite SPA entry. Replaced by
+                                        src/app/layout.tsx. Next generates
+                                        the HTML document itself.
+    vite.config.js                      Vite config. Replaced by next.config.ts.
+
+  SRC ROOT
+    src\main.jsx                        React createRoot() bootstrap. Replaced
+                                        by the RootLayout in src/app/layout.tsx.
+    src\App.jsx                         BrowserRouter + <Routes> tree. Replaced
+                                        by the App Router file-convention routes.
+    src\index.css                       Tailwind entry CSS. Merged into
+                                        src/app/globals.css.
+    src\assets\hero.png                 UNUSED. Grep confirmed zero references
+                                        anywhere in src/. Dead asset.
+    src\assets\vite.svg                 UNUSED Vite template leftover.
+                                        Dead asset.
+
+  src\components\*.jsx  (19 files) — each replaced by an identically named .tsx
+    CourseCard.jsx      ->  components\CourseCard.tsx
+    CourseThumb.jsx     ->  components\CourseThumb.tsx
+    EmptyState.jsx      ->  components\EmptyState.tsx
+    ErrorBoundary.jsx   ->  app\error.tsx  (see note below)
+    FilterSidebar.jsx   ->  components\FilterSidebar.tsx
+    Footer.jsx          ->  components\Footer.jsx
+    HeroVisual.jsx      ->  components\HeroVisual.tsx
+    Logo.jsx            ->  components\Logo.tsx
+    Mascot.jsx          ->  components\Mascot.tsx
+    Navbar.jsx          ->  components\Navbar.tsx
+    ProgressBar.jsx     ->  components\ProgressBar.tsx
+    ProgressRing.jsx    ->  components\ProgressRing.tsx
+    Rating.jsx          ->  components\Rating.tsx
+    RouteUtils.jsx      ->  components\RouteUtils.tsx
+    SkeletonCard.jsx    ->  components\SkeletonCard.tsx
+    SkeletonRow.jsx     ->  components\SkeletonRow.tsx
+    SocialGlyphs.jsx    ->  components\SocialGlyphs.tsx
+    StatCard.jsx        ->  components\StatCard.tsx
+
+    NOTE ON ErrorBoundary.jsx:
+      The original class component was used for exactly one thing — wrapping
+      the <Routes> tree in App.jsx. Next.js provides a first-class
+      replacement in src/app/error.tsx, which receives { error, reset } and
+      is invoked automatically whenever a route throws. The "Try Again"
+      button in the original (this.setState({hasError:false})) is equivalent
+      to calling `reset()`. The class component was therefore removed rather
+      than ported, because keeping it would mean an unused module.
+
+  src\context\*.jsx  (3 files)
+    AuthContext.jsx       ->  context\AuthContext.tsx
+    EnrollmentContext.jsx ->  context\EnrollmentContext.tsx
+    ToastContext.jsx      ->  context\ToastContext.tsx
+
+  src\data
+    courses.js          ->  data\courses.ts  (486 -> 487 lines, fully typed)
+
+  src\hooks
+    useDebounce.js      ->  hooks\useDebounce.ts
+
+  src\utils
+    storage.js          ->  utils\storage.ts
+
+  src\pages\*.jsx  (16 files) — replaced by src\views\*.tsx
+    About.jsx           ->  views\About.tsx
+    Category.jsx        ->  views\Category.tsx
+    Checkout.jsx        ->  views\Checkout.tsx
+    CourseDetails.jsx   ->  views\CourseDetails.tsx
+    CoursePlayer.jsx    ->  views\CoursePlayer.tsx
+    Courses.jsx         ->  views\Courses.tsx
+    Dashboard.jsx       ->  views\Dashboard.tsx
+    ForgotPassword.jsx  ->  views\ForgotPassword.tsx
+    Home.jsx            ->  views\Home.tsx
+    Login.jsx           ->  views\Login.tsx
+    MyLearning.jsx      ->  views\MyLearning.tsx
+    NotFound.jsx        ->  app\not-found.tsx  (moved into App Router convention)
+    PaymentSuccess.jsx  ->  views\PaymentSuccess.tsx
+    Profile.jsx         ->  views\Profile.tsx
+    Search.jsx          ->  views\Search.tsx
+    Signup.jsx          ->  views\Signup.tsx
+
+  --- MOVED (not deleted) -----------------------------------------------------
+    src\pages\   ->  src\views\     (15 component files)
+    app\         ->  src\app\       (entire App Router tree moved under src/
+                                     so it sits alongside the other src/
+                                     folders; Next supports both layouts and
+                                     this one keeps @/* -> ./src/* consistent)
+
+  --- NOT deleted, deliberately -----------------------------------------------
+    src\styles\  (14 files)   Kept 100% as-is. awwwards.css and components.css
+                              are real CSS imported by globals.css. The other
+                              12 are single-line comment stubs left over from
+                              the original project; they were retained rather
+                              than cleaned up, because deleting them was not
+                              part of the requested migration scope.
+    plans\, README.md, UI.md, public\favicon.svg
+                              Untouched.
+
+
+================================================================================
+08. FILES CREATED — WITH PURPOSE
+================================================================================
+
+  CONFIGURATION (4 new files)
+    next.config.ts               Next.js config, TypeScript, reactStrictMode
+    postcss.config.mjs           Wires @tailwindcss/postcss (Tailwind v4 in Next)
+    tsconfig.json                TypeScript config, strict mode, @/* alias
+    .gitignore (modified)        Added the Next.js ignore block
+
+  APP ROUTER SHELL (2 new files + 16 route wrappers)
+    src\app\layout.tsx           Root layout: <html>/<body>, font loading,
+                                 metadata/viewport exports, all 3 Context
+                                 providers, Navbar, Footer, ScrollToTop
+    src\app\globals.css          Tailwind v4 @theme design tokens + base styles,
+                                 imports awwwards.css and components.css
+    src\app\error.tsx            Route error boundary with the same recovery UI
+                                 the old ErrorBoundary.jsx rendered
+    src\app\not-found.tsx        404 page, ported from pages\NotFound.jsx
+
+    src\app\page.tsx             "/"
+    src\app\about\page.tsx
+    src\app\categories\page.tsx
+    src\app\categories\[id]\page.tsx
+    src\app\checkout\[id]\page.tsx
+    src\app\courses\page.tsx
+    src\app\courses\[id]\page.tsx
+    src\app\dashboard\page.tsx
+    src\app\forgot-password\page.tsx
+    src\app\learn\[id]\page.tsx
+    src\app\login\page.tsx
+    src\app\my-learning\page.tsx
+    src\app\payment-success\[id]\page.tsx
+    src\app\profile\page.tsx
+    src\app\search\page.tsx
+    src\app\signup\page.tsx
+
+    All 16 route wrappers follow the same pattern: a server component that
+    imports the client page from src/views/ and wraps it in <Suspense>. This
+    is required because several pages call useSearchParams(), which Next
+    requires to sit under a Suspense boundary for static prerendering. It
+    also keeps the route files free of client-only concerns and leaves the
+    door open for real server components later.
+
+    Example (src\app\courses\page.tsx):
+      import { Suspense } from "react";
+      import PageLoader from "@/components/PageLoader";
+      import Courses from "@/views/Courses";
+
+      // Courses reads the URL search params to drive its filter state, so it
+      // has to sit under a Suspense boundary for static prerendering to
+      // succeed.
+      export default function CoursesPage() {
+        return (
+          <Suspense fallback={<PageLoader />}>
+            <Courses />
+          </Suspense>
+        );
+      }
+
+  TYPES (1 new file)
+    src\types\index.ts           153 lines. Every shared type in one place.
+                                 Full content is reproduced in section 12.
+
+  UTILITIES (2 new files)
+    src\utils\gsap.ts            SSR-safe GSAP wrapper — see section 15.
+    src\utils\storage.ts         Port of utils\storage.js, now generic and
+                                 fully typed. safeParseJSON<T>(key, fallback)
+                                 requires an explicit fallback so the return
+                                 type is always honest.
+
+  COMPONENTS (1 new file)
+    src\components\PageLoader.tsx
+                                 The gold spinning-ring loader that used to be
+                                 a private function inside App.jsx. Extracted
+                                 because it is now referenced by 8 different
+                                 route wrappers as a Suspense fallback.
+
+  VIEWS (15 files, created as .tsx)
+    src\views\*.tsx              Ported from src\pages\*.jsx. See section 06
+                                 for line counts.
+
+  COMPONENTS / CONTEXT / DATA / HOOKS (23 files, created as .tsx/.ts)
+    See section 06 for the full list with line counts.
+
+
+================================================================================
+09. FILES MODIFIED — WHAT CHANGED AND WHY
+================================================================================
+
+  package.json
+    Replaced the Vite-era scripts and dependency lists with Next.js equivalents.
+    Full final content is in section 03.
+
+  .gitignore
+    Added the "# Next.js" block (.next, out, next-env.d.ts,
+    tsconfig.tsbuildinfo, .turbo). Full content is in section 05d.
+
+  tsconfig.json
+    Created from scratch for the Next.js/TypeScript setup, then auto-rewritten
+    by Next during the first build (jsx: preserve -> react-jsx, plus an extra
+    include entry). Full content is in section 05a.
+
+  src\styles\components.css     NOT modified. Imported verbatim by
+  src\styles\awwwards.css       globals.css. These two files carry all the
+                                non-Tailwind CSS (.btn, .btn-primary,
+                                .btn-secondary, .btn-outline, .btn-outline-neutral,
+                                .btn-danger, .btn-sm/md/lg, .btn-block,
+                                .btn-icon, .carousel-dot, .aw-grain,
+                                .aw-hero-h1, .aw-inline-pill, .aw-glass-pill,
+                                .aw-dark-wash, .aw-gold-wash, aw-marquee,
+                                .aw-scrub-word, .aw-stack-card).
+
+  public\favicon.svg            NOT modified. Still served from /favicon.svg
+                                and still referenced by the metadata export in
+                                layout.tsx.
+
+
+================================================================================
+10. ROUTE MAP: OLD (react-router) -> NEW (App Router)
+================================================================================
+
+  OLD PATH                        NEW FILE                              STATUS
+  ------------------------------  -------------------------------------  ------
+  /                               src\app\page.tsx                      Static
+  /courses                        src\app\courses\page.tsx              Static
+  /courses/:id                    src\app\courses\[id]\page.tsx         Dynamic
+  /categories                     src\app\categories\page.tsx           Static
+  /categories/:id                 src\app\categories\[id]\page.tsx      Dynamic
+  /search                         src\app\search\page.tsx               Static
+  /about                          src\app\about\page.tsx                Static
+  /login                          src\app\login\page.tsx                Static
+  /signup                         src\app\signup\page.tsx               Static
+  /forgot-password                src\app\forgot-password\page.tsx      Static
+  /dashboard                      src\app\dashboard\page.tsx            Static (protected)
+  /my-learning                    src\app\my-learning\page.tsx          Static (protected)
+  /profile                        src\app\profile\page.tsx              Static (protected)
+  /learn/:id                      src\app\learn\[id]\page.tsx           Dynamic (protected)
+  /checkout/:id                   src\app\checkout\[id]\page.tsx        Dynamic (protected)
+  /payment-success/:id            src\app\payment-success\[id]\page.tsx Dynamic (protected)
+  * (catch-all)                   src\app\not-found.tsx                 404
+
+  Build output (from `npm run build`):
+    /                          Static   prerendered as static content
+    /_not-found                Static   prerendered as static content
+    /about                     Static   prerendered as static content
+    /categories                Static   prerendered as static content
+    /categories/[id]           Dynamic  server-rendered on demand
+    /checkout/[id]             Dynamic  server-rendered on demand
+    /courses                   Static   prerendered as static content
+    /courses/[id]              Dynamic  server-rendered on demand
+    /dashboard                 Static   prerendered as static content
+    /forgot-password           Static   prerendered as static content
+    /learn/[id]                Dynamic  server-rendered on demand
+    /login                     Static   prerendered as static content
+    /my-learning               Static   prerendered as static content
+    /payment-success/[id]      Dynamic  server-rendered on demand
+    /profile                   Static   prerendered as static content
+    /search                    Static   prerendered as static content
+    /signup                    Static   prerendered as static content
+
+  No routes were added, removed, renamed, or reordered. Every URL that worked
+  before still works, so existing bookmarks and any external links are safe.
+
+
+================================================================================
+11. API MAPPING: react-router -> next/navigation
+================================================================================
+
+  react-router-dom                          Next.js equivalent
+  ----------------------------------------  --------------------------------------
+  import { BrowserRouter }                  Removed — App Router has no wrapper
+  <BrowserRouter>                           Removed — provided by the framework
+  <Routes>/<Route path="x" element={y}/>    File conventions under src/app/**
+  import { Link } from "react-router-dom"   import Link from "next/link"
+  <Link to="/x">                            <Link href="/x">
+  <NavLink to="/x" className={fn}>         No equivalent — derive active state
+                                            from usePathname() instead
+  NavLink "end" prop                        pathname === to  (exact match)
+  NavLink isActive render prop              if (end) pathname === to
+                                            else pathname === to ||
+                                                 pathname.startsWith(to + "/")
+  import { useNavigate }                    import { useRouter } from "next/navigation"
+  navigate("/x")                            router.push("/x")
+  navigate("/x", { replace: true })         router.replace("/x")
+  navigate("/x", { state: {...} })          No equivalent — use query params
+                                            (this app uses ?from=<pathname>)
+  import { useLocation }                    import { usePathname } (path only)
+                                            import { useSearchParams } (query)
+  location.pathname                         usePathname()
+  location.state?.from                      searchParams.get("from")
+  import { useParams }                      import { useParams } from "next/navigation"
+  useParams<{ id: string }>()               Same call, but the value may be null
+                                            in the Pages-Router compat types
+  import { useSearchParams }                import { useSearchParams } from
+                                            "next/navigation"
+  useSearchParams()                          Same call; .toString() and .get()
+                                            still work
+  setSearchParams(params, { replace: true }) router.replace(pathname + "?" + query,
+                                            { scroll: false })
+  <Navigate to="/x" replace />              useEffect + router.replace("/x")
+  useNavigate in ProtectedRoute             router.replace in useEffect
+
+  The one behavioural difference worth remembering: react-router's `state`
+  object is gone. This app had exactly two uses of it — Login reading
+  location.state.from, and ProtectedRoute/Checkout writing it. Both were
+  rewritten to carry the redirect target in a `?from=` query parameter,
+  which is the standard App Router approach and survives a page refresh,
+  unlike react-router's in-memory state.
+
+
+================================================================================
+12. TYPE SYSTEM: src\types\index.ts (FULL CONTENT, 153 lines)
+================================================================================
+
+  This is the single source of truth for shared types. Full content:
+
+export type MascotPose = "idle" | "celebrate" | "thinking" | "sad";
+
+export type ToastType = "success" | "error" | "info";
+
+export type RingTone = "brand" | "flat";
+
+export type LogoSize = "sm" | "md" | "lg";
+
+export type LogoTone = "dark" | "light";
+
+export type ProgressBarSize = "sm" | "md";
+
+export type StatTone = "green" | "blue" | "gold";
+
+export type IconName =
+  | "Code"
+  | "ChartBar"
+  | "Calculator"
+  | "Briefcase"
+  | "Palette"
+  | "Bullhorn"
+  | "ShieldAlt"
+  | "Globe"
+  | "Language"
+  | "Rocket";
+
+export interface Lesson {
+  id: string;
+  title: string;
+  duration: string;
+}
+
+export interface CurriculumSection {
+  id: string;
+  title: string;
+  lessons: Lesson[];
+}
+
+export interface Instructor {
+  name: string;
+  title: string;
+}
+
+export type CourseLevel = "Beginner" | "Intermediate" | "All Levels";
+
+export type CategoryId =
+  | "programming"
+  | "data-science"
+  | "mathematics"
+  | "business"
+  | "design"
+  | "marketing"
+  | "security"
+  | "web-development"
+  | "languages"
+  | "entrepreneurship";
+
+export interface Course {
+  id: string;
+  title: string;
+  category: CategoryId;
+  level: CourseLevel;
+  description: string;
+  instructor: Instructor;
+  rating: number;
+  students: number;
+  duration: string;
+  lessonsCount: number;
+  price: number;
+  discountPrice: number;
+  language: string;
+  bestseller: boolean;
+  gradient: [string, string];
+  requirements: string[];
+  whatYouLearn: string[];
+  curriculum: CurriculumSection[];
+}
+
+export interface Category {
+  id: CategoryId;
+  title: string;
+  icon: IconName;
+  count: number;
+}
+
+export interface Testimonial {
+  name: string;
+  role: string;
+  quote: string;
+}
+
+export interface LearningPath {
+  id: string;
+  title: string;
+  courseIds: string[];
+  color: string;
+}
+
+export interface LessonSectionInput {
+  title: string;
+  lessons: string[];
+}
+
+/** A learner as it is stored in localStorage — no password. */
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  bio: string;
+  avatarColor: string;
+  joined: string;
+}
+
+/** A learner including the password, only ever read inside AuthProvider. */
+export interface StoredUser extends User {
+  password: string;
+}
+
+export interface EnrollmentRecord {
+  courseId: string;
+  enrolledAt: string | null;
+  completedLessons: string[];
+  lastLesson: string | null;
+  saved?: boolean;
+}
+
+export type EnrollmentMap = Record<string, EnrollmentRecord>;
+
+export interface Streak {
+  count: number;
+  lastActive: string | null;
+}
+
+export interface CourseProgress {
+  course: Course;
+  progress: number;
+}
+
+export type ActionResult = { ok: true } | { ok: false; error: string };
+
+export interface Filters {
+  categories: string[];
+  levels: CourseLevel[];
+  price: string;
+  minRating: number;
+}
+
+export type SortOption = "popular" | "rating" | "newest" | "price-asc" | "price-desc";
+
+export interface NavLinkItem {
+  to: string;
+  label: string;
+}
+
+  Design notes on the types:
+  - User vs StoredUser: the public User type has NO password field, and
+    AuthContext.publicUser() strips the password before it ever reaches
+    component state. StoredUser extends User and is only used inside
+    AuthContext when reading/writing the loprig_users localStorage key.
+  - Course.gradient is a tuple [string, string], not string[], because
+    CourseThumb destructures it into exactly two stops.
+  - Course.category is CategoryId (a union of the 10 real ids), not string,
+    so a typo in a category id is a compile error.
+  - Course.level is CourseLevel, a union of the 3 real level strings.
+  - ActionResult is a discriminated union on `ok`, so `if (!res.ok)` narrows
+    res to the error branch and `res.error` is safe to read.
+  - Filters.levels is CourseLevel[], so the FilterSidebar checkbox logic is
+    type-checked against the real level strings.
+  - SortOption is a union of the 5 sort keys, so `as SortOption` casts at
+    call sites are validated.
+  - IconName exists so data\courses.ts can declare which Phosphor icon each
+    category maps to without importing React components into a data file.
+
+
+================================================================================
+13. ROOT LAYOUT — src\app\layout.tsx (FULL CONTENT, 60 lines)
+================================================================================
+
+import type { Metadata, Viewport } from "next";
+import type { ReactNode } from "react";
+import { Outfit, Space_Grotesk } from "next/font/google";
+import { AuthProvider } from "@/context/AuthContext";
+import { EnrollmentProvider } from "@/context/EnrollmentContext";
+import { ToastProvider } from "@/context/ToastContext";
+import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
+import { ScrollToTop } from "@/components/RouteUtils";
+import "./globals.css";
+
+const outfit = Outfit({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
+  variable: "--font-outfit",
+  display: "swap",
+});
+
+const spaceGrotesk = Space_Grotesk({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
+  variable: "--font-space-grotesk",
+  display: "swap",
+});
+
+export const metadata: Metadata = {
+  title: "Lop-rig — Learn. Grow. Build Your Future.",
+  description:
+    "Lop-rig is Bhutan's online learning platform for practical, skills-first courses in programming, business, design, languages, and more.",
+  icons: { icon: "/favicon.svg" },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+};
+
+export default function RootLayout({ children }: { children: ReactNode }) {
+  return (
+    // `data-scroll-behavior="smooth"` opts back into Next's scroll override
+    // during route transitions — the project CSS sets `scroll-behavior: smooth`
+    // globally, and without this Next 16 would let it animate every navigation.
+    <html lang="en" className={`${outfit.variable} ${spaceGrotesk.variable}`} data-scroll-behavior="smooth">
+      <body>
+        <AuthProvider>
+          <EnrollmentProvider>
+            <ToastProvider>
+              <ScrollToTop />
+              <div className="app-shell">
+                <Navbar />
+                <main>{children}</main>
+                <Footer />
+              </div>
+            </ToastProvider>
+          </EnrollmentProvider>
+        </AuthProvider>
+      </body>
+    </html>
+  );
+}
+
+  What this replaces:
+    - index.html <head> title/description/viewport/icon
+      -> metadata + viewport exports (Next renders them server-side)
+    - main.jsx createRoot + <StrictMode> + the 3-provider stack
+      -> the provider JSX here (reactStrictMode in next.config.ts covers
+         the StrictMode behaviour)
+    - App.jsx <BrowserRouter><ScrollToTop/><div class="app-shell">
+        <Navbar/><main>...</main><Footer/></div></BrowserRouter>
+      -> ScrollToTop, the .app-shell wrapper, Navbar, <main>, Footer
+
+  Notes:
+    - .app-shell had no CSS rules in the original project (src\styles\layout.css
+      was a comment-only stub), so the class is kept only for parity.
+    - Cabinet Grotesk is NOT on Google Fonts (it is a Fontshare family). The
+      original index.css requested it from fonts.googleapis.com, which would
+      have returned a 400 and silently fallen back to Space Grotesk/Outfit.
+      The new font stack therefore puts "Cabinet Grotesk" first — so machines
+      that have it installed locally still get it — and falls back to the
+      self-hosted next/font variables.
+    - next/font self-hosts the font files at build time, removing the runtime
+      dependency on fonts.googleapis.com entirely.
+
+
+================================================================================
+14. GLOBAL STYLES — src\app\globals.css (HEAD + NOTES)
+================================================================================
+
+  Full file is 153 lines. The head is:
+
+@import "tailwindcss";
+@import "../styles/awwwards.css";
+@import "../styles/components.css";
+
+@theme {
+  --color-bg: #ffffff;
+  --color-bg-soft: #f8f9fb;
+  --color-bg-sunken: #eaebec;
+
+  --color-gold: #ffb606;
+  --color-gold-dark: #c88e00;
+  --color-gold-light: #ffd266;
+  --color-gold-soft: #fff6e0;
+
+  --color-red: #ff6347;
+  --color-red-dark: #db5246;
+  --color-red-soft: #fdecea;
+
+  --color-ink-strong: #1a1a1a;
+  --color-ink: #3a3a3a;
+  --color-ink-muted: #767676;
+
+  --color-line: #ececec;
+  --color-line-strong: #dcdcdc;
+
+  /* "Cabinet Grotesk" is a Fontshare family, not on Google Fonts, so it is
+     kept first in the stack for machines that have it installed locally and
+     the self-hosted next/font variables are used as the fallback. */
+  --font-display: "Cabinet Grotesk", var(--font-space-grotesk), var(--font-outfit), sans-serif;
+  --font-body: var(--font-outfit), sans-serif;
+  --font-accent: "Cabinet Grotesk", var(--font-space-grotesk), sans-serif;
+
+  --radius-sm: 4px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-pill: 999px;
+
+  --shadow-soft: 0px 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-elevated: 0px 8px 24px rgba(0, 0, 0, 0.12);
+  --shadow-glow: 0px 0px 32px rgba(255, 182, 6, 0.25);
+
+  --color-surface-dark: #1f1f1f;
+
+  --header-h: 76px;
+  --max-w-site: 1280px;
+}
+
+  The rest of the file (lines 48-153) is carried over verbatim from the
+  original src\index.css:
+    - :root legacy token aliases (--bg, --gold, --ink, --transition-fast,
+      --transition-base, --transition-slow) so that any raw var() reference
+      in the old CSS files keeps resolving
+    - * { box-sizing: border-box }
+    - html { scroll-behavior: smooth }
+    - prefers-reduced-motion overrides
+    - body base styles (font-family: var(--font-body), overflow-x: hidden)
+    - @layer base element resets (h1-h4, p, a, button, inputs, ul, img)
+    - ::selection, :focus-visible
+    - ::-webkit-scrollbar styling
+    - .skeleton + @keyframes skeleton-loading
+    - @keyframes slideUp (used by ToastContext's animate-[slideUp...])
+    - .page-enter + @keyframes pageFade
+    - .visually-hidden utility
+
+  What changed vs the original src\index.css:
+    1. The Google Fonts @import url(...) line was REMOVED. It is now handled
+       by next/font in layout.tsx (see section 13).
+    2. @import "tailwindcss" stays first (Tailwind v4 syntax).
+    3. The two real CSS files from src\styles\ are now imported so their
+       rules (.btn, .aw-*, etc.) are part of the build.
+    4. The --font-* theme values now reference var(--font-outfit) and
+       var(--font-space-grotesk), which next/font injects at runtime.
+
+  Tailwind v4 notes:
+    - Tailwind v4 uses CSS-first configuration. The @theme block IS the config;
+      there is no tailwind.config.js in this project (and there never was —
+      the original also used @theme inside index.css).
+    - Every design token above generates a utility class. E.g. --color-gold
+      produces bg-gold, text-gold, border-gold; --font-display produces
+      font-display; --radius-sm produces rounded-sm; --shadow-elevated
+      produces shadow-elevated.
+    - The raw CSS classes (.btn-primary, .aw-hero-h1, .skeleton, etc.) come
+      from the two imported src\styles\ files and are NOT Tailwind utilities.
+
+
+================================================================================
+15. GSAP SSR SAFETY WRAPPER — src\utils\gsap.ts (FULL CONTENT, 13 lines)
+================================================================================
+
+"use client";
+
+import { gsap } from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { useGSAP } from "@gsap/react";
+
+// registerPlugin is a client-only operation — the guard keeps SSR from touching
+// the plugin registry while still letting every page import gsap through here.
+if (typeof window !== "undefined") {
+  gsap.registerPlugin(ScrollTrigger, useGSAP);
+}
+
+export { gsap, ScrollTrigger, useGSAP };
+
+  Why this file exists:
+    In the Vite SPA, each page called gsap.registerPlugin(ScrollTrigger, useGSAP)
+    at module scope. That was safe because Vite only ever executed the code in
+    a browser. Next.js renders client components on the SERVER first, so module
+    scope runs during SSR too, and registerPlugin must not be called there.
+    Every page that uses GSAP now imports from "@/utils/gsap" instead of
+    importing gsap/ScrollTrigger/@gsap/react directly.
+
+  GSAP usage after migration (unchanged logic, shared entry point):
+    src\views\Home.tsx        .aw-scrub-word opacity scrub, .aw-scale-img
+                              scale + fade scrub
+    src\views\CourseDetails.tsx  .cd-art / .cd-art-wrap band parallax
+    src\views\MyLearning.tsx  .ml-card entrance animation
+    src\views\About.tsx       .aw-scrub-word, .aw-scale-img
+
+  GSAP plugin registration inside useGSAP callbacks also passes a `scope`
+  ref and returns ctx.revert(), same as the original code.
+
+
+================================================================================
+16. ROUTE GUARDS — src\components\RouteUtils.tsx (FULL CONTENT, 41 lines)
+================================================================================
+
+"use client";
+
+import { useEffect } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import type { ReactNode } from "react";
+import { useAuth } from "@/context/AuthContext";
+
+/**
+ * Scrolls the window to the top whenever the route path changes — the
+ * App Router equivalent of the old react-router ScrollToTop.
+ */
+export function ScrollToTop() {
+  const pathname = usePathname() ?? "/";
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+
+  return null;
+}
+
+/**
+ * Blocks a route behind a logged-in session. While auth is still resolving it
+ * renders nothing (no flash of the protected content); once resolution is done
+ * and there is no user, it sends the visitor to /login and remembers where
+ * they were headed in the `from` query param.
+ */
+export function ProtectedRoute({ children }: { children: ReactNode }) {
+  const { user, ready } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname() ?? "/";
+
+  useEffect(() => {
+    if (ready && !user) {
+      router.replace(`/login?from=${encodeURIComponent(pathname)}`);
+    }
+  }, [ready, user, router, pathname]);
+
+  if (!ready || !user) return null;
+  return <>{children}</>;
+}
+
+  Behaviour preserved from the original:
+    - ScrollToTop: the original used useLocation().pathname as the effect key
+      and window.scrollTo(0,0). Identical, with usePathname() instead.
+    - ProtectedRoute: the original returned null while !ready, then
+      <Navigate to="/login" state={{from}} replace /> when !user. The new
+      version returns null in both cases and performs the redirect in an
+      effect with router.replace(), so the address bar updates correctly.
+    - The `?? "/"` fallbacks on usePathname() are defensive: Next's Pages
+      Router compatibility type layer declares usePathname() as
+      string | null, even though this app is App-Router-only and never
+      actually receives null.
+
+
+================================================================================
+17. KEY CODE CHANGES (BEFORE / AFTER SNIPPETS)
+================================================================================
+
+--------------------------------------------------------------------------------
+17a. Navigation: Link
+--------------------------------------------------------------------------------
+BEFORE (react-router):
+  import { Link } from "react-router-dom";
+  <Link to="/courses" className="btn btn-primary btn-lg">
+    Explore Courses <ArrowRight size={14} weight="bold" />
+  </Link>
+
+AFTER (next/link):
+  import Link from "next/link";
+  <Link href="/courses" className="btn btn-primary btn-lg">
+    Explore Courses <ArrowRight size={14} weight="bold" />
+  </Link>
+
+  Applied in: Navbar, Footer, CourseCard, EmptyState, RouteUtils, Home,
+  CourseDetails, Category, Courses, Login, Signup, ForgotPassword, Dashboard,
+  MyLearning, Checkout, PaymentSuccess, About, error.tsx, not-found.tsx
+  (30 files import next/link or next/navigation).
+
+--------------------------------------------------------------------------------
+17b. Navigation: active-link state (NavLink had no Next equivalent)
+--------------------------------------------------------------------------------
+BEFORE:
+  <NavLink to={link.to} className={({ isActive }) =>
+    `px-4 py-2 rounded-full ... ${isActive ? "bg-ink-strong text-white" : "text-ink hover:bg-white"}`
+  } end={link.to === "/"}>{link.label}</NavLink>
+
+AFTER (src\components\Navbar.tsx):
+  /**
+   * react-router's NavLink had an `isActive` render prop; App Router has no
+   * equivalent, so active state is derived from usePathname instead.
+   */
+  function useIsActive() {
+    const pathname = usePathname() ?? "/";
+    return useCallback(
+      (to: string, end = false) => {
+        if (end) return pathname === to;
+        return pathname === to || pathname.startsWith(`${to}/`);
+      },
+      [pathname]
+    );
+  }
+
+  // inside Navbar():
+  const isActive = useIsActive();
+  const navClass = (to: string, end = false) =>
+    `px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+      isActive(to, end) ? "bg-ink-strong text-white" : "text-ink hover:bg-white"
+    }`;
+
+  <Link key={link.to} href={link.to} className={navClass(link.to, link.to === "/")}>
+    {link.label}
+  </Link>
+
+  The `end` flag is applied only to "/" so the Home link is not marked active
+  on every other route — identical to react-router's `end` prop.
+
+--------------------------------------------------------------------------------
+17c. Programmatic navigation
+--------------------------------------------------------------------------------
+BEFORE:
+  const navigate = useNavigate();
+  navigate(`/search?q=${encodeURIComponent(query.trim())}`);
+  navigate("/login", { state: { from: `/checkout/${id}` } });
+  navigate("/dashboard");
+
+AFTER:
+  const router = useRouter();
+  router.push(`/search?q=${encodeURIComponent(query.trim())}`);
+  router.push(`/login?from=${encodeURIComponent(`/checkout/${id}`)}`);
+  router.push("/dashboard");
+
+  The react-router `state` object has no Next equivalent. Both places that
+  used it now carry the redirect target in a `?from=` query parameter, and
+  Login reads it with searchParams?.get("from").
+
+--------------------------------------------------------------------------------
+17d. Reading dynamic route params
+--------------------------------------------------------------------------------
+BEFORE:
+  const { id } = useParams();
+  const course = getCourseById(id);
+
+AFTER (src\views\CourseDetails.tsx, and identically in Category, Checkout,
+CoursePlayer):
+  const params = useParams<{ id: string }>();
+  const id = params?.id ?? "";
+  const course = getCourseById(id);
+
+  The `?? ""` guard is required because the Pages-Router compat type layer
+  types useParams() as `T | null`.
+
+--------------------------------------------------------------------------------
+17e. Reading/writing the query string
+--------------------------------------------------------------------------------
+BEFORE (Courses.tsx):
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    const params = filtersToParams(filters);
+    if (sort !== "popular") params.set("sort", sort);
+    setSearchParams(params, { replace: true });
+  }, [filters, sort, setSearchParams]);
+
+AFTER (src\views\Courses.tsx):
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const [filters, setFilters] = useState<Filters>(() =>
+    paramsToFilters(new URLSearchParams(searchParams?.toString() ?? "")));
+  const [sort, setSort] = useState<SortOption>(
+    (searchParams?.get("sort") as SortOption | null) || "popular");
+
+  useEffect(() => {
+    const params = filtersToParams(filters);
+    if (sort !== "popular") params.set("sort", sort);
+    const query = params.toString();
+    router.replace(query ? `/courses?${query}` : "/courses", { scroll: false });
+  }, [filters, sort, router]);
+
+  `setSearchParams(params, { replace: true })` becomes
+  `router.replace(path + "?" + query, { scroll: false })`.
+  scroll: false is important here — without it every filter toggle would
+  yank the page back to the top.
+
+--------------------------------------------------------------------------------
+17f. Protected route redirect
+--------------------------------------------------------------------------------
+BEFORE (RouteUtils.jsx):
+  export function ProtectedRoute({ children }) {
+    const { user, ready } = useAuth();
+    const location = useLocation();
+    if (!ready) return null;
+    if (!user) return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+    return children;
+  }
+
+AFTER (RouteUtils.tsx) — full content reproduced in section 16.
+
+--------------------------------------------------------------------------------
+17g. Error boundary
+--------------------------------------------------------------------------------
+BEFORE (App.jsx):
+  <ErrorBoundary>
+    <Suspense fallback={<PageLoader />}>
+      <Routes>...</Routes>
+    </Suspense>
+  </ErrorBoundary>
+
+AFTER: src\app\error.tsx is auto-invoked by Next.js whenever a route throws.
+  It receives { error, reset } and renders the same UI the class component
+  did. "Try Again" now calls reset() instead of this.setState({hasError:false}).
+
+import Link from "next/link";
+import Mascot from "@/components/Mascot";
+
+/**
+ * App Router route error boundary. This replaces the class-based
+ * ErrorBoundary the Vite app mounted around <Routes>: Next provides this
+ * hook itself, so the component only needs to render the recovery UI.
+ */
+export default function RouteError({
+  error: _error,
+  reset,
+}: {
+  error: Error & { digest?: string };
+  reset: () => void;
+}) {
+  return (
+    <div className="min-h-[80dvh] flex items-center justify-center px-8 bg-white">
+      <div className="max-w-md text-center flex flex-col items-center gap-6">
+        <Mascot pose="sad" size={120} />
+        <h1 className="text-2xl font-semibold text-ink-strong">Something went wrong</h1>
+        <p className="text-ink-muted text-[0.95rem] leading-relaxed">
+          An unexpected error occurred. Please try again or return to the home page.
+        </p>
+        <div className="flex gap-3 flex-wrap justify-center">
+          <button
+            className="bg-gold text-ink-strong font-bold text-xs tracking-widest uppercase px-6 py-3 rounded-[4px] border-2 border-gold hover:bg-gold-dark hover:border-gold-dark transition-all cursor-pointer"
+            onClick={reset}
+          >
+            Try Again
+          </button>
+          <Link href="/" className="bg-transparent text-ink-strong font-bold text-xs tracking-widest uppercase px-6 py-3 rounded-[4px] border-2 border-line-strong hover:border-gold transition-all no-underline">
+            Go Home
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+  The `_error` parameter is intentionally unused and prefixed with an
+  underscore so oxlint does not flag it — the error object is available for
+  logging if that is ever wanted.
+
+--------------------------------------------------------------------------------
+17h. Page loader extraction
+--------------------------------------------------------------------------------
+BEFORE (private to App.jsx):
+  function PageLoader() {
+    return (
+      <div className="min-h-[60dvh] flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-gold border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+AFTER (src\components\PageLoader.tsx) — identical markup, now a shared module
+  imported by 8 route wrappers as their Suspense fallback.
+
+--------------------------------------------------------------------------------
+17i. Lazy routes -> static imports + Suspense
+--------------------------------------------------------------------------------
+BEFORE (App.jsx):
+  const Home = lazy(() => import("./pages/Home"));
+  ...
+  <Suspense fallback={<PageLoader />}>
+    <Routes>
+      <Route path="/" element={<Home />} />
+      ...
+    </Routes>
+  </Suspense>
+
+AFTER (src\app\page.tsx and the other 15 wrappers): static import + Suspense.
+  Next.js handles code-splitting per route automatically, so react.lazy() is
+  not needed and would actually fight the framework.
+
+--------------------------------------------------------------------------------
+17j. localStorage typing (storage.ts)
+--------------------------------------------------------------------------------
+BEFORE (storage.js):
+  export function safeParseJSON(key, fallback = null) {
+    try {
+      const raw = localStorage.getItem(key);
+      if (raw === null) return fallback;
+      return JSON.parse(raw);
+    } catch (e) { ... return fallback; }
+  }
+
+AFTER (src\utils\storage.ts):
+  /**
+   * Reads and parses JSON from localStorage, falling back to `fallback` when the
+   * key is missing or the stored value is not valid JSON. Always call with an
+   * explicit fallback so the return type stays honest.
+   */
+  export function safeParseJSON<T>(key: string, fallback: T): T {
+    try {
+      const raw = localStorage.getItem(key);
+      if (raw === null) return fallback;
+      return JSON.parse(raw) as T;
+    } catch (e) {
+      console.warn(`JSON.parse failed for key "${key}":`, e);
+      return fallback;
+    }
+  }
+
+  The fallback parameter is now REQUIRED rather than optional. That forces
+  every call site to state what it expects, which is what makes the generic
+  return type trustworthy. Call sites:
+    safeParseJSON<User | null>(STORAGE_KEY, null)          // AuthContext
+    safeParseJSON<StoredUser[]>(USERS_KEY, [])             // AuthContext
+    safeParseJSON<EnrollmentMap>(storageKey(userId), {})   // EnrollmentContext
+    safeParseJSON<Streak>(streakKey(userId), { count: 0, lastActive: null })
+
+--------------------------------------------------------------------------------
+17k. Auth: password never reaches component state
+--------------------------------------------------------------------------------
+  StoredUser (includes password) is only ever used inside AuthContext while
+  reading/writing the loprig_users localStorage key. publicUser() strips the
+  password and returns a User, which is what gets put into React state:
+
+function publicUser(u: StoredUser): User {
+  const { password: _password, ...rest } = u;
+  return rest;
+}
+
+  This is the same logic the original JS had; the type system now enforces it.
+
+--------------------------------------------------------------------------------
+17l. EnrollmentContext: type-safe course lists
+--------------------------------------------------------------------------------
+BEFORE:
+  const enrolledCourses = Object.keys(enrollments)
+    .filter((id) => enrollments[id].enrolledAt)
+    .map((id) => getCourseById(id))
+    .filter(Boolean);
+
+AFTER (src\context\EnrollmentContext.tsx) — now uses useMemo and a type
+  predicate so TypeScript knows the array contains no undefined entries:
+
+  const enrolledCourses = useMemo(
+    () =>
+      Object.keys(enrollments)
+        .filter((id) => enrollments[id]?.enrolledAt)
+        .map((id) => getCourseById(id))
+        .filter((c): c is Course => Boolean(c)),
+    [enrollments]
+  );
+
+  The `: c is Course` predicate is what lets downstream code call
+  course.title etc. without null checks. getCourseById returns
+  Course | undefined, and plain .filter(Boolean) does not narrow in TS.
+
+--------------------------------------------------------------------------------
+17m. Deliberately UNCHANGED behaviour
+--------------------------------------------------------------------------------
+  The original app had two quirks that were preserved rather than "fixed",
+  because the migration brief was to port the app, not to redesign it:
+
+  1. isEnrolled(courseId) is Boolean(enrollments[courseId]) — it returns true
+     for a record that was created by toggleSaved() alone (enrolledAt === null),
+     not only for a genuinely enrolled course. enrolledCourses filters on
+     enrolledAt, so the two disagree in that edge case. This is exactly how
+     the original behaved.
+
+  2. enroll(courseId) early-returns if enrollments[courseId] already exists,
+     which means saving a course first and then enrolling it silently does
+     nothing. Also exactly how the original behaved.
+
+  If either of these should be corrected, say so — they are two small edits
+  in src\context\EnrollmentContext.tsx.
+
+
+================================================================================
+18. ISSUES ENCOUNTERED — 4 MAJOR, WITH ROOT CAUSE + FIX
+================================================================================
+
+--------------------------------------------------------------------------------
+ISSUE 1: "pages and app directories should not be under the same folder"
+--------------------------------------------------------------------------------
+  SYMPTOM
+    `npm run build` failed immediately with:
+      Error: > `pages` and `app` directories should not be under the same
+        folder
+      at ignore-listed frames
+
+  ROOT CAUSE
+    The App Router tree was at the project root (app\) while the page
+    components were still in src\pages\. Next.js scans for a directory named
+    "pages" at the root AND under src\, so it concluded the project had two
+    routers in two different roots.
+
+  FIX
+    Moved app\ -> src\app\ so both live under src\. Updated the CSS import
+    path inside globals.css from ../src/styles/... to ../styles/....
+
+  VERIFICATION
+    Build compiled successfully on the next attempt.
+
+--------------------------------------------------------------------------------
+ISSUE 2: ~10 TypeScript errors, "'pathname' is possibly 'null'"
+--------------------------------------------------------------------------------
+  SYMPTOM
+    After the build compiled, `next build`'s TypeScript pass failed with:
+      src/components/Navbar.tsx(29,33): error TS18047: 'pathname' is possibly 'null'.
+      src/components/RouteUtils.tsx(35,56): error TS2345: Argument of type
+        'string | null' is not assignable to parameter of type
+        'string | number | boolean'.
+      src/views/Category.tsx(75,14): error TS18047: 'params' is possibly 'null'.
+      src/views/Checkout.tsx(36,20): error TS18047: 'params' is possibly 'null'.
+      src/views/CourseDetails.tsx(34,14): error TS18047: 'params' is possibly 'null'.
+      src/views/CoursePlayer.tsx(21,14): error TS18047: 'params' is possibly 'null'.
+      src/views/Courses.tsx(45,93) and (47,6): error TS18047: 'searchParams' is possibly 'null'.
+      src/views/Login.tsx(17,16): error TS18047: 'searchParams' is possibly 'null'.
+      src/views/PaymentSuccess.tsx(21,20): error TS18047: 'pathname' is possibly 'null'.
+      src/views/Search.tsx(17,15): error TS18047: 'params' is possibly 'null'.
+
+  ROOT CAUSE
+    Next 16's auto-generated next-env.d.ts contains:
+      /// <reference types="next/navigation-types/compat/navigation" />
+    That compat module augmentation declares:
+      usePathname():   string | null
+      useParams():     T | null
+      useSearchParams(): ReadonlyURLSearchParams | null
+    Those nullable types exist for the Pages Router, where the hooks really
+    can return null before the router is ready. Because src\pages\ existed
+    (see Issue 3), the compat layer was being applied to an App-Router-only
+    project.
+
+  FIX
+    Handled nullability at every call site rather than editing next-env.d.ts
+    (which Next regenerates and forbids hand-editing):
+      usePathname()          ->  usePathname() ?? "/"
+      useParams<{id}>()      ->  useParams<{id}>() then params?.id ?? ""
+      useSearchParams()      ->  useSearchParams()?.get(...) and
+                                 searchParams?.toString() ?? ""
+
+    This is defensive but correct regardless of which type layer wins, and
+    it costs nothing at runtime in an App Router app where the hooks always
+    resolve.
+
+--------------------------------------------------------------------------------
+ISSUE 3: src\pages\ was being treated as the Pages Router
+--------------------------------------------------------------------------------
+  SYMPTOM
+    The nullable types from Issue 2 should not have applied at all in a pure
+    App Router project — the official Next docs say useParams returns an
+    empty object and usePathname returns a string. The mismatch pointed at
+    something structural.
+
+  ROOT CAUSE
+    The ported page components were placed in src\pages\ (mirroring the old
+    folder name). Next.js resolves src\pages as the Pages Router directory.
+    Consequences:
+      1. The Pages-Router compatibility type layer got loaded (Issue 2).
+      2. Next would have tried to build a SECOND router tree from
+         src\pages\*.tsx, since every one of those files has a default export
+         React component, which is exactly what a Pages Router page is.
+         That would have produced duplicate/shadowed routes.
+
+  FIX
+    Moved src\pages\ -> src\views\ (15 files) and updated all 16
+    src\app\**\page.tsx imports from "@/pages/X" to "@/views/X".
+
+  VERIFICATION
+    - tsc --noEmit: exit 0
+    - npm run build: all 16 routes listed under "Route (app)", no Pages
+      Router routes
+    - grep of src\app for "@/pages/": zero matches
+    - grep of src for "react-router": only 2 hits, both explanatory comments
+
+--------------------------------------------------------------------------------
+ISSUE 4: Next 16 stopped overriding scroll-behavior on navigation
+--------------------------------------------------------------------------------
+  SYMPTOM
+    Not a build error — a silent behaviour regression that would only show up
+    in the browser.
+
+  ROOT CAUSE
+    From the official Next 16 upgrade guide, section "Scroll Behavior Override":
+      "In Next.js 16, this behavior has changed. By default, Next.js will no
+       longer override your scroll-behavior setting during navigation."
+    The project CSS sets html { scroll-behavior: smooth; }, and the app has a
+    ScrollToTop component that calls window.scrollTo(0, 0) on every pathname
+    change. In Next 15 and earlier, Next temporarily forced scroll-behavior to
+    auto during navigation so that scroll-to-top was instant. In Next 16, that
+    override is gone by default, so every route change would have ANIMATED
+    from the bottom of the old page to the top of the new one — exactly the
+    jank the original override existed to prevent.
+
+  FIX
+    Per the Next 16 docs, opted back in by adding the data attribute to the
+    root <html> element in src\app\layout.tsx:
+      <html lang="en" className="..." data-scroll-behavior="smooth">
+
+    This restores the previous default: Next temporarily sets
+    scroll-behavior to auto during the transition, performs the navigation
+    (instant scroll to top), then restores the smooth value for in-page
+    scrolling.
+
+
+================================================================================
+19. BEHAVIORAL DECISIONS AND TRADE-OFFS
+================================================================================
+
+  DECISION 1: Client component architecture preserved.
+    The entire app is client-rendered, backed by localStorage for auth,
+    enrollments and streaks. No Server Components, no Server Actions, no
+    data fetching. This was a deliberate fidelity choice — the brief was to
+    migrate the framework and language, not to re-architect the data layer.
+    "use client" appears in 28 files. Every route wrapper in src\app\ is a
+    server component that renders one, which keeps the door open for moving
+    individual pages to the server later without touching the route files.
+
+  DECISION 2: next/font instead of Google Fonts @import.
+    next/font is the idiomatic Next.js approach: it downloads the font files
+    at build time, self-hosts them, and eliminates the runtime request to
+    fonts.googleapis.com (which was a render-blocking network fetch in the
+    Vite app). Outfit and Space Grotesk are both on Google Fonts and were
+    loaded successfully. Cabinet Grotesk is NOT on Google Fonts (it is a
+    Fontshare family) — the original CSS requested it from Google, which
+    would have 400'd and silently fallen back. The new stack keeps
+    "Cabinet Grotesk" first so locally-installed copies still win, and
+    self-hosts the two real fallbacks.
+
+  DECISION 3: src\views\ instead of src\pages\.
+    See Issue 3. This is a hard requirement, not a style preference.
+
+  DECISION 4: Suspense wrappers on all 16 routes.
+    Six pages call useSearchParams/usePathname (Courses, Search, Login,
+    Navbar inside the layout, PaymentSuccess, RouteUtils inside protected
+    routes). Next requires useSearchParams to sit under a Suspense boundary
+    for static prerendering, or the build fails with "useSearchParams()
+    should be wrapped in a suspense boundary". Rather than sprinkle
+    Suspense inconsistently, every route wrapper got one. The cost is 9-12
+    lines per route file; the benefit is a uniform, future-proof pattern and
+    a guaranteed-correct build.
+
+  DECISION 5: qs `?from=` instead of router state for the login redirect.
+    react-router's location.state is in-memory and does not survive a page
+    refresh. A query parameter does, and it is the documented App Router
+    pattern. The guard is `from.startsWith("/")` before the redirect is
+    followed, so a crafted ?from=https://evil.example link cannot be used
+    for an open redirect.
+
+  DECISION 6: keep the two src\styles\ CSS files, keep the 12 stubs.
+    awwwards.css (71 lines) and components.css (125 lines) contain real,
+    actively-used CSS (.btn variants, .aw-hero-h1, .aw-grain,
+    .aw-marquee-track, .carousel-dot, .aw-stack-card) and are imported by
+    globals.css. The other 12 files are single-line comment stubs left over
+    from the original project. They were retained rather than deleted because
+    removing files outside the migration's stated scope was not requested.
+
+  DECISION 7: preserve two original behaviour quirks.
+    See section 17m. Both are two-line fixes in EnrollmentContext.tsx if they
+    are ever wanted.
+
+  DECISION 8: playwright-core left in devDependencies.
+    It was present in the original package.json and is not referenced anywhere
+    in src\ or in any script. Removing it was not part of the request, so it
+    was left alone. It is inert.
+
+  DECISION 9: Tailwind v4 kept, integrated via PostCSS.
+    The brief specified "Keep Tailwind v4". Tailwind v4 has no
+    tailwind.config.js — configuration lives in CSS via @theme, which is how
+    the original project already worked. The only change was swapping
+    @tailwindcss/vite for @tailwindcss/postcss and adding
+    postcss.config.mjs.
+
+  DECISION 10: no new dependencies beyond what the migration requires.
+    Nothing was added for data fetching, state management, forms, tables,
+    toasts, icons, or animation beyond what the original project already used.
+    framer-motion, gsap, @gsap/react and @phosphor-icons/react are unchanged.
+
+
+================================================================================
+20. VERIFICATION RESULTS (EXACT NUMBERS)
+================================================================================
+
+  --- TypeScript -------------------------------------------------------------
+  Command: npx tsc --noEmit
+  Result:  exit code 0, zero errors, zero output
+
+  --- Lint -------------------------------------------------------------------
+  Command: npx oxlint
+  Result:  0 errors, 16 warnings
+  Warning categories (all pre-existing patterns carried over from the
+  original JavaScript, not introduced by the migration):
+    react(only-export-components)  8  — fast-refresh warnings for files that
+                                        export both a component and a helper
+                                        (contexts export their hook, FilterSidebar
+                                        exports applyFilters + DEFAULT_FILTERS,
+                                        Category exports CategoryIndex,
+                                        layout.tsx exports metadata + viewport)
+    react(set-state-in-effect)     5  — intentional: localStorage must be read
+                                        in an effect because it does not exist
+                                        on the server
+    react(static-components)       1  — src/views/Category.tsx builds an icon
+                                        lookup at module scope
+    eslint(no-unused-vars)         1  — app/error.tsx `_error` param, prefixed
+                                        with underscore by design
+    react(rules-of-hooks)          0  — no hook-rule violations
+
+  --- Production build -------------------------------------------------------
+  Command: npm run build  (Next.js 16.3.8, Turbopack)
+  Result:  SUCCESS
+    "Compiled successfully in 3.7s"
+    "Running TypeScript ... Finished TypeScript in 4.3s"
+    "Generating static pages using 19 workers (13/13) in 977ms"
+    17 route entries printed (16 app routes + /_not-found)
+    13 routes prerendered as static content
+    4 routes server-rendered on demand (the [id] dynamic segments)
+
+  --- HTTP smoke test (against the running dev server) -----------------------
+  Command: GET each route, record status + byte length
+
+    Route                        Status  Bytes
+    ---------------------------  ------  ------
+    /                            200     61049
+    /courses                     200    103232
+    /courses/py-beginners        200     73471
+    /categories                  200     26067
+    /categories/programming      200     50058
+    /search?q=python             200     46981
+    /about                       200     36044
+    /login                       200     29832
+    /signup                      200     31221
+    /forgot-password             200     28828
+    /dashboard                   200     23643
+    /my-learning                 200     23563
+    /profile                     200     23261
+    /this-does-not-exist         404        n/a (404 page confirmed separately)
+
+  --- Content assertions -----------------------------------------------------
+  Home page (61049 bytes) — all 9 checks PASS:
+    "Lop-rig", "Build", "real skills for Bhutan",
+    "Python Programming for Beginners", "Software Developer Path",
+    "Follow a path, not a playlist", "Start learning today",
+    "aw-hero-h1", "btn-primary"
+
+  Course detail /courses/py-beginners (73471 bytes) — all 6 checks PASS:
+    "Python Programming for Beginners", "Tenzin Wangchuk", "Getting Started",
+    "Enroll Now", "Course curriculum", "Nu."
+    Breadcrumb verified separately: aria-label="Breadcrumb" present,
+    "Courses", "programming", "Beginner" all render.
+
+  404 page (26549 bytes) — all 4 checks PASS:
+    "does not exist", "Back to Home", "Browse courses", "Lost"
+
+  --- Dev server -------------------------------------------------------------
+  Command: npm run dev
+  Result:  Ready in 575ms on http://localhost:3000
+    - Listening on :: :3000
+    - Dev log scanned for "Error|error|failed|Failed|warn": zero matches
+    - Old Vite dev server on :5173 confirmed stopped before Next started
+
+  --- Structural checks ------------------------------------------------------
+    package.json next:                ^16.3.8
+    package.json typescript:          ^5.9.3
+    react-router-dom present:         FALSE
+    vite present:                     FALSE
+    @vitejs/plugin-react present:     FALSE
+    tsconfig strict:                  true
+    tsconfig jsx:                     react-jsx
+    tsconfig paths @/*:               ./src/*
+    .jsx files in src\:               0
+    .js  files in src\:               0
+    .tsx files:                       55
+    .ts  files:                       7
+    files importing next/navigation
+      or next/link:                   30
+    files with "use client":          28
+    files with "use server":          0
+    react-router IMPORTS in src\:     0  (2 comment mentions only)
+    legacy Vite files remaining:      0
+      (index.html, vite.config.js, src\main.jsx, src\App.jsx, src\index.css
+       all confirmed removed)
+
+
+================================================================================
+21. CAVEATS — WHAT NOT TO BREAK
+================================================================================
+
+  CAVEAT 1 — Do NOT change tsconfig.json "jsx" back to "preserve".
+    Next.js auto-rewrote it to "react-jsx" (the React automatic runtime) and
+    that value is mandatory. Changing it back will fail the build.
+
+  CAVEAT 2 — Do NOT rename src\views back to src\pages.
+    Any directory named "pages" (at the root or under src/) is interpreted by
+    Next as the Pages Router. That reintroduces the nullable compat types and
+    would attempt to build a second router tree.
+
+  CAVEAT 3 — Do NOT edit next-env.d.ts by hand.
+    Next.js regenerates it. It contains the reference to
+    next/navigation-types/compat/navigation, which is why usePathname() and
+    friends are typed as possibly-null.
+
+  CAVEAT 4 — Do NOT add an "eslint" key to next.config.ts.
+    Next 16 removed the eslint config option and the `next lint` command.
+    Linting is `npm run lint` (oxlint).
+
+  CAVEAT 5 — Do NOT add a custom webpack config to next.config.ts.
+    Next 16 uses Turbopack by default for both `next dev` and `next build`.
+    If a webpack option is present, the build FAILS. If a plugin is found to
+    be injecting one, use `next build --webpack` to opt out, or migrate the
+    config to the equivalent `turbopack.*` option.
+
+  CAVEAT 6 — Keep the `?? "/"` / `?.id ?? ""` / `?.get()` guards on the
+    navigation hooks, or the project will stop compiling.
+    They are required by the Pages-Router compat type layer that next-env.d.ts
+    always loads.
+
+  CAVEAT 7 — Keep postcss.config.mjs.
+    Without it, Tailwind v4 utilities silently stop being generated and the
+    entire UI renders unstyled while the build still "succeeds".
+
+  CAVEAT 8 — Keep data-scroll-behavior="smooth" on the <html> element.
+    Removing it reintroduces the animated scroll-to-top on every navigation
+    (Issue 4).
+
+  CAVEAT 9 — GSAP must always be imported via @/utils/gsap.
+    Importing gsap or gsap/ScrollTrigger directly in a component means
+    registerPlugin is no longer guarded by the typeof window check and will
+    run during SSR.
+
+  CAVEAT 10 — verbatimModuleSyntax is on.
+    Type-only imports must use `import type { ... }`. Plain value imports of
+    types will fail to compile.
+
+  CAVEAT 11 — allowJs is false.
+    If any .js file is ever reintroduced into src\, TypeScript will refuse to
+    compile it. That is intentional — the project is fully TypeScript.
+
+  CAVEAT 12 — Protected routes render null until auth resolves.
+    This is by design (it prevents a flash of protected content) and matches
+    the original app. If you want a loading state instead, wrap the children
+    in PageLoader inside ProtectedRoute rather than removing the null return.
+
+
+================================================================================
+22. COMMANDS REFERENCE
+================================================================================
+
+  Development
+    npm run dev          Start the Next.js dev server -> http://localhost:3000
+    npm run lint         Run oxlint (0 errors, 16 warnings expected)
+    npm run typecheck    Run tsc --noEmit (must exit 0)
+
+  Production
+    npm run build        Next.js production build (Turbopack). Must succeed.
+    npm start            Serve the production build. Default port 3000.
+
+  Verification used during this migration
+    npx tsc --noEmit
+    npx oxlint
+    npm run build
+    Invoke-WebRequest http://localhost:3000/<route>
+
+  Node/npm versions used
+    Node  v25.9.0
+    npm   10.9.9
+    (Next.js 16 requires Node.js >= 20.9.0 and TypeScript >= 5.1.0 — both
+     satisfied. Next 16 also requires Chrome/Edge 111+, Firefox 111+,
+     Safari 16.4+ for client-side support.)
+
+  Notes on the dev/build output directories in Next 16
+    next dev outputs to .next/dev
+    next build outputs to .next
+    Both are gitignored. They can coexist, so you can run dev and build at the
+    same time without them clobbering each other.
+
+================================================================================
+ END OF MIGRATION CHANGE LOG
+================================================================================
+ Document generated: 2026-10-02
+ Project:            D:\LOPRIG-frontend
+ Final state:        Next.js 16.3.8 + TypeScript 5.9.3 (strict), Tailwind v4,
+                     App Router, 16 routes, typecheck clean, build clean,
+                     dev server verified live at http://localhost:3000
+================================================================================

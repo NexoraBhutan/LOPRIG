@@ -1,0 +1,135 @@
+/* Shared Button Classes */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-family: var(--font-display);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border-radius: var(--radius-sm);
+  border-width: 2px;
+  border-style: solid;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  text-decoration: none;
+  line-height: 1;
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--color-gold-dark);
+  outline-offset: 2px;
+}
+
+/* Primary Gold */
+.btn-primary {
+  background-color: var(--color-gold);
+  color: var(--color-ink-strong);
+  border-color: var(--color-gold);
+}
+.btn-primary:hover {
+  background-color: var(--color-gold-dark);
+  border-color: var(--color-gold-dark);
+}
+
+/* Secondary Dark */
+.btn-secondary {
+  background-color: var(--color-ink-strong);
+  color: #ffffff;
+  border-color: var(--color-ink-strong);
+}
+.btn-secondary:hover {
+  background-color: #000000;
+}
+
+/* Outline Gold */
+.btn-outline {
+  background-color: transparent;
+  color: var(--color-gold-dark);
+  border-color: var(--color-gold);
+}
+.btn-outline:hover {
+  background-color: var(--color-gold);
+  color: var(--color-ink-strong);
+}
+
+/* Outline Neutral */
+.btn-outline-neutral {
+  background-color: #ffffff;
+  color: var(--color-ink-strong);
+  border-color: var(--color-line-strong);
+}
+.btn-outline-neutral:hover {
+  border-color: var(--color-gold);
+}
+
+/* Danger */
+.btn-danger {
+  background-color: transparent;
+  color: var(--color-red);
+  border-color: var(--color-red-soft);
+}
+.btn-danger:hover {
+  background-color: var(--color-red-soft);
+}
+
+/* Sizes */
+.btn-sm {
+  padding: 0.5rem 1rem;
+}
+.btn-md {
+  padding: 0.75rem 1.5rem;
+}
+.btn-lg {
+  padding: 1rem 2rem;
+}
+
+/* Full Width */
+.btn-block {
+  width: 100%;
+}
+
+/* Icon Button (circular) */
+.btn-icon {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 50%;
+  border-width: 2px;
+  border-style: solid;
+  border-color: var(--color-line-strong);
+  background-color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-ink-strong);
+  cursor: pointer;
+  transition: all var(--transition-base);
+  padding: 0;
+}
+.btn-icon:hover {
+  border-color: var(--color-gold);
+  background-color: var(--color-gold-soft);
+}
+
+/* Carousel Dot */
+.carousel-dot {
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 50%;
+  border-width: 2px;
+  border-style: solid;
+  border-color: var(--color-line-strong);
+  background-color: transparent;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  padding: 0;
+}
+.carousel-dot:hover {
+  border-color: var(--color-gold);
+}
+.carousel-dot.active {
+  background-color: var(--color-gold);
+  border-color: var(--color-gold);
+}

@@ -1,0 +1,284 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
+import {
+  Play, Pause, CheckCircle, Circle, PlayCircle,
+  CaretLeft, CaretRight, Download, ArrowLeft, X, List,
+} from "@phosphor-icons/react";
+import { getCourseById } from "@/data/courses";
+import { useEnrollment } from "@/context/EnrollmentContext";
+import { useToast } from "@/context/ToastContext";
+import ProgressRing from "@/components/ProgressRing";
+import EmptyState from "@/components/EmptyState";
+import type { Lesson } from "@/types";
+
+const SPEEDS = [1, 1.25, 1.5, 2];
+
+export default function CoursePlayer() {
+  const params = useParams<{ id: string }>();
+  const id = params?.id ?? "";
+  const router = useRouter();
+  const course = getCourseById(id);
+  const { enrollments, isEnrolled, markLessonComplete, setLastLesson, getProgress } = useEnrollment();
+  const { push } = useToast();
+
+  const allLessons = useMemo(
+    () =>
+      course?.curriculum.flatMap((s) => s.lessons.map((l: Lesson) => ({ ...l, sectionTitle: s.title }))) ?? [],
+    [course]
+  );
+
+  const record = id ? enrollments[id] : undefined;
+  const initialLesson = record?.lastLesson ?? allLessons[0]?.id;
+  const [activeLessonId, setActiveLessonId] = useState<string | undefined>(initialLesson);
+  const [playing, setPlaying] = useState(false);
+  const [speed, setSpeed] = useState(1);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    if (id && activeLessonId) setLastLesson(id, activeLessonId);
+  }, [activeLessonId, id, setLastLesson]);
+
+  // Open sidebar by default on large screens
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    setSidebarOpen(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setSidebarOpen(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+
+  // Close on Escape
+  useEffect(() => {
+    if (!sidebarOpen) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setSidebarOpen(false);
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [sidebarOpen]);
+
+  if (!course) {
+    return (
+      <div className="min-h-[60dvh] flex items-center justify-center px-8">
+        <EmptyState pose="sad" title="Course not found" ctaLabel="Browse courses" ctaTo="/courses" />
+      </div>
+    );
+  }
+
+  if (!isEnrolled(id)) {
+    return (
+      <div className="min-h-[60dvh] flex items-center justify-center px-8">
+        <EmptyState
+          pose="sad"
+          title="You are not enrolled in this course"
+          description="Enroll first to unlock the lessons and track your progress."
+          ctaLabel="Enroll now"
+          ctaTo={`/courses/${course.id}`}
+        />
+      </div>
+    );
+  }
+
+  const completed = record?.completedLessons ?? [];
+  const progress = getProgress(course.id);
+  const activeIndex = allLessons.findIndex((l) => l.id === activeLessonId);
+  const activeLesson = allLessons[activeIndex];
+  const isCompleted = activeLessonId ? completed.includes(activeLessonId) : false;
+
+  const goTo = (idx: number) => {
+    const target = allLessons[idx];
+    if (target) {
+      setActiveLessonId(target.id);
+      setPlaying(false);
+    }
+  };
+
+  const handleComplete = () => {
+    if (!activeLessonId) return;
+    if (completed.includes(activeLessonId)) {
+      push("Already completed", "info");
+      return;
+    }
+    markLessonComplete(course.id, activeLessonId);
+    push("Lesson marked complete!", "success");
+    if (activeIndex < allLessons.length - 1) {
+      const next = allLessons[activeIndex + 1];
+      setTimeout(() => { setActiveLessonId(next.id); setPlaying(false); }, 700);
+    }
+  };
+
+  const cycleSpeed = () => {
+    const idx = SPEEDS.indexOf(speed);
+    setSpeed(SPEEDS[(idx + 1) % SPEEDS.length]);
+  };
+
+  const handlePlayPause = () => {
+    if (playing) {
+      setPlaying(false);
+      return;
+    }
+    setPlaying(true);
+    push("Demo video — real playback would start here.", "info");
+  };
+
+  return (
+    <main className="w-full bg-bg-soft min-h-[100dvh]">
+      <div className="grid lg:grid-cols-[1fr_360px] h-screen">
+        {/* Video Area */}
+        <div className="flex flex-col">
+          {/* Top bar */}
+          <div className="flex items-center gap-4 px-6 py-4 bg-ink-strong text-white">
+            <Link href="/my-learning" className="flex items-center gap-2 text-sm font-medium text-white/70 hover:text-white transition-colors no-underline">
+              <ArrowLeft size={16} weight="bold" />
+              <span className="hidden sm:inline">My Learning</span>
+            </Link>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold truncate">{course.title}</p>
+              <p className="text-xs text-white/50 truncate">{activeLesson?.sectionTitle}</p>
+            </div>
+            <button
+              onClick={() => setSidebarOpen((o) => !o)}
+              className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-4 py-2.5 rounded-lg transition-colors cursor-pointer border-none lg:hidden"
+              aria-label="Toggle lesson list"
+            >
+              <List size={14} weight="bold" />
+            </button>
+            <button
+              onClick={() => router.push(`/courses/${course.id}`)}
+              className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-4 py-2.5 rounded-lg transition-colors cursor-pointer border-none"
+            >
+              <X size={14} weight="bold" />
+            </button>
+          </div>
+
+          {/* Video stage */}
+          <div className="flex-1 flex items-center justify-center bg-ink-strong relative overflow-hidden">
+            {activeLesson && (
+              <div className="text-center">
+                <p className="text-white/50 text-xs font-bold uppercase tracking-widest mb-4">Lesson {activeIndex + 1} of {allLessons.length}</p>
+                <h2 className="font-display text-2xl md:text-3xl text-white max-w-[640px] mx-auto leading-tight">{activeLesson.title}</h2>
+                <p className="text-white/40 text-sm mt-6 max-w-[420px] mx-auto">
+                  {playing ? "Playing demo — " : "Paused — "}{activeLesson.duration} · {activeLesson.sectionTitle}
+                </p>
+              </div>
+            )}
+
+            {/* Backdrop art */}
+            <img
+              src={`https://picsum.photos/seed/player${course.id}/1400/900`}
+              alt=""
+              aria-hidden="true"
+              className="absolute inset-0 w-full h-full object-cover opacity-20 grayscale contrast-125"
+            />
+            <div className="absolute inset-0 aw-dark-wash" />
+          </div>
+
+          {/* Player controls */}
+          <div className="px-6 py-4 bg-white border-t border-line">
+            <div className="flex items-center gap-3 mb-4">
+              <button onClick={() => goTo(activeIndex - 1)} disabled={activeIndex <= 0} className="p-2 rounded-lg text-ink-muted hover:text-ink hover:bg-bg-soft transition-colors bg-transparent border-none cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed" aria-label="Previous lesson">
+                <CaretLeft size={16} weight="bold" />
+              </button>
+              <button onClick={handlePlayPause} className="w-11 h-11 rounded-full bg-ink-strong text-white flex items-center justify-center hover:bg-black transition-colors cursor-pointer border-none flex-shrink-0" aria-label={playing ? "Pause" : "Play"}>
+                {playing ? <Pause size={16} weight="fill" /> : <Play size={16} weight="fill" className="ml-0.5" />}
+              </button>
+              <button onClick={() => goTo(activeIndex + 1)} disabled={activeIndex >= allLessons.length - 1} className="p-2 rounded-lg text-ink-muted hover:text-ink hover:bg-bg-soft transition-colors bg-transparent border-none cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed" aria-label="Next lesson">
+                <CaretRight size={16} weight="bold" />
+              </button>
+              <button onClick={cycleSpeed} className="text-xs font-bold text-ink-muted hover:text-ink px-2 py-1 rounded bg-transparent border-none cursor-pointer transition-colors" aria-label="Change playback speed">
+                {speed}x
+              </button>
+
+              <div className="flex-1 h-1.5 bg-bg-sunken rounded-full overflow-hidden mx-4 hidden sm:block">
+                <div
+                  className="h-full bg-gold rounded-full transition-all duration-300"
+                  style={{ width: `${allLessons.length ? ((activeIndex + (playing ? 0.4 : 0)) / allLessons.length) * 100 : 0}%` }}
+                />
+              </div>
+
+              <span className="text-xs font-bold text-ink-muted tabular-nums">
+                {activeIndex + 1} / {allLessons.length}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <button
+                onClick={handleComplete}
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-bold tracking-widest uppercase transition-all cursor-pointer border-2 ${
+                  isCompleted
+                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                    : "bg-gold text-ink-strong border-gold hover:bg-gold-dark hover:border-gold-dark"
+                }`}
+              >
+                <CheckCircle size={14} weight={isCompleted ? "fill" : "regular"} />
+                {isCompleted ? "Completed" : "Mark as complete"}
+              </button>
+              <div className="flex items-center gap-4">
+                <span className="text-xs text-ink-muted hidden sm:inline">
+                  {completed.length} of {allLessons.length} lessons done
+                </span>
+                <ProgressRing value={progress} size={40} showValue={false} label={`${progress}% of the course complete`} />
+                <span className="text-xs font-bold text-ink-strong">{progress}%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Lesson sidebar */}
+        <aside className={`${sidebarOpen ? "fixed inset-y-0 right-0 z-50 w-[320px] lg:static lg:w-auto lg:z-auto" : "hidden"} bg-white border-l border-line overflow-y-auto`}>
+          <div className="p-6 border-b border-line sticky top-0 bg-white z-10">
+            <h3 className="text-sm font-bold text-ink-strong mb-1">Course content</h3>
+            <p className="text-xs text-ink-muted">{allLessons.length} lessons &middot; {progress}% complete</p>
+            <div className="h-1.5 bg-bg-sunken rounded-full overflow-hidden mt-4">
+              <div className="h-full bg-gold rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
+            </div>
+          </div>
+
+          <nav aria-label="Lessons">
+            {course.curriculum.map((section) => (
+              <div key={section.id}>
+                <p className="px-6 py-3 bg-bg-soft text-xs font-bold text-ink-strong uppercase tracking-wider border-b border-line">
+                  {section.title}
+                </p>
+                <ul>
+                  {section.lessons.map((l) => {
+                    const done = completed.includes(l.id);
+                    const active = l.id === activeLessonId;
+                    return (
+                      <li key={l.id}>
+                        <button
+                          onClick={() => { setActiveLessonId(l.id); setPlaying(false); setSidebarOpen(false); }}
+                          className={`w-full flex items-start gap-3 px-6 py-4 text-left transition-colors cursor-pointer border-none bg-transparent border-b border-line hover:bg-bg-soft ${active ? "bg-gold-soft/60 border-l-[3px] border-l-gold" : ""}`}
+                          aria-current={active ? "true" : undefined}
+                        >
+                          {done ? (
+                            <CheckCircle size={16} weight="fill" className="text-emerald-500 flex-shrink-0 mt-0.5" />
+                          ) : active ? (
+                            <PlayCircle size={16} weight="fill" className="text-gold-dark flex-shrink-0 mt-0.5" />
+                          ) : (
+                            <Circle size={16} className="text-line-strong flex-shrink-0 mt-0.5" />
+                          )}
+                          <span className="flex-1 min-w-0">
+                            <span className={`block text-xs leading-relaxed ${active ? "font-bold text-ink-strong" : "text-ink"}`}>{l.title}</span>
+                            <span className="block text-[0.65rem] text-ink-muted mt-1">{l.duration}</span>
+                          </span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            ))}
+          </nav>
+
+          <div className="p-6 border-t border-line">
+            <button className="flex items-center justify-center gap-2 w-full bg-bg-soft border-2 border-line rounded-xl py-3.5 text-xs font-bold text-ink-strong hover:border-gold transition-colors cursor-pointer">
+              <Download size={14} weight="bold" /> Download resources
+            </button>
+          </div>
+        </aside>
+      </div>
+    </main>
+  );
+}
