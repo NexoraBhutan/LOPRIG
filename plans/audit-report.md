@@ -1,4 +1,4 @@
-# LOPRIG Audit Report
+donesett# LOPRIG Audit Report
 
 ## Overview
 This document catalogs all bugs, UI gaps, missing features, and technical debt in the current prototype.
