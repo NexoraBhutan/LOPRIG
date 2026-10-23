@@ -102,8 +102,11 @@ export interface LessonSectionInput {
 }
 
 /** A learner as it is stored in localStorage — no password. */
+export type UserRole = "STUDENT" | "TEACHER" | "ADMIN";
+
 export interface User {
   id: string;
+  role: UserRole;
   name: string;
   email: string;
   bio: string;
@@ -111,25 +114,17 @@ export interface User {
   joined: string;
 }
 
-/** A learner including the password, only ever read inside AuthProvider. */
-export interface StoredUser extends User {
-  password: string;
-}
-
+/** A course the student is enrolled in and/or has saved. `enrolledAt` is null for saved-only courses. */
 export interface EnrollmentRecord {
   courseId: string;
+  status: "ACTIVE" | "COMPLETED" | null;
   enrolledAt: string | null;
-  completedLessons: string[];
   lastLesson: string | null;
-  saved?: boolean;
+  progress: number;
+  saved: boolean;
 }
 
 export type EnrollmentMap = Record<string, EnrollmentRecord>;
-
-export interface Streak {
-  count: number;
-  lastActive: string | null;
-}
 
 export interface CourseProgress {
   course: Course;

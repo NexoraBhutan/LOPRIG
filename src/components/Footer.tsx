@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { ArrowUpRight } from "@phosphor-icons/react";
+import { usesSiteChrome } from "@/utils/routes";
 import { FacebookGlyph, InstagramGlyph, LinkedinGlyph, YoutubeGlyph } from "@/components/SocialGlyphs";
 import Logo from "@/components/Logo";
 
@@ -9,6 +11,8 @@ const SOCIALS = [FacebookGlyph, InstagramGlyph, LinkedinGlyph, YoutubeGlyph];
 const SOCIAL_LABELS = ["Facebook", "Instagram", "LinkedIn", "YouTube"];
 
 export default function Footer() {
+  const pathname = usePathname() ?? "/";
+  if (!usesSiteChrome(pathname)) return null;
   return (
     <footer className="bg-ink-strong text-white relative overflow-hidden aw-grain">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,rgba(255,182,6,0.12)_0%,transparent_55%)] pointer-events-none" />

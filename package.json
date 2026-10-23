@@ -8,7 +8,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "oxlint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "backend": "powershell -NoProfile -ExecutionPolicy Bypass -File backend/start.ps1",
+    "admin": "powershell -NoProfile -ExecutionPolicy Bypass -File backend/start.ps1 -OpenAdmin",
+    "setup-email": "powershell -NoProfile -ExecutionPolicy Bypass -File backend/setup-email.ps1"
   },
   "dependencies": {
     "@gsap/react": "^2.1.2",

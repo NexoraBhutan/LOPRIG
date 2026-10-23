@@ -14,7 +14,7 @@ export default function Login() {
   const { push } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const from = searchParams?.get("from") || "/dashboard";
+  const from = searchParams?.get("from");
   const [form, setForm] = useState({ email: "", password: "" });
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState("");
@@ -22,18 +22,23 @@ export default function Login() {
   const onChange = (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
 
-  const onSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const submit = async (credentials: { email: string; password: string }) => {
     setError("");
-    const res = login(form);
+    const res = await login(credentials);
     if (!res.ok) return setError(res.error);
     push("Welcome back.", "success");
-    router.push(from);
+    router.push(from || (res.role === "TEACHER" ? "/teach" : res.role === "ADMIN" ? "/admin" : "/dashboard"));
   };
 
+  const onSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    submit(form);
+  };
+
+  // The demo student is created on the server by `manage.py seed_demo --with-demo-student`.
   const demoSubmit = (email: string, password: string) => {
     setForm({ email, password });
-    setError("");
+    submit({ email, password });
   };
 
   return (

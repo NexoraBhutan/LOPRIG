@@ -7,7 +7,7 @@ import { SlidersHorizontal, X } from "@phosphor-icons/react";
 import CourseCard from "@/components/CourseCard";
 import FilterSidebar, { applyFilters, DEFAULT_FILTERS } from "@/components/FilterSidebar";
 import EmptyState from "@/components/EmptyState";
-import { courses } from "@/data/courses";
+import { useCatalog } from "@/context/CatalogContext";
 import type { Filters, SortOption } from "@/types";
 
 const SORT_LABELS: Record<SortOption, string> = {
@@ -56,7 +56,8 @@ export default function Courses() {
     router.replace(query ? `/courses?${query}` : "/courses", { scroll: false });
   }, [filters, sort, router]);
 
-  const results = useMemo(() => applyFilters(courses, filters, sort), [filters, sort]);
+  const { courses, ready } = useCatalog();
+  const results = useMemo(() => applyFilters(courses, filters, sort), [courses, filters, sort]);
 
   // Focus trap for mobile filter drawer
   useEffect(() => {
@@ -146,7 +147,7 @@ export default function Courses() {
                   </motion.div>
                 ))}
               </motion.div>
-            ) : (
+            ) : ready && (
               <EmptyState
                 pose="sad"
                 title="No courses match your filters"

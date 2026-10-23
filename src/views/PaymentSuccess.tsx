@@ -4,9 +4,9 @@ import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import { CheckCircle, Star, ArrowRight, PlayCircle } from "@phosphor-icons/react";
-import { getCourseById } from "@/data/courses";
 import { useAuth } from "@/context/AuthContext";
 import { useEnrollment } from "@/context/EnrollmentContext";
+import { useCourseDetail } from "@/hooks/useCourseDetail";
 
 const fadeUp = { hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0 } };
 const stagger = { visible: { transition: { staggerChildren: 0.06 } } };
@@ -19,7 +19,7 @@ export default function PaymentSuccess() {
 
   // Last path segment is the course id.
   const courseId = pathname.split("/").pop() || "";
-  const course = getCourseById(courseId);
+  const { course } = useCourseDetail(courseId);
   const enrollment = enrollments[courseId];
 
   const nextLesson = course?.curriculum.flatMap((s) => s.lessons)[0];

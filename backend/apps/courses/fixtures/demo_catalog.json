@@ -1,0 +1,1131 @@
+{
+  "categories": [
+    {
+      "id": "programming",
+      "title": "Programming",
+      "icon": "Code",
+      "count": 4
+    },
+    {
+      "id": "data-science",
+      "title": "Data Science",
+      "icon": "ChartBar",
+      "count": 2
+    },
+    {
+      "id": "mathematics",
+      "title": "Mathematics",
+      "icon": "Calculator",
+      "count": 1
+    },
+    {
+      "id": "business",
+      "title": "Business",
+      "icon": "Briefcase",
+      "count": 2
+    },
+    {
+      "id": "design",
+      "title": "Design",
+      "icon": "Palette",
+      "count": 2
+    },
+    {
+      "id": "marketing",
+      "title": "Digital Marketing",
+      "icon": "Bullhorn",
+      "count": 1
+    },
+    {
+      "id": "security",
+      "title": "Cybersecurity",
+      "icon": "ShieldAlt",
+      "count": 1
+    },
+    {
+      "id": "web-development",
+      "title": "Web Development",
+      "icon": "Globe",
+      "count": 2
+    },
+    {
+      "id": "languages",
+      "title": "Languages",
+      "icon": "Language",
+      "count": 2
+    },
+    {
+      "id": "entrepreneurship",
+      "title": "Entrepreneurship",
+      "icon": "Rocket",
+      "count": 1
+    }
+  ],
+  "courses": [
+    {
+      "id": "py-beginners",
+      "title": "Python Programming for Beginners",
+      "category": "programming",
+      "level": "Beginner",
+      "description": "Start from zero and learn Python fundamentals through practical, real-world examples built for Bhutanese learners — from variables to your first automation script.",
+      "instructor": {
+        "name": "Tenzin Wangchuk",
+        "title": "Senior Software Engineer, Thimphu"
+      },
+      "rating": 4.8,
+      "students": 1240,
+      "duration": "12h 30m",
+      "lessonsCount": 42,
+      "price": 799,
+      "discountPrice": 499,
+      "language": "English",
+      "bestseller": true,
+      "gradient": [
+        "#ffb606",
+        "#c88e00"
+      ],
+      "requirements": [
+        "A laptop or desktop computer",
+        "No prior programming experience needed",
+        "Willingness to practice daily"
+      ],
+      "whatYouLearn": [
+        "Write and run Python programs from scratch",
+        "Work with variables, loops, and functions",
+        "Handle files and simple data structures",
+        "Build small automation and utility scripts",
+        "Debug and read error messages confidently"
+      ],
+      "curriculum": [
+        {
+          "id": "s1",
+          "title": "Getting Started",
+          "lessons": [
+            {
+              "id": "s1l1",
+              "title": "Welcome to the course",
+              "duration": "6:15"
+            },
+            {
+              "id": "s1l2",
+              "title": "Installing Python & VS Code",
+              "duration": "9:22"
+            },
+            {
+              "id": "s1l3",
+              "title": "Your first script",
+              "duration": "12:29"
+            }
+          ]
+        },
+        {
+          "id": "s2",
+          "title": "Core Fundamentals",
+          "lessons": [
+            {
+              "id": "s2l1",
+              "title": "Variables & data types",
+              "duration": "9:15"
+            },
+            {
+              "id": "s2l2",
+              "title": "Conditionals",
+              "duration": "12:22"
+            },
+            {
+              "id": "s2l3",
+              "title": "Loops",
+              "duration": "15:29"
+            },
+            {
+              "id": "s2l4",
+              "title": "Functions",
+              "duration": "18:36"
+            }
+          ]
+        },
+        {
+          "id": "s3",
+          "title": "Working with Data",
+          "lessons": [
+            {
+              "id": "s3l1",
+              "title": "Lists & dictionaries",
+              "duration": "12:15"
+            },
+            {
+              "id": "s3l2",
+              "title": "Reading & writing files",
+              "duration": "15:22"
+            },
+            {
+              "id": "s3l3",
+              "title": "Mini project: grade calculator",
+              "duration": "18:29"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "web-dev-complete",
+      "title": "Complete Web Development with HTML, CSS, JavaScript & React",
+      "category": "web-development",
+      "level": "Beginner",
+      "description": "A full front-end journey from HTML basics to building modern React applications — designed to take you from student to job-ready developer.",
+      "instructor": {
+        "name": "Karma Dorji",
+        "title": "Full-Stack Developer"
+      },
+      "rating": 4.9,
+      "students": 2310,
+      "duration": "25h 10m",
+      "lessonsCount": 40,
+      "price": 1299,
+      "discountPrice": 899,
+      "language": "English",
+      "bestseller": true,
+      "gradient": [
+        "#1a1a1a",
+        "#ffb606"
+      ],
+      "requirements": [
+        "Basic computer literacy",
+        "A modern web browser",
+        "No coding background required"
+      ],
+      "whatYouLearn": [
+        "Structure pages with semantic HTML5",
+        "Style responsive layouts with modern CSS",
+        "Add interactivity with JavaScript ES6+",
+        "Build component-based UIs with React",
+        "Deploy a portfolio website"
+      ],
+      "curriculum": [
+        {
+          "id": "s1",
+          "title": "HTML & CSS Foundations",
+          "lessons": [
+            {
+              "id": "s1l1",
+              "title": "Document structure",
+              "duration": "6:15"
+            },
+            {
+              "id": "s1l2",
+              "title": "Flexbox & Grid",
+              "duration": "9:22"
+            },
+            {
+              "id": "s1l3",
+              "title": "Responsive design",
+              "duration": "12:29"
+            }
+          ]
+        },
+        {
+          "id": "s2",
+          "title": "JavaScript Essentials",
+          "lessons": [
+            {
+              "id": "s2l1",
+              "title": "Syntax & variables",
+              "duration": "9:15"
+            },
+            {
+              "id": "s2l2",
+              "title": "DOM manipulation",
+              "duration": "12:22"
+            },
+            {
+              "id": "s2l3",
+              "title": "Events",
+              "duration": "15:29"
+            },
+            {
+              "id": "s2l4",
+              "title": "Fetch & APIs",
+              "duration": "18:36"
+            }
+          ]
+        },
+        {
+          "id": "s3",
+          "title": "React Fundamentals",
+          "lessons": [
+            {
+              "id": "s3l1",
+              "title": "Components & props",
+              "duration": "12:15"
+            },
+            {
+              "id": "s3l2",
+              "title": "State & hooks",
+              "duration": "15:22"
+            },
+            {
+              "id": "s3l3",
+              "title": "Routing",
+              "duration": "18:29"
+            },
+            {
+              "id": "s3l4",
+              "title": "Final project",
+              "duration": "6:36"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "java-oop",
+      "title": "Java Programming & Object-Oriented Design",
+      "category": "programming",
+      "level": "Intermediate",
+      "description": "Master Java syntax and object-oriented programming principles used across enterprise software and Bhutan's growing IT sector.",
+      "instructor": {
+        "name": "Tenzin Wangchuk",
+        "title": "Senior Software Engineer, Thimphu"
+      },
+      "rating": 4.6,
+      "students": 860,
+      "duration": "18h 45m",
+      "lessonsCount": 36,
+      "price": 999,
+      "discountPrice": 649,
+      "language": "English",
+      "bestseller": false,
+      "gradient": [
+        "#ff6347",
+        "#db5246"
+      ],
+      "requirements": [
+        "Basic programming logic helpful but not required",
+        "JDK installed (covered in course)"
+      ],
+      "whatYouLearn": [
+        "Understand classes, objects, and inheritance",
+        "Apply encapsulation and polymorphism",
+        "Handle exceptions gracefully",
+        "Build simple console applications"
+      ],
+      "curriculum": [
+        {
+          "id": "s1",
+          "title": "Java Basics",
+          "lessons": [
+            {
+              "id": "s1l1",
+              "title": "Setup & syntax",
+              "duration": "6:15"
+            },
+            {
+              "id": "s1l2",
+              "title": "Control flow",
+              "duration": "9:22"
+            },
+            {
+              "id": "s1l3",
+              "title": "Arrays",
+              "duration": "12:29"
+            }
+          ]
+        },
+        {
+          "id": "s2",
+          "title": "OOP Concepts",
+          "lessons": [
+            {
+              "id": "s2l1",
+              "title": "Classes & objects",
+              "duration": "9:15"
+            },
+            {
+              "id": "s2l2",
+              "title": "Inheritance",
+              "duration": "12:22"
+            },
+            {
+              "id": "s2l3",
+              "title": "Interfaces",
+              "duration": "15:29"
+            },
+            {
+              "id": "s2l4",
+              "title": "Exception handling",
+              "duration": "18:36"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cybersecurity-fundamentals",
+      "title": "Cybersecurity Fundamentals for the Digital Age",
+      "category": "security",
+      "level": "Beginner",
+      "description": "Learn how to protect yourself and organizations from common cyber threats, with practical labs relevant to Bhutan's growing digital economy.",
+      "instructor": {
+        "name": "Jigme Namgyel",
+        "title": "Cybersecurity Analyst"
+      },
+      "rating": 4.7,
+      "students": 540,
+      "duration": "14h 00m",
+      "lessonsCount": 28,
+      "price": 999,
+      "discountPrice": 699,
+      "language": "English",
+      "bestseller": false,
+      "gradient": [
+        "#ffd266",
+        "#ffb606"
+      ],
+      "requirements": [
+        "Basic computer and internet usage"
+      ],
+      "whatYouLearn": [
+        "Identify phishing and social engineering attacks",
+        "Understand network security basics",
+        "Practice safe password and data hygiene",
+        "Learn the fundamentals of ethical hacking"
+      ],
+      "curriculum": [
+        {
+          "id": "s1",
+          "title": "Security Foundations",
+          "lessons": [
+            {
+              "id": "s1l1",
+              "title": "Threat landscape",
+              "duration": "6:15"
+            },
+            {
+              "id": "s1l2",
+              "title": "CIA triad",
+              "duration": "9:22"
+            },
+            {
+              "id": "s1l3",
+              "title": "Common attack types",
+              "duration": "12:29"
+            }
+          ]
+        },
+        {
+          "id": "s2",
+          "title": "Practical Defense",
+          "lessons": [
+            {
+              "id": "s2l1",
+              "title": "Password security",
+              "duration": "9:15"
+            },
+            {
+              "id": "s2l2",
+              "title": "Network basics",
+              "duration": "12:22"
+            },
+            {
+              "id": "s2l3",
+              "title": "Incident response 101",
+              "duration": "15:29"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "data-science-python",
+      "title": "Data Science with Python: From Zero to Insights",
+      "category": "data-science",
+      "level": "Intermediate",
+      "description": "Learn to analyze real datasets, build visualizations, and apply core machine learning concepts using Python's most powerful libraries.",
+      "instructor": {
+        "name": "Pema Choden",
+        "title": "Data Scientist & Educator"
+      },
+      "rating": 4.8,
+      "students": 970,
+      "duration": "20h 15m",
+      "lessonsCount": 38,
+      "price": 1199,
+      "discountPrice": 799,
+      "language": "English",
+      "bestseller": true,
+      "gradient": [
+        "#1a1a1a",
+        "#3a3a3a"
+      ],
+      "requirements": [
+        "Basic Python knowledge recommended",
+        "Curiosity about data"
+      ],
+      "whatYouLearn": [
+        "Clean and explore datasets with pandas",
+        "Visualize data with matplotlib & seaborn",
+        "Build your first machine learning model",
+        "Communicate insights effectively"
+      ],
+      "curriculum": [
+        {
+          "id": "s1",
+          "title": "Data Handling",
+          "lessons": [
+            {
+              "id": "s1l1",
+              "title": "NumPy & pandas",
+              "duration": "6:15"
+            },
+            {
+              "id": "s1l2",
+              "title": "Cleaning data",
+              "duration": "9:22"
+            },
+            {
+              "id": "s1l3",
+              "title": "Exploratory analysis",
+              "duration": "12:29"
+            }
+          ]
+        },
+        {
+          "id": "s2",
+          "title": "Visualization & ML",
+          "lessons": [
+            {
+              "id": "s2l1",
+              "title": "Charting with matplotlib",
+              "duration": "9:15"
+            },
+            {
+              "id": "s2l2",
+              "title": "Intro to scikit-learn",
+              "duration": "12:22"
+            },
+            {
+              "id": "s2l3",
+              "title": "Capstone project",
+              "duration": "15:29"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "applied-mathematics",
+      "title": "Applied Mathematics for Competitive Exams",
+      "category": "mathematics",
+      "level": "All Levels",
+      "description": "Strengthen your mathematical foundation for BCSE, university entrance, and competitive exams with clear, example-driven lessons.",
+      "instructor": {
+        "name": "Ugyen Rinzin",
+        "title": "Mathematics Lecturer, RUB"
+      },
+      "rating": 4.7,
+      "students": 1120,
+      "duration": "16h 20m",
+      "lessonsCount": 34,
+      "price": 599,
+      "discountPrice": 399,
+      "language": "English",
+      "bestseller": false,
+      "gradient": [
+        "#ffb606",
+        "#ff6347"
+      ],
+      "requirements": [
+        "High school mathematics"
+      ],
+      "whatYouLearn": [
+        "Master algebra and functions",
+        "Solve trigonometry and geometry problems",
+        "Apply statistics and probability",
+        "Build exam-taking speed and accuracy"
+      ],
+      "curriculum": [
+        {
+          "id": "s1",
+          "title": "Algebra & Functions",
+          "lessons": [
+            {
+              "id": "s1l1",
+              "title": "Equations",
+              "duration": "6:15"
+            },
+            {
+              "id": "s1l2",
+              "title": "Functions & graphs",
+              "duration": "9:22"
+            }
+          ]
+        },
+        {
+          "id": "s2",
+          "title": "Geometry & Statistics",
+          "lessons": [
+            {
+              "id": "s2l1",
+              "title": "Trigonometry",
+              "duration": "9:15"
+            },
+            {
+              "id": "s2l2",
+              "title": "Probability",
+              "duration": "12:22"
+            },
+            {
+              "id": "s2l3",
+              "title": "Practice exam set",
+              "duration": "15:29"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "business-fundamentals",
+      "title": "Business Fundamentals & Strategic Thinking",
+      "category": "business",
+      "level": "Beginner",
+      "description": "Understand the core principles of running a successful business, from strategy to operations, tailored with examples from Bhutan's economy.",
+      "instructor": {
+        "name": "Sonam Yangzom",
+        "title": "Business Strategy Consultant"
+      },
+      "rating": 4.5,
+      "students": 430,
+      "duration": "10h 40m",
+      "lessonsCount": 24,
+      "price": 699,
+      "discountPrice": 449,
+      "language": "English",
+      "bestseller": false,
+      "gradient": [
+        "#ff6347",
+        "#1a1a1a"
+      ],
+      "requirements": [
+        "No prior business background needed"
+      ],
+      "whatYouLearn": [
+        "Understand business models and strategy",
+        "Analyze markets and competitors",
+        "Build a simple business plan",
+        "Apply GNH-aligned sustainable practices"
+      ],
+      "curriculum": [
+        {
+          "id": "s1",
+          "title": "Strategy Basics",
+          "lessons": [
+            {
+              "id": "s1l1",
+              "title": "Business models",
+              "duration": "6:15"
+            },
+            {
+              "id": "s1l2",
+              "title": "Market analysis",
+              "duration": "9:22"
+            }
+          ]
+        },
+        {
+          "id": "s2",
+          "title": "Execution",
+          "lessons": [
+            {
+              "id": "s2l1",
+              "title": "Operations",
+              "duration": "9:15"
+            },
+            {
+              "id": "s2l2",
+              "title": "Writing a business plan",
+              "duration": "12:22"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "accounting-essentials",
+      "title": "Accounting Essentials for Small Businesses",
+      "category": "business",
+      "level": "Beginner",
+      "description": "Learn bookkeeping, financial statements, and tax basics needed to manage the finances of a small business or startup in Bhutan.",
+      "instructor": {
+        "name": "Dorji Phuntsho",
+        "title": "Accountant, CPA Bhutan"
+      },
+      "rating": 4.6,
+      "students": 310,
+      "duration": "9h 50m",
+      "lessonsCount": 20,
+      "price": 599,
+      "discountPrice": 399,
+      "language": "English",
+      "bestseller": false,
+      "gradient": [
+        "#c88e00",
+        "#1a1a1a"
+      ],
+      "requirements": [
+        "Basic arithmetic"
+      ],
+      "whatYouLearn": [
+        "Record transactions and journal entries",
+        "Prepare balance sheets & income statements",
+        "Understand basic tax obligations",
+        "Use spreadsheets for bookkeeping"
+      ],
+      "curriculum": [
+        {
+          "id": "s1",
+          "title": "Bookkeeping Basics",
+          "lessons": [
+            {
+              "id": "s1l1",
+              "title": "Journal entries",
+              "duration": "6:15"
+            },
+            {
+              "id": "s1l2",
+              "title": "Ledgers",
+              "duration": "9:22"
+            }
+          ]
+        },
+        {
+          "id": "s2",
+          "title": "Financial Statements",
+          "lessons": [
+            {
+              "id": "s2l1",
+              "title": "Balance sheet",
+              "duration": "9:15"
+            },
+            {
+              "id": "s2l2",
+              "title": "Income statement",
+              "duration": "12:22"
+            },
+            {
+              "id": "s2l3",
+              "title": "Simple taxation",
+              "duration": "15:29"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "graphic-design-canva-figma",
+      "title": "Graphic Design Masterclass: Figma & Canva",
+      "category": "design",
+      "level": "Beginner",
+      "description": "Learn the principles of visual design and create stunning graphics, social posts, and branding using industry-standard tools.",
+      "instructor": {
+        "name": "Dechen Lhamo",
+        "title": "UI/UX Designer"
+      },
+      "rating": 4.8,
+      "students": 780,
+      "duration": "13h 05m",
+      "lessonsCount": 30,
+      "price": 899,
+      "discountPrice": 599,
+      "language": "English",
+      "bestseller": true,
+      "gradient": [
+        "#ffb606",
+        "#c88e00"
+      ],
+      "requirements": [
+        "A computer with internet access",
+        "Free Figma & Canva accounts"
+      ],
+      "whatYouLearn": [
+        "Apply color theory and typography",
+        "Design social media graphics",
+        "Build a simple brand identity",
+        "Prototype interfaces in Figma"
+      ],
+      "curriculum": [
+        {
+          "id": "s1",
+          "title": "Design Foundations",
+          "lessons": [
+            {
+              "id": "s1l1",
+              "title": "Color & typography",
+              "duration": "6:15"
+            },
+            {
+              "id": "s1l2",
+              "title": "Layout principles",
+              "duration": "9:22"
+            }
+          ]
+        },
+        {
+          "id": "s2",
+          "title": "Tools in Practice",
+          "lessons": [
+            {
+              "id": "s2l1",
+              "title": "Canva projects",
+              "duration": "9:15"
+            },
+            {
+              "id": "s2l2",
+              "title": "Figma basics",
+              "duration": "12:22"
+            },
+            {
+              "id": "s2l3",
+              "title": "Portfolio piece",
+              "duration": "15:29"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ui-ux-design",
+      "title": "UI/UX Design for Web & Mobile Apps",
+      "category": "design",
+      "level": "Intermediate",
+      "description": "Learn user-centered design thinking and craft beautiful, usable interfaces for websites and mobile applications.",
+      "instructor": {
+        "name": "Dechen Lhamo",
+        "title": "UI/UX Designer"
+      },
+      "rating": 4.7,
+      "students": 505,
+      "duration": "15h 30m",
+      "lessonsCount": 32,
+      "price": 999,
+      "discountPrice": 699,
+      "language": "English",
+      "bestseller": false,
+      "gradient": [
+        "#1a1a1a",
+        "#ffb606"
+      ],
+      "requirements": [
+        "Basic design interest, no experience required"
+      ],
+      "whatYouLearn": [
+        "Conduct simple user research",
+        "Wireframe and prototype in Figma",
+        "Apply usability heuristics",
+        "Design a complete app flow"
+      ],
+      "curriculum": [
+        {
+          "id": "s1",
+          "title": "UX Thinking",
+          "lessons": [
+            {
+              "id": "s1l1",
+              "title": "User research",
+              "duration": "6:15"
+            },
+            {
+              "id": "s1l2",
+              "title": "Wireframing",
+              "duration": "9:22"
+            }
+          ]
+        },
+        {
+          "id": "s2",
+          "title": "UI Craft",
+          "lessons": [
+            {
+              "id": "s2l1",
+              "title": "Design systems",
+              "duration": "9:15"
+            },
+            {
+              "id": "s2l2",
+              "title": "Prototyping",
+              "duration": "12:22"
+            },
+            {
+              "id": "s2l3",
+              "title": "Case study project",
+              "duration": "15:29"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "digital-marketing",
+      "title": "Digital Marketing for Modern Businesses",
+      "category": "marketing",
+      "level": "Beginner",
+      "description": "Learn SEO, social media marketing, and content strategy to help local Bhutanese businesses grow their online presence.",
+      "instructor": {
+        "name": "Kinley Om",
+        "title": "Digital Marketing Specialist"
+      },
+      "rating": 4.6,
+      "students": 690,
+      "duration": "11h 15m",
+      "lessonsCount": 26,
+      "price": 799,
+      "discountPrice": 549,
+      "language": "English",
+      "bestseller": false,
+      "gradient": [
+        "#ff6347",
+        "#db5246"
+      ],
+      "requirements": [
+        "A social media account for practice"
+      ],
+      "whatYouLearn": [
+        "Build a content marketing plan",
+        "Understand SEO fundamentals",
+        "Run simple social media campaigns",
+        "Measure marketing performance"
+      ],
+      "curriculum": [
+        {
+          "id": "s1",
+          "title": "Marketing Foundations",
+          "lessons": [
+            {
+              "id": "s1l1",
+              "title": "Content strategy",
+              "duration": "6:15"
+            },
+            {
+              "id": "s1l2",
+              "title": "SEO basics",
+              "duration": "9:22"
+            }
+          ]
+        },
+        {
+          "id": "s2",
+          "title": "Growth Tactics",
+          "lessons": [
+            {
+              "id": "s2l1",
+              "title": "Social media ads",
+              "duration": "9:15"
+            },
+            {
+              "id": "s2l2",
+              "title": "Analytics & reporting",
+              "duration": "12:22"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dzongkha-language",
+      "title": "Dzongkha Language & Culture for Beginners",
+      "category": "languages",
+      "level": "Beginner",
+      "description": "Build conversational Dzongkha skills while learning about Bhutanese script, etiquette, and cultural context.",
+      "instructor": {
+        "name": "Namgay Tshering",
+        "title": "Dzongkha Language Scholar"
+      },
+      "rating": 4.9,
+      "students": 350,
+      "duration": "8h 40m",
+      "lessonsCount": 22,
+      "price": 499,
+      "discountPrice": 299,
+      "language": "Dzongkha / English",
+      "bestseller": false,
+      "gradient": [
+        "#ffd266",
+        "#ffb606"
+      ],
+      "requirements": [
+        "No prior knowledge needed"
+      ],
+      "whatYouLearn": [
+        "Read and write basic Dzongkha script",
+        "Hold simple daily conversations",
+        "Understand cultural etiquette",
+        "Build vocabulary through practice"
+      ],
+      "curriculum": [
+        {
+          "id": "s1",
+          "title": "Script & Sounds",
+          "lessons": [
+            {
+              "id": "s1l1",
+              "title": "The Dzongkha alphabet",
+              "duration": "6:15"
+            },
+            {
+              "id": "s1l2",
+              "title": "Pronunciation",
+              "duration": "9:22"
+            }
+          ]
+        },
+        {
+          "id": "s2",
+          "title": "Conversation",
+          "lessons": [
+            {
+              "id": "s2l1",
+              "title": "Greetings & introductions",
+              "duration": "9:15"
+            },
+            {
+              "id": "s2l2",
+              "title": "Everyday phrases",
+              "duration": "12:22"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "english-communication",
+      "title": "English Communication Skills for Professionals",
+      "category": "languages",
+      "level": "All Levels",
+      "description": "Improve your spoken and written English for interviews, workplace communication, and academic success.",
+      "instructor": {
+        "name": "Yeshi Dema",
+        "title": "English Language Trainer"
+      },
+      "rating": 4.7,
+      "students": 890,
+      "duration": "10h 00m",
+      "lessonsCount": 24,
+      "price": 599,
+      "discountPrice": 349,
+      "language": "English",
+      "bestseller": true,
+      "gradient": [
+        "#1a1a1a",
+        "#3a3a3a"
+      ],
+      "requirements": [
+        "Basic English reading ability"
+      ],
+      "whatYouLearn": [
+        "Speak confidently in professional settings",
+        "Write clear emails and reports",
+        "Improve grammar and vocabulary",
+        "Practice interview communication"
+      ],
+      "curriculum": [
+        {
+          "id": "s1",
+          "title": "Speaking Skills",
+          "lessons": [
+            {
+              "id": "s1l1",
+              "title": "Everyday conversation",
+              "duration": "6:15"
+            },
+            {
+              "id": "s1l2",
+              "title": "Public speaking basics",
+              "duration": "9:22"
+            }
+          ]
+        },
+        {
+          "id": "s2",
+          "title": "Writing Skills",
+          "lessons": [
+            {
+              "id": "s2l1",
+              "title": "Professional emails",
+              "duration": "9:15"
+            },
+            {
+              "id": "s2l2",
+              "title": "Report writing",
+              "duration": "12:22"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "entrepreneurship-startup",
+      "title": "Entrepreneurship: From Idea to Startup",
+      "category": "entrepreneurship",
+      "level": "Beginner",
+      "description": "Turn your idea into a real venture — learn validation, business models, and fundraising basics with a Bhutanese startup lens.",
+      "instructor": {
+        "name": "Choki Gyeltshen",
+        "title": "Entrepreneur & Startup Mentor"
+      },
+      "rating": 4.8,
+      "students": 410,
+      "duration": "12h 50m",
+      "lessonsCount": 26,
+      "price": 899,
+      "discountPrice": 599,
+      "language": "English",
+      "bestseller": false,
+      "gradient": [
+        "#ffb606",
+        "#ff6347"
+      ],
+      "requirements": [
+        "An idea or curiosity about starting a business"
+      ],
+      "whatYouLearn": [
+        "Validate a business idea",
+        "Design a lean business model",
+        "Pitch to investors or grant committees",
+        "Navigate early-stage funding options"
+      ],
+      "curriculum": [
+        {
+          "id": "s1",
+          "title": "Idea to Model",
+          "lessons": [
+            {
+              "id": "s1l1",
+              "title": "Problem validation",
+              "duration": "6:15"
+            },
+            {
+              "id": "s1l2",
+              "title": "Lean canvas",
+              "duration": "9:22"
+            }
+          ]
+        },
+        {
+          "id": "s2",
+          "title": "Launch & Funding",
+          "lessons": [
+            {
+              "id": "s2l1",
+              "title": "MVP building",
+              "duration": "9:15"
+            },
+            {
+              "id": "s2l2",
+              "title": "Pitching & funding",
+              "duration": "12:22"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

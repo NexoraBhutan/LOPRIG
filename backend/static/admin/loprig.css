@@ -1,0 +1,459 @@
+/* Lop-rig brand layer for the Unfold admin: same fonts, gold and ink as the student site. */
+@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap");
+
+:root {
+  --lr-gold: #ffb606;
+  --lr-gold-dark: #c88e00;
+  --lr-gold-text: #9a6b00;
+  --lr-gold-soft: #fff6e0;
+  --lr-ink: #1a1a1a;
+  --lr-ink-2: #3a3a3a;
+  --lr-muted: #767676;
+  --lr-line: #ececec;
+  --lr-surface: #ffffff;
+  --lr-soft: #f8f9fb;
+  --lr-green: #047857;
+}
+
+html.dark {
+  --lr-gold-text: #ffd266;
+  --lr-gold-soft: rgba(255, 182, 6, 0.12);
+  --lr-ink: #f5f5f5;
+  --lr-ink-2: #d4d4d4;
+  --lr-muted: #a3a3a3;
+  --lr-line: #2a2a2a;
+  --lr-surface: #171717;
+  --lr-soft: #0f0f0f;
+  --lr-green: #6ee7b7;
+}
+
+body,
+input,
+select,
+textarea,
+button {
+  font-family: "Outfit", system-ui, sans-serif;
+}
+
+h1,
+h2,
+h3,
+.lr-kpi-value {
+  font-family: "Space Grotesk", "Outfit", sans-serif;
+  letter-spacing: -0.02em;
+}
+
+/* ---- Dashboard ---------------------------------------------------------- */
+
+.lr-dash {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  color: var(--lr-ink-2);
+  max-width: 1280px;
+}
+
+.lr-hero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 32px;
+  border-radius: 16px;
+  background: radial-gradient(120% 140% at 100% 0%, rgba(255, 182, 6, 0.28), transparent 55%), #1a1a1a;
+  color: #fff;
+}
+
+.lr-eyebrow {
+  margin: 0 0 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #ffd266;
+}
+
+.lr-hero-title {
+  margin: 0;
+  font-size: clamp(26px, 3vw, 38px);
+  font-weight: 600;
+  line-height: 1.1;
+  color: #fff;
+}
+
+.lr-hero-sub {
+  margin: 10px 0 0;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 15px;
+}
+
+.lr-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.lr-btn:hover {
+  transform: translateY(-1px);
+}
+
+.lr-btn-gold {
+  background: var(--lr-gold);
+  color: #1a1a1a;
+  box-shadow: 0 0 32px rgba(255, 182, 6, 0.25);
+}
+
+.lr-btn .material-symbols-outlined {
+  font-size: 18px;
+}
+
+.lr-count {
+  min-width: 22px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #1a1a1a;
+  color: #ffd266;
+  font-size: 12px;
+  text-align: center;
+}
+
+/* Six cards: one row of 6 on wide screens, 2 rows of 3, then 3 rows of 2 - never an orphan. */
+.lr-kpis {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+@media (min-width: 900px) {
+  .lr-kpis {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1500px) {
+  .lr-kpis {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+.lr-kpi {
+  padding: 20px;
+  border: 2px solid var(--lr-line);
+  border-radius: 16px;
+  background: var(--lr-surface);
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.lr-kpi:hover {
+  border-color: var(--lr-gold);
+  transform: translateY(-2px);
+}
+
+.lr-kpi-accent {
+  border-color: var(--lr-gold);
+  background: var(--lr-gold-soft);
+}
+
+.lr-kpi-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  margin-bottom: 14px;
+  border-radius: 12px;
+  background: var(--lr-gold-soft);
+  color: var(--lr-gold-text);
+  font-size: 22px;
+}
+
+.lr-kpi-accent .lr-kpi-icon {
+  background: var(--lr-gold);
+  color: #1a1a1a;
+}
+
+.lr-kpi-label {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--lr-muted);
+}
+
+.lr-kpi-value {
+  margin: 4px 0 2px;
+  font-size: 28px;
+  font-weight: 600;
+  color: var(--lr-ink);
+}
+
+.lr-kpi-hint {
+  margin: 0;
+  font-size: 13px;
+  color: var(--lr-muted);
+}
+
+.lr-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.lr-span-2 {
+  grid-column: span 2;
+}
+
+@media (max-width: 1100px) {
+  .lr-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .lr-span-2 {
+    grid-column: auto;
+  }
+}
+
+.lr-card {
+  padding: 24px;
+  border: 2px solid var(--lr-line);
+  border-radius: 16px;
+  background: var(--lr-surface);
+}
+
+.lr-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.lr-card-head h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--lr-ink);
+}
+
+.lr-card-head p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--lr-muted);
+}
+
+.lr-link {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--lr-gold-text);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.lr-link:hover {
+  color: var(--lr-gold-dark);
+}
+
+.lr-list,
+.lr-meter-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lr-list li + li,
+.lr-meter-list li + li {
+  border-top: 1px solid var(--lr-line);
+}
+
+.lr-list a {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 4px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.lr-list a:hover strong {
+  color: var(--lr-gold-text);
+}
+
+.lr-dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--lr-gold);
+  box-shadow: 0 0 0 4px var(--lr-gold-soft);
+}
+
+.lr-list-main {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.lr-list-main strong {
+  color: var(--lr-ink);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lr-list-main small,
+.lr-meter-list small {
+  color: var(--lr-muted);
+  font-size: 12px;
+}
+
+.lr-pill {
+  flex: none;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--lr-gold-soft);
+  color: var(--lr-gold-text);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.lr-empty {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px;
+  border-radius: 12px;
+  background: var(--lr-soft);
+  color: var(--lr-muted);
+}
+
+.lr-empty p {
+  margin: 0;
+}
+
+.lr-empty .material-symbols-outlined {
+  color: var(--lr-green);
+}
+
+.lr-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  height: 140px;
+  padding-top: 8px;
+}
+
+.lr-bar {
+  display: flex;
+  flex: 1;
+  align-items: flex-end;
+  height: 100%;
+  border-radius: 6px;
+  background: var(--lr-soft);
+}
+
+.lr-bar span {
+  display: block;
+  width: 100%;
+  min-height: 3px;
+  border-radius: 6px;
+  background: linear-gradient(180deg, var(--lr-gold), var(--lr-gold-dark));
+}
+
+.lr-bars-axis {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--lr-muted);
+}
+
+.lr-meter-list a {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.lr-meter-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.lr-meter-top strong {
+  color: var(--lr-ink);
+  font-weight: 600;
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lr-meter-top em {
+  font-style: normal;
+  font-weight: 700;
+  color: var(--lr-gold-text);
+}
+
+.lr-meter {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--lr-soft);
+  overflow: hidden;
+}
+
+.lr-meter span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--lr-gold);
+}
+
+.lr-table-wrap {
+  overflow-x: auto;
+}
+
+.lr-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.lr-table th {
+  padding: 0 12px 10px 0;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--lr-muted);
+}
+
+.lr-table td {
+  padding: 12px 12px 12px 0;
+  border-top: 1px solid var(--lr-line);
+  color: var(--lr-ink);
+}
+
+.lr-num {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.lr-muted {
+  color: var(--lr-muted);
+}

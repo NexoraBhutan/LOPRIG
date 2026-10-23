@@ -1,0 +1,139 @@
+{% extends 'admin/base.html' %}
+{% load i18n humanize %}
+
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block branding %}
+    {% include "unfold/helpers/site_branding.html" %}
+{% endblock %}
+
+{% block content %}
+<div class="lr-dash">
+    <header class="lr-hero">
+        <div>
+            <p class="lr-eyebrow">Lop-rig · Platform overview</p>
+            <h1 class="lr-hero-title">Kuzuzangpo, {{ request.user.name|default:request.user.email }}</h1>
+            <p class="lr-hero-sub">Here is what is happening across courses, students and payments.</p>
+        </div>
+        <a class="lr-btn lr-btn-gold" href="{{ courses_url }}?status__exact=PENDING_REVIEW">
+            <span class="material-symbols-outlined" aria-hidden="true">fact_check</span> Review courses
+            {% if pending_courses %}<span class="lr-count">{{ pending_courses|length }}</span>{% endif %}
+        </a>
+    </header>
+
+    <section class="lr-kpis" aria-label="Key numbers">
+        {% for k in kpis %}
+            <div class="lr-kpi{% if k.accent %} lr-kpi-accent{% endif %}">
+                <span class="lr-kpi-icon material-symbols-outlined" aria-hidden="true">{{ k.icon }}</span>
+                <p class="lr-kpi-label">{{ k.label }}</p>
+                <p class="lr-kpi-value">{{ k.value }}</p>
+                <p class="lr-kpi-hint">{{ k.hint }}</p>
+            </div>
+        {% endfor %}
+    </section>
+
+    <div class="lr-grid">
+        <section class="lr-card lr-span-2">
+            <div class="lr-card-head">
+                <div>
+                    <h2>Courses awaiting review</h2>
+                    <p>Approve to publish, or reject with a note for the teacher.</p>
+                </div>
+                <a class="lr-link" href="{{ courses_url }}?status__exact=PENDING_REVIEW">See all</a>
+            </div>
+            {% if pending_courses %}
+                <ul class="lr-list">
+                    {% for c in pending_courses %}
+                        <li>
+                            <a href="{{ c.url }}">
+                                <span class="lr-dot" aria-hidden="true"></span>
+                                <span class="lr-list-main">
+                                    <strong>{{ c.title }}</strong>
+                                    <small>{{ c.teacher }} · {{ c.category }}</small>
+                                </span>
+                                <span class="lr-pill">Submitted {{ c.since|naturaltime }}</span>
+                            </a>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <div class="lr-empty">
+                    <span class="material-symbols-outlined" aria-hidden="true">task_alt</span>
+                    <p>All caught up. No courses are waiting for review.</p>
+                </div>
+            {% endif %}
+        </section>
+
+        <section class="lr-card">
+            <div class="lr-card-head">
+                <div>
+                    <h2>New students</h2>
+                    <p>{{ signups_total }} in the last 14 days</p>
+                </div>
+            </div>
+            <div class="lr-bars" role="img" aria-label="Student sign-ups per day for the last 14 days">
+                {% for d in signups %}
+                    <div class="lr-bar" title="{{ d.label }}: {{ d.count }}">
+                        <span style="height: {{ d.height }}%"></span>
+                    </div>
+                {% endfor %}
+            </div>
+            <div class="lr-bars-axis"><span>{{ signups.0.label }}</span><span>Today</span></div>
+        </section>
+
+        <section class="lr-card">
+            <div class="lr-card-head">
+                <div>
+                    <h2>Most enrolled</h2>
+                    <p>Published courses by students on Lop-rig</p>
+                </div>
+            </div>
+            <ul class="lr-meter-list">
+                {% for c in top_courses %}
+                    <li>
+                        <a href="{{ c.url }}">
+                            <span class="lr-meter-top"><strong>{{ c.title }}</strong><em>{{ c.enrolled }}</em></span>
+                            <span class="lr-meter"><span style="width: {{ c.width }}%"></span></span>
+                            <small>{{ c.teacher }}</small>
+                        </a>
+                    </li>
+                {% empty %}
+                    <li class="lr-muted">No published courses yet.</li>
+                {% endfor %}
+            </ul>
+        </section>
+
+        <section class="lr-card lr-span-2">
+            <div class="lr-card-head">
+                <div>
+                    <h2>Recent payments</h2>
+                    <p>Confirmed by the payment gateway</p>
+                </div>
+                <a class="lr-link" href="{{ payments_url }}">See all</a>
+            </div>
+            {% if recent_payments %}
+                <div class="lr-table-wrap">
+                    <table class="lr-table">
+                        <thead><tr><th>Student</th><th>Course</th><th>Amount</th><th>Paid</th></tr></thead>
+                        <tbody>
+                            {% for p in recent_payments %}
+                                <tr>
+                                    <td>{{ p.student.name }}</td>
+                                    <td>{{ p.course.title }}</td>
+                                    <td class="lr-num">Nu. {{ p.amount|floatformat:0|intcomma }}</td>
+                                    <td class="lr-muted">{{ p.paid_at|naturaltime }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="lr-empty">
+                    <span class="material-symbols-outlined" aria-hidden="true">receipt_long</span>
+                    <p>No payments yet.</p>
+                </div>
+            {% endif %}
+        </section>
+    </div>
+</div>
+{% endblock %}

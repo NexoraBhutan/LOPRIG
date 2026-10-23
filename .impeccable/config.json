@@ -1,0 +1,14 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "overused-font",
+        "value": "space grotesk",
+        "createdAt": "2026-10-23T12:32:10.241Z",
+        "reason": "Existing brand font: the student site already loads Space Grotesk in src/app/layout.tsx, and the user asked for the admin to match the user site"
+      }
+    ]
+  }
+}

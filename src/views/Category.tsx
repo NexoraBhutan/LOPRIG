@@ -11,7 +11,8 @@ import {
 import CourseCard from "@/components/CourseCard";
 import FilterSidebar, { applyFilters, DEFAULT_FILTERS } from "@/components/FilterSidebar";
 import EmptyState from "@/components/EmptyState";
-import { categories, courses } from "@/data/courses";
+import PageLoader from "@/components/PageLoader";
+import { useCatalog } from "@/context/CatalogContext";
 import type { IconName } from "@/types";
 
 const ICONS: Record<string, typeof Code> = {
@@ -27,6 +28,7 @@ const fadeUp = { hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0 } };
 const stagger = { visible: { transition: { staggerChildren: 0.06 } } };
 
 export function CategoryIndex() {
+  const { categories } = useCatalog();
   return (
     <main className="overflow-x-hidden w-full max-w-full">
       <section className="px-8 lg:px-16 pt-36 pb-16 bg-white aw-gold-wash">
@@ -73,6 +75,7 @@ export function CategoryIndex() {
 export default function Category() {
   const params = useParams<{ id: string }>();
   const id = params?.id ?? "";
+  const { categories, courses, ready } = useCatalog();
   const category = categories.find((c) => c.id === id);
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
 
@@ -83,7 +86,9 @@ export default function Category() {
       filters,
       "popular"
     );
-  }, [category, filters]);
+  }, [category, courses, filters]);
+
+  if (!ready) return <PageLoader />;
 
   if (!category) {
     return (

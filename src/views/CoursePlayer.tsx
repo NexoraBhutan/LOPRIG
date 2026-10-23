@@ -1,45 +1,109 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
   Play, Pause, CheckCircle, Circle, PlayCircle,
   CaretLeft, CaretRight, Download, ArrowLeft, X, List,
 } from "@phosphor-icons/react";
-import { getCourseById } from "@/data/courses";
 import { useEnrollment } from "@/context/EnrollmentContext";
 import { useToast } from "@/context/ToastContext";
 import ProgressRing from "@/components/ProgressRing";
 import EmptyState from "@/components/EmptyState";
-import type { Lesson } from "@/types";
+import PageLoader from "@/components/PageLoader";
+import { ApiError, api, errorMessage } from "@/lib/api";
+import type { ApiCourse, ApiModule } from "@/lib/mappers";
 
 const SPEEDS = [1, 1.25, 1.5, 2];
+
+interface PlayerLesson {
+  id: number;
+  title: string;
+  kind: "VIDEO" | "TEXT" | "H5P";
+  duration: string;
+  video_url: string;
+  body: string;
+  h5p_embed_url: string;
+  resources: { id: number; title: string; url: string }[];
+  completed: boolean;
+  position_seconds: number;
+}
+
+interface Progress {
+  completed_lessons: number;
+  total_lessons: number;
+  percent: number;
+}
+
+interface LearnCourse {
+  course: ApiCourse;
+  progress: Progress;
+  last_lesson: number | null;
+  certificate: string | null;
+  modules: ApiModule<PlayerLesson>[];
+}
+
+interface ProgressResponse {
+  lesson: number;
+  completed: boolean;
+  course_progress: Progress;
+  course_completed: boolean;
+  certificate: string | null;
+}
+
+type LoadState = "loading" | "ready" | "not-enrolled" | "not-found" | "error";
 
 export default function CoursePlayer() {
   const params = useParams<{ id: string }>();
   const id = params?.id ?? "";
   const router = useRouter();
-  const course = getCourseById(id);
-  const { enrollments, isEnrolled, markLessonComplete, setLastLesson, getProgress } = useEnrollment();
+  const { refresh } = useEnrollment();
   const { push } = useToast();
 
-  const allLessons = useMemo(
-    () =>
-      course?.curriculum.flatMap((s) => s.lessons.map((l: Lesson) => ({ ...l, sectionTitle: s.title }))) ?? [],
-    [course]
-  );
-
-  const record = id ? enrollments[id] : undefined;
-  const initialLesson = record?.lastLesson ?? allLessons[0]?.id;
-  const [activeLessonId, setActiveLessonId] = useState<string | undefined>(initialLesson);
+  const [data, setData] = useState<LearnCourse | null>(null);
+  const [loadState, setLoadState] = useState<LoadState>("loading");
+  const [activeLessonId, setActiveLessonId] = useState<number | undefined>();
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(1);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [resourcesOpen, setResourcesOpen] = useState(false);
+  const openedLesson = useRef<number | undefined>(undefined);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
-    if (id && activeLessonId) setLastLesson(id, activeLessonId);
-  }, [activeLessonId, id, setLastLesson]);
+    let cancelled = false;
+    api<LearnCourse>(`/learning/courses/${encodeURIComponent(id)}/`)
+      .then((res) => {
+        if (cancelled) return;
+        const first = res.modules.flatMap((m) => m.lessons)[0]?.id;
+        setData(res);
+        setActiveLessonId(res.last_lesson ?? first);
+        openedLesson.current = res.last_lesson ?? first;
+        setLoadState("ready");
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        if (err instanceof ApiError && err.status === 403) setLoadState("not-enrolled");
+        else if (err instanceof ApiError && err.status === 404) setLoadState("not-found");
+        else setLoadState("error");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  // Remember the lesson the student opens, so "Continue learning" resumes there.
+  useEffect(() => {
+    if (activeLessonId === undefined || activeLessonId === openedLesson.current) return;
+    openedLesson.current = activeLessonId;
+    api(`/learning/lessons/${activeLessonId}/progress/`, { method: "POST", body: {} }).catch(() => undefined);
+  }, [activeLessonId]);
+
+  useEffect(() => {
+    if (videoRef.current) videoRef.current.playbackRate = speed;
+  }, [speed]);
 
   // Open sidebar by default on large screens
   useEffect(() => {
@@ -58,15 +122,20 @@ export default function CoursePlayer() {
     return () => document.removeEventListener("keydown", onKey);
   }, [sidebarOpen]);
 
-  if (!course) {
-    return (
-      <div className="min-h-[60dvh] flex items-center justify-center px-8">
-        <EmptyState pose="sad" title="Course not found" ctaLabel="Browse courses" ctaTo="/courses" />
-      </div>
-    );
-  }
+  const allLessons = useMemo(
+    () => data?.modules.flatMap((m) => m.lessons.map((l) => ({ ...l, sectionTitle: m.title }))) ?? [],
+    [data]
+  );
 
-  if (!isEnrolled(id)) {
+  const selectLesson = useCallback((lessonId: number) => {
+    setActiveLessonId(lessonId);
+    setPlaying(false);
+    setResourcesOpen(false);
+  }, []);
+
+  if (loadState === "loading") return <PageLoader />;
+
+  if (loadState === "not-enrolled") {
     return (
       <div className="min-h-[60dvh] flex items-center justify-center px-8">
         <EmptyState
@@ -74,37 +143,72 @@ export default function CoursePlayer() {
           title="You are not enrolled in this course"
           description="Enroll first to unlock the lessons and track your progress."
           ctaLabel="Enroll now"
-          ctaTo={`/courses/${course.id}`}
+          ctaTo={`/courses/${id}`}
         />
       </div>
     );
   }
 
-  const completed = record?.completedLessons ?? [];
-  const progress = getProgress(course.id);
+  if (loadState !== "ready" || !data) {
+    return (
+      <div className="min-h-[60dvh] flex items-center justify-center px-8">
+        <EmptyState
+          pose="sad"
+          title={loadState === "not-found" ? "Course not found" : "Couldn't load this course"}
+          description={loadState === "error" ? "Check your connection and try again." : undefined}
+          ctaLabel="Browse courses"
+          ctaTo="/courses"
+        />
+      </div>
+    );
+  }
+
+  const course = data.course;
+  const progress = data.progress.percent;
   const activeIndex = allLessons.findIndex((l) => l.id === activeLessonId);
   const activeLesson = allLessons[activeIndex];
-  const isCompleted = activeLessonId ? completed.includes(activeLessonId) : false;
+  const isCompleted = Boolean(activeLesson?.completed);
 
   const goTo = (idx: number) => {
     const target = allLessons[idx];
-    if (target) {
-      setActiveLessonId(target.id);
-      setPlaying(false);
-    }
+    if (target) selectLesson(target.id);
   };
 
-  const handleComplete = () => {
-    if (!activeLessonId) return;
-    if (completed.includes(activeLessonId)) {
+  const handleComplete = async () => {
+    if (!activeLesson || saving) return;
+    if (activeLesson.completed) {
       push("Already completed", "info");
       return;
     }
-    markLessonComplete(course.id, activeLessonId);
-    push("Lesson marked complete!", "success");
-    if (activeIndex < allLessons.length - 1) {
-      const next = allLessons[activeIndex + 1];
-      setTimeout(() => { setActiveLessonId(next.id); setPlaying(false); }, 700);
+    setSaving(true);
+    try {
+      const res = await api<ProgressResponse>(`/learning/lessons/${activeLesson.id}/progress/`, {
+        method: "POST",
+        body: { completed: true },
+      });
+      setData((prev) => prev && {
+        ...prev,
+        progress: res.course_progress,
+        certificate: res.certificate ?? prev.certificate,
+        modules: prev.modules.map((m) => ({
+          ...m,
+          lessons: m.lessons.map((l) => (l.id === res.lesson ? { ...l, completed: true } : l)),
+        })),
+      });
+      refresh();
+      if (res.course_completed && res.certificate) {
+        push(`Course complete! Your certificate code is ${res.certificate}.`, "success");
+      } else {
+        push("Lesson marked complete!", "success");
+      }
+      if (activeIndex < allLessons.length - 1) {
+        const next = allLessons[activeIndex + 1];
+        setTimeout(() => selectLesson(next.id), 700);
+      }
+    } catch (err) {
+      push(errorMessage(err), "error");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -114,13 +218,21 @@ export default function CoursePlayer() {
   };
 
   const handlePlayPause = () => {
+    const video = videoRef.current;
+    if (video) {
+      if (video.paused) video.play().catch(() => undefined);
+      else video.pause();
+      return;
+    }
     if (playing) {
       setPlaying(false);
       return;
     }
     setPlaying(true);
-    push("Demo video — real playback would start here.", "info");
+    push("This lesson has no video yet.", "info");
   };
+
+  const resources = activeLesson?.resources ?? [];
 
   return (
     <main className="w-full bg-bg-soft min-h-[100dvh]">
@@ -147,6 +259,7 @@ export default function CoursePlayer() {
             <button
               onClick={() => router.push(`/courses/${course.id}`)}
               className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-4 py-2.5 rounded-lg transition-colors cursor-pointer border-none"
+              aria-label="Close player"
             >
               <X size={14} weight="bold" />
             </button>
@@ -154,24 +267,45 @@ export default function CoursePlayer() {
 
           {/* Video stage */}
           <div className="flex-1 flex items-center justify-center bg-ink-strong relative overflow-hidden">
-            {activeLesson && (
-              <div className="text-center">
-                <p className="text-white/50 text-xs font-bold uppercase tracking-widest mb-4">Lesson {activeIndex + 1} of {allLessons.length}</p>
-                <h2 className="font-display text-2xl md:text-3xl text-white max-w-[640px] mx-auto leading-tight">{activeLesson.title}</h2>
-                <p className="text-white/40 text-sm mt-6 max-w-[420px] mx-auto">
-                  {playing ? "Playing demo — " : "Paused — "}{activeLesson.duration} · {activeLesson.sectionTitle}
-                </p>
-              </div>
-            )}
+            {activeLesson?.video_url ? (
+              <video
+                ref={videoRef}
+                key={activeLesson.id}
+                src={activeLesson.video_url}
+                controls
+                className="relative z-10 w-full h-full object-contain bg-black"
+                onPlay={() => setPlaying(true)}
+                onPause={() => setPlaying(false)}
+                onLoadedMetadata={(e) => {
+                  e.currentTarget.playbackRate = speed;
+                  if (activeLesson.position_seconds) e.currentTarget.currentTime = activeLesson.position_seconds;
+                }}
+              />
+            ) : (
+              <>
+                {activeLesson && (
+                  <div className="text-center relative z-10 px-6">
+                    <p className="text-white/50 text-xs font-bold uppercase tracking-widest mb-4">Lesson {activeIndex + 1} of {allLessons.length}</p>
+                    <h2 className="font-display text-2xl md:text-3xl text-white max-w-[640px] mx-auto leading-tight">{activeLesson.title}</h2>
+                    <p className="text-white/40 text-sm mt-6 max-w-[420px] mx-auto">
+                      {activeLesson.duration} · {activeLesson.sectionTitle}
+                    </p>
+                    {activeLesson.body && (
+                      <p className="text-white/60 text-sm mt-6 max-w-[520px] mx-auto leading-relaxed">{activeLesson.body}</p>
+                    )}
+                  </div>
+                )}
 
-            {/* Backdrop art */}
-            <img
-              src={`https://picsum.photos/seed/player${course.id}/1400/900`}
-              alt=""
-              aria-hidden="true"
-              className="absolute inset-0 w-full h-full object-cover opacity-20 grayscale contrast-125"
-            />
-            <div className="absolute inset-0 aw-dark-wash" />
+                {/* Backdrop art */}
+                <img
+                  src={`https://picsum.photos/seed/player${course.id}/1400/900`}
+                  alt=""
+                  aria-hidden="true"
+                  className="absolute inset-0 w-full h-full object-cover opacity-20 grayscale contrast-125"
+                />
+                <div className="absolute inset-0 aw-dark-wash" />
+              </>
+            )}
           </div>
 
           {/* Player controls */}
@@ -205,23 +339,29 @@ export default function CoursePlayer() {
             <div className="flex items-center justify-between gap-4 flex-wrap">
               <button
                 onClick={handleComplete}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-bold tracking-widest uppercase transition-all cursor-pointer border-2 ${
+                disabled={saving}
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-bold tracking-widest uppercase transition-all cursor-pointer border-2 disabled:cursor-wait ${
                   isCompleted
                     ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                     : "bg-gold text-ink-strong border-gold hover:bg-gold-dark hover:border-gold-dark"
                 }`}
               >
                 <CheckCircle size={14} weight={isCompleted ? "fill" : "regular"} />
-                {isCompleted ? "Completed" : "Mark as complete"}
+                {isCompleted ? "Completed" : saving ? "Saving…" : "Mark as complete"}
               </button>
               <div className="flex items-center gap-4">
                 <span className="text-xs text-ink-muted hidden sm:inline">
-                  {completed.length} of {allLessons.length} lessons done
+                  {data.progress.completed_lessons} of {data.progress.total_lessons} lessons done
                 </span>
                 <ProgressRing value={progress} size={40} showValue={false} label={`${progress}% of the course complete`} />
                 <span className="text-xs font-bold text-ink-strong">{progress}%</span>
               </div>
             </div>
+            {data.certificate && (
+              <p className="text-xs text-emerald-700 font-bold mt-4">
+                Certificate earned · code {data.certificate}
+              </p>
+            )}
           </div>
         </div>
 
@@ -236,23 +376,22 @@ export default function CoursePlayer() {
           </div>
 
           <nav aria-label="Lessons">
-            {course.curriculum.map((section) => (
+            {data.modules.map((section) => (
               <div key={section.id}>
                 <p className="px-6 py-3 bg-bg-soft text-xs font-bold text-ink-strong uppercase tracking-wider border-b border-line">
                   {section.title}
                 </p>
                 <ul>
                   {section.lessons.map((l) => {
-                    const done = completed.includes(l.id);
                     const active = l.id === activeLessonId;
                     return (
                       <li key={l.id}>
                         <button
-                          onClick={() => { setActiveLessonId(l.id); setPlaying(false); setSidebarOpen(false); }}
+                          onClick={() => { selectLesson(l.id); setSidebarOpen(false); }}
                           className={`w-full flex items-start gap-3 px-6 py-4 text-left transition-colors cursor-pointer border-none bg-transparent border-b border-line hover:bg-bg-soft ${active ? "bg-gold-soft/60 border-l-[3px] border-l-gold" : ""}`}
                           aria-current={active ? "true" : undefined}
                         >
-                          {done ? (
+                          {l.completed ? (
                             <CheckCircle size={16} weight="fill" className="text-emerald-500 flex-shrink-0 mt-0.5" />
                           ) : active ? (
                             <PlayCircle size={16} weight="fill" className="text-gold-dark flex-shrink-0 mt-0.5" />
@@ -273,9 +412,25 @@ export default function CoursePlayer() {
           </nav>
 
           <div className="p-6 border-t border-line">
-            <button className="flex items-center justify-center gap-2 w-full bg-bg-soft border-2 border-line rounded-xl py-3.5 text-xs font-bold text-ink-strong hover:border-gold transition-colors cursor-pointer">
-              <Download size={14} weight="bold" /> Download resources
+            <button
+              onClick={() => setResourcesOpen((o) => !o)}
+              disabled={!resources.length}
+              aria-expanded={resourcesOpen}
+              className="flex items-center justify-center gap-2 w-full bg-bg-soft border-2 border-line rounded-xl py-3.5 text-xs font-bold text-ink-strong hover:border-gold transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Download size={14} weight="bold" /> {resources.length ? "Download resources" : "No resources for this lesson"}
             </button>
+            {resourcesOpen && resources.length > 0 && (
+              <ul className="mt-3 flex flex-col gap-2">
+                {resources.map((r) => (
+                  <li key={r.id}>
+                    <a href={r.url} target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-gold-dark hover:text-gold">
+                      {r.title}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </aside>
       </div>

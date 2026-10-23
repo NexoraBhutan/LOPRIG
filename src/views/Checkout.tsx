@@ -8,7 +8,14 @@ import { CreditCard, Lock, ArrowRight, DeviceMobile, Bank } from "@phosphor-icon
 import { useAuth } from "@/context/AuthContext";
 import { useEnrollment } from "@/context/EnrollmentContext";
 import { useToast } from "@/context/ToastContext";
-import { getCourseById } from "@/data/courses";
+import { useCatalog } from "@/context/CatalogContext";
+import PageLoader from "@/components/PageLoader";
+import { ApiError, api, errorMessage } from "@/lib/api";
+
+interface CheckoutResponse {
+  payment: { reference: string; provider: string; status: string };
+  checkout_url: string;
+}
 
 const methods = [
   {
@@ -35,9 +42,10 @@ export default function Checkout() {
   const params = useParams<{ id: string }>();
   const courseId = params?.id ?? "";
   const router = useRouter();
-  const course = getCourseById(courseId);
+  const { getCourse, ready } = useCatalog();
+  const course = getCourse(courseId);
   const { user } = useAuth();
-  const { enroll } = useEnrollment();
+  const { refresh, enrollFree } = useEnrollment();
   const { push } = useToast();
   const [selected, setSelected] = useState("mobile");
   const [processing, setProcessing] = useState(false);
@@ -51,6 +59,7 @@ export default function Checkout() {
   }, [user, courseId, push, router]);
 
   if (!user) return null;
+  if (!ready) return <PageLoader />;
 
   if (!course) {
     return (
@@ -66,14 +75,43 @@ export default function Checkout() {
 
   const discount = course.price - course.discountPrice;
 
-  const handlePay = () => {
+  const handlePay = async () => {
     if (processing) return;
     setProcessing(true);
-    setTimeout(() => {
-      enroll(course.id);
+    try {
+      if (course.discountPrice === 0) {
+        const res = await enrollFree(course.id);
+        if (!res.ok) throw new Error(res.error);
+      } else {
+        const { payment, checkout_url } = await api<CheckoutResponse>("/payments/checkout/", {
+          method: "POST",
+          body: { course: course.id },
+        });
+        if (payment.provider !== "mock") {
+          // A real gateway takes over here and confirms back to the API by webhook.
+          window.location.assign(checkout_url);
+          return;
+        }
+        // Development gateway: confirms through the same signed-webhook path a real gateway uses.
+        const result = await api<{ status: string; failure_reason: string }>(
+          `/payments/mock/${payment.reference}/pay/`,
+          { method: "POST", body: { outcome: "success" } }
+        );
+        if (result.status !== "SUCCEEDED") throw new Error(result.failure_reason || "The payment was not completed.");
+        await refresh();
+      }
       push("Payment successful. You're enrolled!", "success");
       router.push(`/payment-success/${course.id}`);
-    }, 1600);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        await refresh();
+        push("You're already enrolled in this course.", "info");
+        router.push(`/learn/${course.id}`);
+        return;
+      }
+      push(errorMessage(err), "error");
+      setProcessing(false);
+    }
   };
 
   return (

@@ -9,6 +9,7 @@ import { useEnrollment } from "@/context/EnrollmentContext";
 import { useToast } from "@/context/ToastContext";
 import StatCard from "@/components/StatCard";
 import ProgressRing from "@/components/ProgressRing";
+import { durationToHours } from "@/lib/mappers";
 
 const fadeUp = { hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0 } };
 const stagger = { visible: { transition: { staggerChildren: 0.06 } } };
@@ -28,13 +29,17 @@ export default function Profile() {
   if (!user) return null;
 
   const completed = enrolledCourses.filter((c) => getProgress(c.id) === 100).length;
-  const totalHours = enrolledCourses.reduce((sum, c) => sum + parseFloat(c.duration), 0);
+  const totalHours = enrolledCourses.reduce((sum, c) => sum + durationToHours(c.duration), 0);
   const overallCompletion = enrolledCourses.length
     ? Math.round(enrolledCourses.reduce((sum, c) => sum + getProgress(c.id), 0) / enrolledCourses.length)
     : 0;
 
-  const save = () => {
-    updateProfile(form);
+  const save = async () => {
+    const res = await updateProfile(form);
+    if (!res.ok) {
+      push(res.error, "error");
+      return;
+    }
     setEditing(false);
     push("Profile updated", "success");
   };

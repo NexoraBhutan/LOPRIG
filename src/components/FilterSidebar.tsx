@@ -2,7 +2,7 @@
 
 import { Star } from "@phosphor-icons/react";
 import type { Course, CourseLevel, Filters } from "@/types";
-import { categories } from "@/data/courses";
+import { useCatalog } from "@/context/CatalogContext";
 
 const LEVELS: readonly CourseLevel[] = ["Beginner", "Intermediate", "All Levels"];
 const PRICES = [
@@ -22,6 +22,7 @@ export default function FilterSidebar({
   setFilters: React.Dispatch<React.SetStateAction<Filters>>;
   resultCount?: number | null;
 }) {
+  const { categories } = useCatalog();
   const toggleCategory = (id: string) => {
     setFilters((f) => ({
       ...f,

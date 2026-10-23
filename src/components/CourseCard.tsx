@@ -15,15 +15,19 @@ export default function CourseCard({ course }: { course: Course }) {
   const { push } = useToast();
   const saved = Boolean(enrollments[course.id]?.saved);
 
-  const handleSave = (e: React.MouseEvent) => {
+  const handleSave = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     if (!user) {
       push("Log in to save courses to your list.", "info");
       return;
     }
-    toggleSaved(course.id);
-    push(saved ? "Removed from saved courses" : "Saved to your list", "success");
+    try {
+      await toggleSaved(course.id);
+      push(saved ? "Removed from saved courses" : "Saved to your list", "success");
+    } catch {
+      push("Couldn't update your saved courses. Please try again.", "error");
+    }
   };
 
   return (

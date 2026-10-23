@@ -7,7 +7,8 @@ import {
   ArrowRight, Rocket, Certificate, Code, Palette,
   ChartLineUp, Globe, BookOpen, Lightbulb, CaretLeft, CaretRight, Pause, Play,
 } from "@phosphor-icons/react";
-import { categories, testimonials, learningPaths, getCourseById } from "@/data/courses";
+import { testimonials, learningPaths } from "@/data/courses";
+import { useCatalog } from "@/context/CatalogContext";
 import { gsap, useGSAP } from "@/utils/gsap";
 
 const ICONS: Record<string, typeof Code> = {
@@ -41,6 +42,7 @@ function usePrefersReducedMotion(): boolean {
 }
 
 export default function Home() {
+  const { categories, getCourse } = useCatalog();
   const [openFaq, setOpenFaq] = useState(0);
   const [activeAccordion, setActiveAccordion] = useState(0);
   const [carouselIdx, setCarouselIdx] = useState(0);
@@ -107,7 +109,7 @@ export default function Home() {
           <h1 className="aw-hero-h1 font-display text-white w-full">
             Build
             <span className="aw-inline-pill mx-3" style={{ backgroundImage: "url(https://picsum.photos/seed/craft/400/200)" }} aria-hidden="true" />
-            real skills for Bhutan&apos;s
+            real skills for Bhutan&apos;s{" "}
             <br className="hidden md:block" />
             bold
             <span className="aw-inline-pill mx-3" style={{ backgroundImage: "url(https://picsum.photos/seed/future/400/200)" }} aria-hidden="true" />
@@ -344,7 +346,7 @@ export default function Home() {
                 <h3 className="font-display text-lg font-semibold">{path.title}</h3>
                 <ul className="flex flex-col gap-3">
                   {path.courseIds.map((id, i) => {
-                    const c = getCourseById(id);
+                    const c = getCourse(id);
                     return (
                       <li key={id} className="flex items-center gap-3.5 text-[0.92rem] text-ink hover:translate-x-1.5 transition-transform">
                         <span className="w-7 h-7 rounded-full bg-bg-sunken flex items-center justify-center text-xs font-bold text-ink-strong flex-shrink-0">{i + 1}</span>

@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { Outfit, Space_Grotesk } from "next/font/google";
 import { AuthProvider } from "@/context/AuthContext";
+import { CatalogProvider } from "@/context/CatalogContext";
 import { EnrollmentProvider } from "@/context/EnrollmentContext";
 import { ToastProvider } from "@/context/ToastContext";
 import Navbar from "@/components/Navbar";
@@ -42,18 +43,20 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     // globally, and without this Next 16 would let it animate every navigation.
     <html lang="en" className={`${outfit.variable} ${spaceGrotesk.variable}`} data-scroll-behavior="smooth">
       <body>
-        <AuthProvider>
-          <EnrollmentProvider>
-            <ToastProvider>
-              <ScrollToTop />
-              <div className="app-shell">
-                <Navbar />
-                <main>{children}</main>
-                <Footer />
-              </div>
-            </ToastProvider>
-          </EnrollmentProvider>
-        </AuthProvider>
+        <CatalogProvider>
+          <AuthProvider>
+            <EnrollmentProvider>
+              <ToastProvider>
+                <ScrollToTop />
+                <div className="app-shell">
+                  <Navbar />
+                  <main>{children}</main>
+                  <Footer />
+                </div>
+              </ToastProvider>
+            </EnrollmentProvider>
+          </AuthProvider>
+        </CatalogProvider>
       </body>
     </html>
   );

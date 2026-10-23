@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import CourseCard from "@/components/CourseCard";
 import FilterSidebar, { applyFilters, DEFAULT_FILTERS } from "@/components/FilterSidebar";
 import EmptyState from "@/components/EmptyState";
-import { courses } from "@/data/courses";
+import { useCatalog } from "@/context/CatalogContext";
 import type { Filters } from "@/types";
 
 const fadeUp = { hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0 } };
@@ -17,13 +17,14 @@ export default function Search() {
   const raw = params?.get("q") || "";
   const q = raw.trim().toLowerCase();
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
+  const { courses, ready } = useCatalog();
 
   const matched = useMemo(() => {
     if (!q) return [];
     return courses.filter((c) =>
       [c.title, c.description, c.category, c.instructor.name].join(" ").toLowerCase().includes(q)
     );
-  }, [q]);
+  }, [q, courses]);
 
   const results = useMemo(() => applyFilters(matched, filters, "popular"), [matched, filters]);
 
@@ -62,7 +63,7 @@ export default function Search() {
                   </motion.div>
                 ))}
               </motion.div>
-            ) : (
+            ) : ready && (
               <EmptyState
                 pose="sad"
                 title="No matching courses"

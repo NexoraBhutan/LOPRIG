@@ -34,13 +34,13 @@ export default function Signup() {
   const onChange = (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
 
-  const onSubmit = (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     if (form.password !== form.confirm) return setError("Passwords do not match.");
-    if (form.password.length < 6) return setError("Password must be at least 6 characters.");
+    if (form.password.length < 8) return setError("Password must be at least 8 characters.");
     if (!agree) return setError("Please agree to the Terms and Conditions.");
-    const res = signup(form);
+    const res = await signup({ name: form.name, email: form.email, password: form.password });
     if (!res.ok) return setError(res.error);
     push("Account created. Welcome!", "success");
     router.push("/dashboard");
@@ -128,7 +128,7 @@ export default function Signup() {
                     name="password"
                     value={form.password}
                     onChange={onChange}
-                    placeholder="At least 6 characters"
+                    placeholder="At least 8 characters"
                     required
                     minLength={6}
                     className="w-full pl-11 pr-12 py-3.5 bg-white border-2 border-line rounded-xl text-sm text-ink-strong placeholder:text-ink-muted focus:border-gold focus:outline-none transition-colors"

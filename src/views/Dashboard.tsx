@@ -11,7 +11,8 @@ import CourseCard from "@/components/CourseCard";
 import StatCard from "@/components/StatCard";
 import ProgressRing from "@/components/ProgressRing";
 import EmptyState from "@/components/EmptyState";
-import { courses } from "@/data/courses";
+import { useCatalog } from "@/context/CatalogContext";
+import { durationToHours } from "@/lib/mappers";
 
 const fadeUp = { hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0 } };
 const stagger = { visible: { transition: { staggerChildren: 0.06 } } };
@@ -19,6 +20,7 @@ const stagger = { visible: { transition: { staggerChildren: 0.06 } } };
 export default function Dashboard() {
   const { user } = useAuth();
   const { enrolledCourses, getProgress, enrollments, streak, xp } = useEnrollment();
+  const { courses } = useCatalog();
 
   const inProgress = enrolledCourses
     .map((c) => ({ course: c, progress: getProgress(c.id) }))
@@ -26,7 +28,7 @@ export default function Dashboard() {
 
   const continueCourse = inProgress.find((c) => c.progress < 100) || inProgress[0];
   const completedCount = inProgress.filter((c) => c.progress === 100).length;
-  const totalHours = enrolledCourses.reduce((sum, c) => sum + parseFloat(c.duration), 0);
+  const totalHours = enrolledCourses.reduce((sum, c) => sum + durationToHours(c.duration), 0);
   const overallCompletion = enrolledCourses.length
     ? Math.round(inProgress.reduce((sum, c) => sum + c.progress, 0) / inProgress.length)
     : 0;

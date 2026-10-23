@@ -12,8 +12,10 @@ import CourseThumb from "@/components/CourseThumb";
 import Rating from "@/components/Rating";
 import CourseCard from "@/components/CourseCard";
 import EmptyState from "@/components/EmptyState";
-import { getCourseById, courses } from "@/data/courses";
+import PageLoader from "@/components/PageLoader";
+import { useCatalog } from "@/context/CatalogContext";
 import { useEnrollment } from "@/context/EnrollmentContext";
+import { useCourseDetail } from "@/hooks/useCourseDetail";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
 import { gsap, useGSAP } from "@/utils/gsap";
@@ -32,12 +34,14 @@ const stagger = { visible: { transition: { staggerChildren: 0.08 } } };
 export default function CourseDetails() {
   const params = useParams<{ id: string }>();
   const id = params?.id ?? "";
-  const course = getCourseById(id);
+  const { course, loading } = useCourseDetail(id);
+  const { courses } = useCatalog();
   const router = useRouter();
   const { user } = useAuth();
-  const { isEnrolled, toggleSaved, enrollments } = useEnrollment();
+  const { isEnrolled, toggleSaved, enrollFree, enrollments } = useEnrollment();
   const { push } = useToast();
-  const [openSections, setOpenSections] = useState<Record<string, boolean>>({ s1: true });
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
+  const [enrolling, setEnrolling] = useState(false);
   const rootRef = useRef<HTMLElement>(null);
 
   const related = useMemo(() => {
@@ -47,7 +51,7 @@ export default function CourseDetails() {
       .filter((c) => c.category !== course.category && c.id !== course.id)
       .sort((a, b) => b.rating - a.rating);
     return [...same, ...rest].slice(0, 4);
-  }, [course]);
+  }, [course, courses]);
 
   useGSAP(() => {
     const ctx = gsap.context(() => {
@@ -61,7 +65,9 @@ export default function CourseDetails() {
       });
     }, rootRef);
     return () => ctx.revert();
-  }, { scope: rootRef });
+  }, { scope: rootRef, dependencies: [course?.id] }); // re-run once the course has loaded
+
+  if (loading) return <PageLoader />;
 
   if (!course) {
     return (
@@ -81,7 +87,7 @@ export default function CourseDetails() {
   const totalLessons = course.curriculum.reduce((s, sec) => s + sec.lessons.length, 0);
   const oddOutcomes = course.whatYouLearn.length % 2 === 1;
 
-  const handleEnroll = () => {
+  const handleEnroll = async () => {
     if (!user) {
       push("Please log in to enroll in this course.", "info");
       router.push(`/login?from=${encodeURIComponent(`/courses/${course.id}`)}`);
@@ -91,16 +97,34 @@ export default function CourseDetails() {
       router.push(`/learn/${course.id}`);
       return;
     }
-    router.push(`/checkout/${course.id}`);
+    if (course.discountPrice > 0) {
+      router.push(`/checkout/${course.id}`);
+      return;
+    }
+    // Free course: enroll straight away, no checkout.
+    if (enrolling) return;
+    setEnrolling(true);
+    const res = await enrollFree(course.id);
+    setEnrolling(false);
+    if (!res.ok) {
+      push(res.error, "error");
+      return;
+    }
+    push("You're enrolled!", "success");
+    router.push(`/learn/${course.id}`);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!user) {
       push("Log in to save courses to your list.", "info");
       return;
     }
-    toggleSaved(course.id);
-    push(saved ? "Removed from saved courses" : "Saved to your list", "success");
+    try {
+      await toggleSaved(course.id);
+      push(saved ? "Removed from saved courses" : "Saved to your list", "success");
+    } catch {
+      push("Couldn't update your saved courses. Please try again.", "error");
+    }
   };
 
   return (
@@ -138,7 +162,7 @@ export default function CourseDetails() {
             <p className="text-white/70 text-lg leading-relaxed max-w-[680px] mt-6">{course.description}</p>
 
             <div className="flex flex-wrap items-center gap-x-6 gap-y-3 text-sm text-white/75 mt-8">
-              <Rating value={course.rating} count={course.students} />
+              <Rating value={course.rating} count={course.students} light />
               <span className="flex items-center gap-1.5"><Users size={15} /> {course.students.toLocaleString()} students</span>
               <span className="flex items-center gap-1.5"><Clock size={15} /> {course.duration}</span>
               <span className="flex items-center gap-1.5"><ChartBar size={15} /> {course.level}</span>
@@ -186,21 +210,23 @@ export default function CourseDetails() {
               <h2 className="font-display text-2xl md:text-4xl tracking-tighter font-semibold text-ink-strong mb-3">Course curriculum</h2>
               <p className="text-sm text-ink-muted mb-8">{course.curriculum.length} sections &middot; {totalLessons} lessons &middot; {course.duration} total</p>
               <div className="flex flex-col gap-3">
-                {course.curriculum.map((section) => (
+                {course.curriculum.map((section, index) => {
+                  const open = openSections[section.id] ?? index === 0;
+                  return (
                   <div key={section.id} className="border-2 border-line rounded-2xl bg-white overflow-hidden hover:border-gold transition-colors duration-300">
                     <button
                       className="w-full flex items-center justify-between gap-4 px-6 py-4 bg-transparent border-none cursor-pointer text-left font-semibold text-ink-strong hover:bg-gold-soft/50 transition-colors"
-                      onClick={() => setOpenSections((s) => ({ ...s, [section.id]: !s[section.id] }))}
-                      aria-expanded={!!openSections[section.id]}
+                      onClick={() => setOpenSections((s) => ({ ...s, [section.id]: !open }))}
+                      aria-expanded={open}
                     >
                       <span>{section.title}</span>
                       <span className="flex items-center gap-3 text-xs font-normal text-ink-muted">
                         {section.lessons.length} lessons
-                        <CaretDown size={14} className={`transition-transform duration-200 ${openSections[section.id] ? "rotate-180" : ""}`} />
+                        <CaretDown size={14} className={`transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
                       </span>
                     </button>
                     <AnimatePresence>
-                      {openSections[section.id] && (
+                      {open && (
                         <motion.ul
                           initial={{ height: 0, opacity: 0 }}
                           animate={{ height: "auto", opacity: 1 }}
@@ -218,7 +244,8 @@ export default function CourseDetails() {
                       )}
                     </AnimatePresence>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </motion.div>
 

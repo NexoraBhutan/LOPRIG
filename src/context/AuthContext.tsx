@@ -1,8 +1,17 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
-import type { ActionResult, StoredUser, User } from "@/types";
-import { safeParseJSON, safeRemoveItem, safeSetItem } from "@/utils/storage";
+import type { ActionResult, User } from "@/types";
+import {
+  api,
+  clearTokens,
+  errorMessage,
+  getRefreshToken,
+  refreshSession,
+  setAuthLostHandler,
+  setTokens,
+} from "@/lib/api";
+import { type ApiUser, toUser } from "@/lib/mappers";
 
 interface SignupInput {
   name: string;
@@ -20,109 +29,106 @@ interface ProfileUpdates {
   bio?: string;
 }
 
+/** Like ActionResult, but tells the caller who signed in so it can route teachers to /teach. */
+export type LoginResult = { ok: true; role: User["role"] } | { ok: false; error: string };
+
 interface AuthContextValue {
   user: User | null;
   ready: boolean;
-  signup: (input: SignupInput) => ActionResult;
-  login: (input: LoginInput) => ActionResult;
-  logout: () => void;
-  updateProfile: (updates: ProfileUpdates) => void;
+  signup: (input: SignupInput) => Promise<ActionResult>;
+  login: (input: LoginInput) => Promise<LoginResult>;
+  logout: () => Promise<void>;
+  updateProfile: (updates: ProfileUpdates) => Promise<ActionResult>;
+}
+
+interface AuthResponse {
+  access: string;
+  refresh: string;
+  user: ApiUser;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
-const STORAGE_KEY = "loprig_user";
-const USERS_KEY = "loprig_users";
-
-function readUsers(): StoredUser[] {
-  return safeParseJSON<StoredUser[]>(USERS_KEY, []);
-}
-
-function writeUsers(users: StoredUser[]): void {
-  safeSetItem(USERS_KEY, JSON.stringify(users));
-}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [ready, setReady] = useState(false);
 
+  // Restore the session from the stored refresh token.
   useEffect(() => {
-    const saved = safeParseJSON<User | null>(STORAGE_KEY, null);
-    if (saved) setUser(saved);
-    setReady(true);
+    setAuthLostHandler(() => setUser(null));
+    let cancelled = false;
+    (async () => {
+      if (getRefreshToken() && (await refreshSession())) {
+        try {
+          const me = await api<ApiUser>("/users/me/");
+          if (!cancelled) setUser(toUser(me));
+        } catch {
+          // Signed out or server unreachable: continue as a guest.
+        }
+      }
+      if (!cancelled) setReady(true);
+    })();
+    return () => {
+      cancelled = true;
+      setAuthLostHandler(null);
+    };
   }, []);
 
-  const persist = useCallback((u: User | null) => {
-    setUser(u);
-    if (u) safeSetItem(STORAGE_KEY, JSON.stringify(u));
-    else safeRemoveItem(STORAGE_KEY);
+  const startSession = useCallback((res: AuthResponse) => {
+    setTokens(res.access, res.refresh);
+    setUser(toUser(res.user));
   }, []);
 
   const signup = useCallback(
-    ({ name, email, password }: SignupInput): ActionResult => {
-      const users = readUsers();
-      if (users.some((u) => u.email.toLowerCase() === email.toLowerCase())) {
-        return { ok: false, error: "An account with this email already exists." };
+    async (input: SignupInput): Promise<ActionResult> => {
+      try {
+        startSession(await api<AuthResponse>("/auth/register/", { method: "POST", body: input }));
+        return { ok: true };
+      } catch (err) {
+        return { ok: false, error: errorMessage(err) };
       }
-      const newUser: StoredUser = {
-        id: `u_${Date.now()}`,
-        name,
-        email,
-        password,
-        bio: "Lifelong learner exploring new skills on Lop-rig.",
-        avatarColor: pickColor(name),
-        joined: new Date().toISOString(),
-      };
-      writeUsers([...users, newUser]);
-      persist(publicUser(newUser));
-      return { ok: true };
     },
-    [persist]
+    [startSession]
   );
 
   const login = useCallback(
-    ({ email, password }: LoginInput): ActionResult => {
-      const users = readUsers();
-      const found = users.find(
-        (u) => u.email.toLowerCase() === email.toLowerCase() && u.password === password
-      );
-      if (!found) return { ok: false, error: "Invalid email or password." };
-      persist(publicUser(found));
-      return { ok: true };
-    },
-    [persist]
-  );
-
-  const logout = useCallback(() => persist(null), [persist]);
-
-  const updateProfile = useCallback(
-    (updates: ProfileUpdates) => {
-      const users = readUsers();
-      const idx = users.findIndex((u) => u.id === user?.id);
-      if (idx > -1) {
-        users[idx] = { ...users[idx], ...updates };
-        writeUsers(users);
-        persist(publicUser(users[idx]));
+    async (input: LoginInput): Promise<LoginResult> => {
+      try {
+        const res = await api<AuthResponse>("/auth/login/", { method: "POST", body: input });
+        startSession(res);
+        return { ok: true, role: toUser(res.user).role };
+      } catch (err) {
+        return { ok: false, error: errorMessage(err, "Invalid email or password.") };
       }
     },
-    [user?.id, persist]
+    [startSession]
   );
+
+  const logout = useCallback(async () => {
+    const refresh = getRefreshToken();
+    setUser(null);
+    if (refresh) {
+      // Revoke the refresh token server-side; sign out locally even if this fails.
+      await api("/auth/logout/", { method: "POST", body: { refresh } }).catch(() => undefined);
+    }
+    clearTokens();
+  }, []);
+
+  const updateProfile = useCallback(async (updates: ProfileUpdates): Promise<ActionResult> => {
+    try {
+      const me = await api<ApiUser>("/users/me/", { method: "PATCH", body: updates });
+      setUser(toUser(me));
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, error: errorMessage(err) };
+    }
+  }, []);
 
   return (
     <AuthContext.Provider value={{ user, ready, signup, login, logout, updateProfile }}>
       {children}
     </AuthContext.Provider>
   );
-}
-
-function publicUser(u: StoredUser): User {
-  const { password: _password, ...rest } = u;
-  return rest;
-}
-
-function pickColor(seed = ""): string {
-  const palette = ["#ffb606", "#1a1a1a", "#c88e00", "#3a3a3a", "#ff6347"];
-  const idx = seed.length ? seed.charCodeAt(0) % palette.length : 0;
-  return palette[idx];
 }
 
 export function useAuth(): AuthContextValue {
