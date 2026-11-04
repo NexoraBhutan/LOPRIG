@@ -19,8 +19,15 @@ def review_problems(course: Course) -> list[str]:
         problems.append("Write a description of at least 30 characters.")
     if not course.what_you_learn:
         problems.append("Add at least one learning outcome.")
-    if not Lesson.objects.filter(module__course=course).exists():
+    lessons = Lesson.objects.filter(module__course=course)
+    if not lessons.exists():
         problems.append("Add at least one lesson.")
+    busy = lessons.filter(video_status__in=[Lesson.VideoStatus.UPLOADING, Lesson.VideoStatus.PROCESSING]).count()
+    if busy:
+        problems.append(f"Wait for {busy} video{'s' if busy > 1 else ''} to finish uploading and processing.")
+    failed = lessons.filter(video_status=Lesson.VideoStatus.FAILED).count()
+    if failed:
+        problems.append(f"Upload {failed} failed video{'s' if failed > 1 else ''} again.")
     return problems
 
 

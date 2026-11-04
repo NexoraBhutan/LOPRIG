@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import type { ActionResult, User } from "@/types";
 import {
+  ApiError,
   api,
   clearTokens,
   errorMessage,
@@ -32,7 +33,7 @@ interface ProfileUpdates {
 /** Like ActionResult, but tells the caller who signed in so it can route teachers to /teach. */
 export type LoginResult =
   | { ok: true; role: User["role"]; mustChangePassword: boolean }
-  | { ok: false; error: string };
+  | { ok: false; error: string; code?: string };
 
 interface AuthContextValue {
   user: User | null;
@@ -103,7 +104,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const signedIn = toUser(res.user);
         return { ok: true, role: signedIn.role, mustChangePassword: signedIn.mustChangePassword };
       } catch (err) {
-        return { ok: false, error: errorMessage(err, "Invalid email or password.") };
+        // e.g. "site_admin_account": the account exists but signs in on Django Admin instead.
+        const code = err instanceof ApiError ? (err.data as { code?: string } | null)?.code : undefined;
+        return { ok: false, error: errorMessage(err, "Invalid email or password."), code };
       }
     },
     [startSession]

@@ -5,7 +5,7 @@ from apps.courses.models import Course, Lesson
 from apps.notifications.models import Notification
 from apps.users.models import User
 
-from .factories import lessons_of, make_category, make_course, make_teacher, make_user
+from .factories import lessons_of, make_admin, make_category, make_course, make_teacher, make_user
 
 NEW_COURSE = {
     "title": "Intro to Dzongkha Typing",
@@ -52,7 +52,7 @@ class CourseAuthoringTests(APITestCase):
     def setUp(self):
         make_category()
         self.teacher = make_teacher()
-        self.admin = User.objects.create_superuser(email="admin@example.com", password="Adm1n-pass-123", name="Admin")
+        self.admin = make_admin(email="admin@example.com")
         self.client.force_authenticate(self.teacher)
 
     def create_course(self):

@@ -76,18 +76,21 @@ export function refreshSession(): Promise<boolean> {
 
 interface RequestOptions {
   method?: "GET" | "POST" | "PATCH" | "DELETE";
+  /** JSON-serialisable data, or FormData for file uploads (the browser sets its content type). */
   body?: unknown;
 }
 
-export async function api<T = unknown>(path: string, { method = "GET", body }: RequestOptions = {}): Promise<T> {
+/** Fetch with the session's token, refreshing it once if it has expired. */
+async function authorizedFetch(path: string, method: string, body: unknown): Promise<Response> {
   const send = () => {
     const headers: Record<string, string> = { Accept: "application/json" };
-    if (body !== undefined) headers["Content-Type"] = "application/json";
+    const isForm = body instanceof FormData;
+    if (body !== undefined && !isForm) headers["Content-Type"] = "application/json";
     if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
     return fetch(path.startsWith("http") ? path : `${API_URL}${path}`, {
       method,
       headers,
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
     });
   };
 
@@ -104,10 +107,24 @@ export async function api<T = unknown>(path: string, { method = "GET", body }: R
   } catch {
     throw new ApiError(0, null, "Can't reach the Lop-rig server. Check your connection and try again.");
   }
+  return res;
+}
 
+export async function api<T = unknown>(path: string, { method = "GET", body }: RequestOptions = {}): Promise<T> {
+  const res = await authorizedFetch(path, method, body);
   const data = res.status === 204 ? undefined : await res.json().catch(() => undefined);
   if (!res.ok) throw new ApiError(res.status, data, messageFrom(data) ?? `Request failed (${res.status}).`);
   return data as T;
+}
+
+/** GET a private file (e.g. a payment screenshot) that needs the login token, as a Blob. */
+export async function apiBlob(path: string): Promise<Blob> {
+  const res = await authorizedFetch(path, "GET", undefined);
+  if (!res.ok) {
+    const data = await res.json().catch(() => undefined);
+    throw new ApiError(res.status, data, messageFrom(data) ?? `Request failed (${res.status}).`);
+  }
+  return res.blob();
 }
 
 interface Page<T> {

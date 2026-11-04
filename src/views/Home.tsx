@@ -92,10 +92,10 @@ export default function Home() {
       <section className="relative min-h-[100dvh] flex items-center justify-center px-6 lg:px-16 pt-32 pb-24 overflow-hidden bg-ink-strong">
         <div className="absolute inset-0 overflow-hidden">
           <img
-            src="https://picsum.photos/seed/bhutanlearn/1920/1080"
+            src="/hero-laptop-learning.jpg"
             alt=""
             aria-hidden="true"
-            className="w-full h-full object-cover grayscale contrast-125 opacity-90"
+            className="w-full h-full object-cover object-[60%_center] grayscale contrast-125 brightness-[0.4] opacity-90"
           />
           <div className="absolute inset-0 aw-dark-wash" />
         </div>

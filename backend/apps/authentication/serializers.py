@@ -1,6 +1,7 @@
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
+from rest_framework_simplejwt.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from apps.users.models import User
@@ -43,6 +44,12 @@ class LoginSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
         attrs[self.username_field] = attrs[self.username_field].strip().lower()
         data = super().validate(attrs)
+        if self.user.is_site_admin:
+            # Site administrators have their own sign-in (Django Admin) and no website account.
+            raise AuthenticationFailed(
+                "This is a site administration account. Sign in at the site administration page instead.",
+                code="site_admin_account",
+            )
         data["user"] = UserSerializer(self.user).data
         return data
 

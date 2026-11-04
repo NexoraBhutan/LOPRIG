@@ -10,6 +10,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.courses import services as course_services
+from apps.courses import video
 from apps.courses.models import Course, CourseModule, Lesson, LessonResource
 from apps.enrollments.models import Enrollment
 from apps.payments.models import Payment
@@ -186,6 +187,74 @@ class LessonDetailView(generics.UpdateAPIView, generics.DestroyAPIView):
 
     def get_queryset(self):
         return Lesson.objects.filter(module__course__teacher=self.request.user).prefetch_related("resources")
+
+
+class VideoUnavailable(APIException):
+    status_code = 503
+    default_code = "video_unavailable"
+
+
+def _my_lesson(user, pk) -> Lesson:
+    return get_object_or_404(Lesson.objects.select_related("module__course"), pk=pk, module__course__teacher=user)
+
+
+def _lesson_response(lesson: Lesson, **extra) -> Response:
+    lesson = Lesson.objects.prefetch_related("resources").get(pk=lesson.pk)
+    return Response({**TeacherLessonSerializer(lesson).data, **extra})
+
+
+class LessonVideoUploadView(APIView):
+    """Start an upload: create the video on Bunny and return a signed, time-limited upload ticket.
+
+    The browser then uploads the file straight to Bunny (TUS, resumable). Uploading again replaces
+    the previous video.
+    """
+
+    permission_classes = [IsTeacher]
+
+    @extend_schema(request=None, responses=inline_serializer("VideoUploadTicket", {
+        "lesson": TeacherLessonSerializer(), "upload": serializers.DictField(),
+    }))
+    def post(self, request, pk):
+        lesson = _my_lesson(request.user, pk)
+        if not video.is_configured():
+            raise VideoUnavailable("Video uploads aren't set up yet. Paste a YouTube or Vimeo link for now.")
+        try:
+            video_id = video.create_video(f"{lesson.course.title} · {lesson.title}")
+        except video.VideoServiceError as exc:
+            raise VideoUnavailable(str(exc)) from exc
+        old = lesson.video_id
+        lesson.video_id, lesson.video_status = video_id, Lesson.VideoStatus.UPLOADING
+        lesson.video_url, lesson.kind = "", Lesson.Kind.VIDEO
+        lesson.save(update_fields=["video_id", "video_status", "video_url", "kind"])
+        video.delete_video(old)
+        lesson_data = _lesson_response(lesson).data
+        return Response({"lesson": lesson_data, "upload": video.upload_ticket(video_id)})
+
+
+class LessonVideoView(APIView):
+    """POST: re-check the upload's status with Bunny (the page polls this). DELETE: remove the upload."""
+
+    permission_classes = [IsTeacher]
+
+    @extend_schema(request=None, responses=TeacherLessonSerializer)
+    def post(self, request, pk):
+        lesson = _my_lesson(request.user, pk)
+        if lesson.video_id:
+            try:
+                lesson.refresh_video_status()
+            except video.VideoServiceError as exc:
+                raise VideoUnavailable(str(exc)) from exc
+        return _lesson_response(lesson)
+
+    @extend_schema(responses=TeacherLessonSerializer)
+    def delete(self, request, pk):
+        lesson = _my_lesson(request.user, pk)
+        old = lesson.video_id
+        lesson.video_id, lesson.video_status = "", Lesson.VideoStatus.NONE
+        lesson.save(update_fields=["video_id", "video_status"])
+        video.delete_video(old)
+        return _lesson_response(lesson)
 
 
 class ResourceCreateView(APIView):

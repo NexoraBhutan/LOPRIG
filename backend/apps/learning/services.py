@@ -9,7 +9,7 @@ from apps.certificates.models import Certificate
 from apps.certificates.services import issue_certificate
 from apps.courses.models import Course, Lesson
 from apps.enrollments.models import Enrollment
-from apps.enrollments.services import get_access_enrollment
+from apps.enrollments.services import enroll_free, get_access_enrollment
 from apps.notifications.models import Notification
 from apps.notifications.services import notify
 
@@ -36,16 +36,26 @@ class CourseProgress:
         }
 
 
+def is_open_course(course: Course) -> bool:
+    """Free, admin-approved courses: anyone can watch every lesson, no enrollment or login needed."""
+    return course.status == Course.Status.PUBLISHED and course.is_free
+
+
 def require_access(student, course: Course) -> Enrollment:
     enrollment = get_access_enrollment(student, course)
+    if enrollment is None and is_open_course(course):
+        # Students on a free course are enrolled quietly, so progress and the certificate still work.
+        enrollment, _ = enroll_free(student, course)
     if enrollment is None:
         raise PermissionDenied("Enroll in this course to access its lessons.")
     return enrollment
 
 
 def check_lesson_access(user, lesson: Lesson) -> Enrollment | None:
-    """Preview lessons of published courses are open to everyone; everything else needs an enrollment."""
+    """Free published courses and preview lessons are open to everyone; the rest needs an enrollment."""
     course = lesson.module.course
+    if is_open_course(course):
+        return require_access(user, course) if user.is_authenticated and user.is_student else None
     if lesson.is_preview and course.status == Course.Status.PUBLISHED:
         if user.is_authenticated and user.is_student:
             return get_access_enrollment(user, course)

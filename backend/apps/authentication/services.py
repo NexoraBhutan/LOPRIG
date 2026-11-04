@@ -82,12 +82,21 @@ def _hash_code(user_id: int, code: str) -> str:
     return hmac.new(settings.SECRET_KEY.encode(), f"{user_id}:{code}".encode(), hashlib.sha256).hexdigest()
 
 
+def _website_user(email: str) -> User | None:
+    """Active website account for this email. Site administrators reset through Django instead."""
+    return (
+        User.objects.filter(email__iexact=email.strip(), is_active=True, is_staff=False, is_superuser=False)
+        .exclude(role=User.Role.SITE_ADMIN)
+        .first()
+    )
+
+
 def send_password_reset(email: str) -> None:
     """Email a 6-digit code if the account exists. Silent otherwise, so emails can't be enumerated.
 
     Requesting a new code cancels any earlier one.
     """
-    user = User.objects.filter(email__iexact=email.strip(), is_active=True).first()
+    user = _website_user(email)
     if user is None:
         return
     code = f"{secrets.randbelow(1_000_000):06d}"
@@ -114,7 +123,7 @@ def send_password_reset(email: str) -> None:
 
 def reset_password(email: str, code: str, new_password: str) -> None:
     """Check the emailed code and set the new password. Signs the user out on every device."""
-    user = User.objects.filter(email__iexact=email.strip(), is_active=True).first()
+    user = _website_user(email)
     entry = (
         PasswordResetCode.objects.filter(user=user, used_at__isnull=True, expires_at__gt=timezone.now()).first()
         if user else None

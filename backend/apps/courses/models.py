@@ -2,8 +2,10 @@ from decimal import Decimal
 
 from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
-from django.db import models
+from django.db import models, transaction
 from django.db.models import Count, DecimalField, Q, Sum
+from django.db.models.signals import post_delete
+from django.dispatch import receiver
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 
@@ -110,8 +112,13 @@ class Course(models.Model):
         return self.discount_price if self.discount_price is not None else self.price
 
     @property
+    def student_price(self) -> Decimal:
+        """What a student pays today: nothing while payments are switched off."""
+        return self.current_price if settings.PAYMENTS_ENABLED else Decimal("0")
+
+    @property
     def is_free(self) -> bool:
-        return self.current_price == 0
+        return self.student_price == 0
 
     def publish(self):
         self.status = self.Status.PUBLISHED
@@ -139,6 +146,13 @@ class Lesson(models.Model):
         TEXT = "TEXT", "Study material"
         H5P = "H5P", "Interactive (H5P)"
 
+    class VideoStatus(models.TextChoices):
+        NONE = "", "No upload"
+        UPLOADING = "UPLOADING", "Uploading"
+        PROCESSING = "PROCESSING", "Processing"
+        READY = "READY", "Ready"
+        FAILED = "FAILED", "Failed"
+
     module = models.ForeignKey(CourseModule, on_delete=models.CASCADE, related_name="lessons")
     title = models.CharField(max_length=200)
     order = models.PositiveSmallIntegerField(default=0)
@@ -147,7 +161,10 @@ class Lesson(models.Model):
     is_preview = models.BooleanField(default=False, help_text="Visible to everyone, enrolled or not.")
 
     # Content. Videos live in object storage / a streaming service; only the reference is stored here.
+    # Either an uploaded Bunny Stream video (video_id) or a pasted link (video_url, e.g. YouTube).
     video_url = models.URLField(blank=True)
+    video_id = models.CharField(max_length=64, blank=True, db_index=True, help_text="Bunny Stream video ID.")
+    video_status = models.CharField(max_length=10, choices=VideoStatus.choices, blank=True, default="")
     body = models.TextField(blank=True, help_text="Study material for TEXT lessons.")
     h5p_embed_url = models.URLField(blank=True)
 
@@ -161,6 +178,31 @@ class Lesson(models.Model):
     @property
     def course(self):
         return self.module.course
+
+    @property
+    def has_video(self) -> bool:
+        return bool(self.video_url or self.video_id)
+
+    def refresh_video_status(self) -> None:
+        """Ask Bunny how the upload is doing; fills in the duration once it's known."""
+        from . import video
+
+        if not self.video_id:
+            return
+        status, length = video.fetch_status(self.video_id)
+        self.video_status = status
+        if length:
+            self.duration_seconds = length
+        self.save(update_fields=["video_status", "duration_seconds"])
+
+
+@receiver(post_delete, sender=Lesson)
+def _delete_uploaded_video(sender, instance, **kwargs):
+    """Deleting a lesson (or its module/course) removes its video from Bunny too, so no orphan costs."""
+    if instance.video_id:
+        from . import video
+
+        transaction.on_commit(lambda: video.delete_video(instance.video_id))
 
 
 class LessonResource(models.Model):

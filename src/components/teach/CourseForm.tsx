@@ -7,6 +7,7 @@ import { useToast } from "@/context/ToastContext";
 import { api, errorMessage } from "@/lib/api";
 import { LEVELS, fieldErrors, formatMoney, inputClass, type CourseInput, type TeachCourse } from "@/lib/teach";
 import Field from "@/components/teach/Field";
+import { useSiteConfig } from "@/lib/siteConfig";
 
 const SWATCHES: [string, string][] = [
   ["#ffb606", "#c88e00"],
@@ -48,6 +49,7 @@ export default function CourseForm({
   const set = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     setForm((f) => ({ ...f, [key]: e.target.value }));
 
+  const config = useSiteConfig();
   const price = Number(form.price) || 0;
   const sale = form.discount_price === "" ? null : Number(form.discount_price);
   const categoryTitle = categories.find((c) => c.id === form.category)?.title ?? "Category";
@@ -127,8 +129,19 @@ export default function CourseForm({
 
         <section className="bg-white border-2 border-line rounded-2xl p-6 md:p-8 flex flex-col gap-5">
           <h2 className="font-display text-xl font-semibold text-ink-strong">Pricing</h2>
+          {config && !config.payments_enabled && (
+            <p className="rounded-xl bg-gold-soft/60 px-4 py-3 text-sm text-ink">
+              <strong className="text-ink-strong">Payments are switched off for now.</strong> Students enroll in every
+              course for free. The price you set here is saved and will apply once payments open.
+            </p>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            <Field id="price" label="Price (Nu.)" error={err("price")} hint="Use 0 for a free course.">
+            <Field
+              id="price"
+              label="Price (Nu.)"
+              error={err("price")}
+              hint="0 = free: once approved, anyone can watch every lesson without enrolling. Paid courses unlock after the student's QR payment is verified."
+            >
               <input id="price" type="number" min={0} step={1} inputMode="numeric" value={form.price} onChange={set("price")} className={inputClass} required {...aria("price")} />
             </Field>
             <Field id="discount_price" label="Sale price (Nu.)" error={err("discount_price")} hint="Optional. What students pay during a sale.">

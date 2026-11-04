@@ -1,13 +1,14 @@
 import re
 
 from django.core import mail
+from django.test import override_settings
 from rest_framework.test import APITestCase
 
 from apps.courses.models import Course
 from apps.notifications.models import Notification
 from apps.users.models import User
 
-from .factories import PASSWORD, lessons_of, make_course, make_teacher, make_user
+from .factories import PASSWORD, lessons_of, make_admin, make_course, make_teacher, make_user
 
 BASE = "/api/v1/manage"
 
@@ -18,7 +19,7 @@ def emailed_password(index=-1):
 
 class AdminPortalTests(APITestCase):
     def setUp(self):
-        self.admin = User.objects.create_superuser(email="boss@example.com", password="Adm1n-pass-123", name="Boss")
+        self.admin = make_admin()
         self.teacher = make_teacher()
         self.student = make_user(name="Karma Dema")
         self.course = make_course("python-101", teacher=self.teacher, price="0", lessons=2)
@@ -81,7 +82,11 @@ class AdminPortalTests(APITestCase):
         promoted = self.client.patch(f"{BASE}/users/{created.id}/", {"role": "ADMIN"})
         self.assertEqual(promoted.data["role"], "ADMIN")
         created.refresh_from_db()
-        self.assertTrue(created.is_staff and created.is_superuser)
+        self.assertFalse(created.is_staff or created.is_superuser)  # website admin, no Django Admin
+
+        # The portal can never hand out site administration.
+        self.assertEqual(self.client.patch(f"{BASE}/users/{created.id}/", {"role": "SITEADMIN"}).status_code, 400)
+        self.assertEqual(self.client.post(f"{BASE}/users/", {"name": "S", "email": "s@x.bt", "role": "SITEADMIN"}).status_code, 400)
 
         self.client.patch(f"{BASE}/users/{self.student.id}/", {"is_active": False})
         self.student.refresh_from_db()
@@ -149,6 +154,7 @@ class AdminPortalTests(APITestCase):
         self.assertEqual(self.client.patch(f"{BASE}/users/{self.admin.id}/", {"role": "STUDENT"}).status_code, 400)
         self.assertEqual(self.client.patch(f"{BASE}/users/{self.admin.id}/", {"is_active": False}).status_code, 400)
 
+    @override_settings(PAYMENTS_ENABLED=True, PAYMENT_PROVIDER="mock")
     def test_enrollments_and_payments_lists(self):
         rows = self.client.get(f"{BASE}/enrollments/").data["results"]
         self.assertEqual(rows[0]["student"], "Karma Dema")
@@ -164,3 +170,44 @@ class AdminPortalTests(APITestCase):
         self.assertEqual(payments[0]["reference"], ref)
         self.assertEqual(payments[0]["amount"], 300)
         self.assertEqual(self.client.get(f"{BASE}/summary/").data["totals"]["revenue"], 300)
+
+
+class SeparateAdminAccountsTests(APITestCase):
+    """Website admins and Django site administrators are different accounts with different logins."""
+
+    def setUp(self):
+        from django.core.cache import cache
+
+        cache.clear()  # login is rate limited
+        self.admin = make_admin()
+        self.site_admin = User.objects.create_superuser(email="root@example.com", password=PASSWORD, name="Root")
+
+    def test_createsuperuser_makes_a_site_administrator(self):
+        self.assertEqual(self.site_admin.role, User.Role.SITE_ADMIN)
+        self.assertTrue(self.site_admin.is_staff and self.site_admin.is_superuser)
+        self.assertFalse(self.admin.is_staff or self.admin.is_superuser)
+
+    def test_site_administrator_cannot_use_the_website(self):
+        login = self.client.post("/api/v1/auth/login/", {"email": "root@example.com", "password": PASSWORD})
+        self.assertEqual(login.status_code, 401)
+        self.assertIn("site administration", str(login.data["detail"]))
+        self.client.force_authenticate(self.site_admin)  # even with a token, the portal API refuses
+        self.assertEqual(self.client.get(f"{BASE}/summary/").status_code, 403)
+
+    def test_site_administrator_gets_no_website_reset_code(self):
+        self.client.post("/api/v1/auth/password-reset/", {"email": "root@example.com"})
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_website_admin_cannot_open_django_admin(self):
+        self.assertTrue(self.client.login(email="boss@example.com", password=PASSWORD))
+        self.assertEqual(self.client.get("/admin/").status_code, 302)  # bounced to Django's login
+        self.client.logout()
+        self.client.login(email="root@example.com", password=PASSWORD)
+        self.assertEqual(self.client.get("/admin/").status_code, 200)
+
+    def test_portal_cannot_see_or_reset_site_administrators(self):
+        self.client.force_authenticate(self.admin)
+        emails = {u["email"] for u in self.client.get(f"{BASE}/users/").data["results"]}
+        self.assertNotIn("root@example.com", emails)
+        self.assertEqual(self.client.get(f"{BASE}/users/{self.site_admin.id}/").status_code, 404)
+        self.assertEqual(self.client.post(f"{BASE}/users/{self.site_admin.id}/reset-password/").status_code, 404)

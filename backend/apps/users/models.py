@@ -43,16 +43,22 @@ class UserManager(BaseUserManager):
         return self._create_user(email, password, **extra)
 
     def create_superuser(self, email, password=None, **extra):
-        extra.setdefault("role", User.Role.ADMIN)
+        """A site administrator: Django Admin only, never the website (see User.is_site_admin)."""
+        extra.setdefault("role", User.Role.SITE_ADMIN)
         extra.setdefault("is_staff", True)
         extra.setdefault("is_superuser", True)
         return self._create_user(email, password, **extra)
 
 
 class User(AbstractUser):
-    """One users table for all three roles; the role field drives authorization."""
+    """One users table for every role; the role field drives authorization.
+
+    ADMIN runs the platform from the website's admin portal. SITE_ADMIN is a separate account
+    that can only sign in to Django Admin (raw data), and is refused by the website login.
+    """
 
     class Role(models.TextChoices):
+        SITE_ADMIN = "SITEADMIN", "Site administrator"
         ADMIN = "ADMIN", "Admin"
         TEACHER = "TEACHER", "Teacher"
         STUDENT = "STUDENT", "Student"
@@ -126,6 +132,11 @@ class User(AbstractUser):
     @property
     def is_platform_admin(self):
         return self.role == self.Role.ADMIN
+
+    @property
+    def is_site_admin(self):
+        """Django Admin accounts. Kept apart from website accounts so one login can't open both."""
+        return self.role == self.Role.SITE_ADMIN or self.is_staff or self.is_superuser
 
 
 class PasswordResetCode(models.Model):

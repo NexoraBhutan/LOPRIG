@@ -11,6 +11,11 @@ def make_user(email="student@example.com", role=User.Role.STUDENT, name="Test St
     return User.objects.create_user(email=email, password=password, name=name, role=role)
 
 
+def make_admin(email="boss@example.com"):
+    """Website admin (admin portal). Django Admin uses a separate createsuperuser account."""
+    return make_user(email=email, role=User.Role.ADMIN, name="Boss")
+
+
 def make_teacher(email="teacher@example.com"):
     return make_user(email=email, role=User.Role.TEACHER, name="Test Teacher")
 

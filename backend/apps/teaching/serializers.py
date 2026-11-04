@@ -1,8 +1,10 @@
 import re
 
 from django.utils.text import slugify
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
+from apps.courses import video
 from apps.courses.models import Category, Course, CourseModule, Lesson, LessonResource
 from apps.courses.serializers import format_duration
 from apps.courses.services import review_problems
@@ -26,17 +28,45 @@ class TeacherResourceSerializer(serializers.ModelSerializer):
         extra_kwargs = {"url": {"required": True, "allow_blank": False}}
 
 
+class PlaybackSerializer(serializers.Serializer):
+    source = serializers.ChoiceField(choices=["", "BUNNY", "YOUTUBE", "VIMEO", "FILE"])
+    url = serializers.CharField()
+
+
 class TeacherLessonSerializer(serializers.ModelSerializer):
     resources = TeacherResourceSerializer(many=True, read_only=True)
     duration_seconds = serializers.IntegerField(min_value=0, max_value=6 * 3600, required=False)
+    has_upload = serializers.SerializerMethodField()
+    playback = serializers.SerializerMethodField()
 
     class Meta:
         model = Lesson
         fields = [
             "id", "title", "order", "kind", "duration_seconds", "is_preview",
             "video_url", "body", "h5p_embed_url", "resources",
+            "has_upload", "video_status", "playback",
         ]
-        read_only_fields = ["id"]
+        read_only_fields = ["id", "video_status"]
+
+    def validate_video_url(self, value):
+        if value and (problem := video.youtube_embed_problem(value)):
+            raise serializers.ValidationError(problem)
+        return value
+
+    def get_has_upload(self, obj) -> bool:
+        return bool(obj.video_id)
+
+    @extend_schema_field(PlaybackSerializer)
+    def get_playback(self, obj) -> dict:
+        # Teachers preview their own lessons; admins use this to watch during course review.
+        return video.playback(obj)
+
+    def update(self, instance, validated_data):
+        # Pasting a link replaces an uploaded video: remove the upload so it stops costing storage.
+        if validated_data.get("video_url") and instance.video_id:
+            video.delete_video(instance.video_id)
+            instance.video_id, instance.video_status = "", Lesson.VideoStatus.NONE
+        return super().update(instance, validated_data)
 
 
 class TeacherModuleSerializer(serializers.ModelSerializer):

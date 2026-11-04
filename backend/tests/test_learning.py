@@ -21,7 +21,7 @@ class LessonAccessTests(APITestCase):
     def test_preview_lesson_is_public(self):
         res = self.client.get(f"/api/v1/learning/lessons/{self.preview.id}/")
         self.assertEqual(res.status_code, 200)
-        self.assertTrue(res.data["video_url"])
+        self.assertEqual(res.data["video"], {"source": "FILE", "url": "https://videos.example.com/python-101/1"})
 
     def test_locked_lesson_requires_enrollment(self):
         self.assertEqual(self.client.get(f"/api/v1/learning/lessons/{self.locked.id}/").status_code, 401)

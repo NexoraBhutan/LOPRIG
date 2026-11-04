@@ -1,7 +1,11 @@
 from rest_framework import serializers
 
+from drf_spectacular.utils import extend_schema_field
+
+from apps.courses import video
 from apps.courses.models import CourseModule, Lesson, LessonResource
 from apps.courses.serializers import CourseListSerializer, format_clock
+from apps.teaching.serializers import PlaybackSerializer
 
 
 class LessonResourceSerializer(serializers.ModelSerializer):
@@ -28,13 +32,19 @@ class LessonContentSerializer(serializers.ModelSerializer):
     resources = LessonResourceSerializer(many=True, read_only=True)
     completed = serializers.SerializerMethodField()
     position_seconds = serializers.SerializerMethodField()
+    video = serializers.SerializerMethodField()
 
     class Meta:
         model = Lesson
         fields = [
             "id", "title", "kind", "duration", "duration_seconds", "is_preview",
-            "video_url", "body", "h5p_embed_url", "resources", "completed", "position_seconds",
+            "video", "body", "h5p_embed_url", "resources", "completed", "position_seconds",
         ]
+
+    @extend_schema_field(PlaybackSerializer)
+    def get_video(self, obj) -> dict:
+        """A fresh, short-lived link each time the lesson is opened. Never the raw upload ID."""
+        return video.playback(obj)
 
     def _progress(self, obj):
         return self.context.get("progress", {}).get(obj.id)

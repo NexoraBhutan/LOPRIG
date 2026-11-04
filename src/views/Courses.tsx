@@ -57,6 +57,7 @@ export default function Courses() {
   }, [filters, sort, router]);
 
   const { courses, ready } = useCatalog();
+  const hasPaid = courses.some((c) => c.discountPrice > 0);
   const results = useMemo(() => applyFilters(courses, filters, sort), [courses, filters, sort]);
 
   // Focus trap for mobile filter drawer
@@ -119,7 +120,9 @@ export default function Courses() {
               value={sort}
               onChange={(e) => setSort(e.target.value as SortOption)}
             >
-            {(Object.keys(SORT_LABELS) as SortOption[]).map((option) => (
+            {(Object.keys(SORT_LABELS) as SortOption[])
+              .filter((option) => hasPaid || !option.startsWith("price"))
+              .map((option) => (
               <option key={option} value={option}>{SORT_LABELS[option]}</option>
             ))}
           </select>

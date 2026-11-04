@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -14,6 +14,7 @@ import CourseCard from "@/components/CourseCard";
 import EmptyState from "@/components/EmptyState";
 import PageLoader from "@/components/PageLoader";
 import { useCatalog } from "@/context/CatalogContext";
+import { api } from "@/lib/api";
 import { useEnrollment } from "@/context/EnrollmentContext";
 import { useCourseDetail } from "@/hooks/useCourseDetail";
 import { useAuth } from "@/context/AuthContext";
@@ -42,7 +43,22 @@ export default function CourseDetails() {
   const { push } = useToast();
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
   const [enrolling, setEnrolling] = useState(false);
+  // Latest QR payment for a paid course ("PENDING" = waiting for an admin to verify it).
+  const [paymentStatus, setPaymentStatus] = useState<string | null>(null);
   const rootRef = useRef<HTMLElement>(null);
+  const paidCourse = !!course && course.discountPrice > 0;
+  const enrolledHere = !!course && isEnrolled(course.id);
+
+  useEffect(() => {
+    if (!user || user.role !== "STUDENT" || !paidCourse || enrolledHere) return;
+    let alive = true;
+    api<{ results: { status: string }[] }>(`/payments/?course=${encodeURIComponent(id)}`)
+      .then((page) => alive && setPaymentStatus(page.results[0]?.status ?? null))
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, [user, id, paidCourse, enrolledHere]);
 
   const related = useMemo(() => {
     if (!course) return [];
@@ -87,7 +103,16 @@ export default function CourseDetails() {
   const totalLessons = course.curriculum.reduce((s, sec) => s + sec.lessons.length, 0);
   const oddOutcomes = course.whatYouLearn.length % 2 === 1;
 
+  const isFree = course.discountPrice === 0;
+  const underReview = !enrolled && paymentStatus === "PENDING";
+  const ctaLabel = enrolled ? "Go to course" : isFree ? "Start learning for free" : underReview ? "Payment under review" : "Enroll now";
+
   const handleEnroll = async () => {
+    // Free courses are open to everyone: visitors go straight to the lessons.
+    if (isFree && !enrolled && (!user || user.role !== "STUDENT")) {
+      router.push(`/learn/${course.id}`);
+      return;
+    }
     if (!user) {
       push("Please log in to enroll in this course.", "info");
       router.push(`/login?from=${encodeURIComponent(`/courses/${course.id}`)}`);
@@ -333,8 +358,12 @@ export default function CourseDetails() {
               </div>
               <div className="p-7">
                 <div className="flex items-baseline gap-3 mb-5">
-                  <strong className="font-display text-3xl font-bold text-ink-strong">Nu. {course.discountPrice.toLocaleString()}</strong>
-                  {course.discountPrice < course.price && (
+                  {course.discountPrice === 0 ? (
+                    <strong className="font-display text-3xl font-bold text-emerald-700">Free</strong>
+                  ) : (
+                    <strong className="font-display text-3xl font-bold text-ink-strong">Nu. {course.discountPrice.toLocaleString()}</strong>
+                  )}
+                  {course.discountPrice > 0 && course.discountPrice < course.price && (
                     <>
                       <span className="text-sm text-ink-muted line-through">Nu. {course.price.toLocaleString()}</span>
                       <span className="bg-red-soft text-red text-[0.65rem] font-bold px-2 py-0.5 rounded-full">{Math.round((1 - course.discountPrice / course.price) * 100)}% off</span>
@@ -347,9 +376,17 @@ export default function CourseDetails() {
                     <PlayCircle size={17} /> Go to Course
                   </Link>
                 ) : (
-                  <button className="btn btn-primary btn-lg btn-block" onClick={handleEnroll}>
-                    Enroll Now
+                  <button className="btn btn-primary btn-lg btn-block" onClick={handleEnroll} disabled={enrolling}>
+                    {enrolling ? "Opening…" : ctaLabel}
                   </button>
+                )}
+                {underReview && (
+                  <p className="text-xs text-ink-muted mt-3 text-center">
+                    We received your payment details. You&apos;ll get a notification once an admin verifies them.
+                  </p>
+                )}
+                {!enrolled && !isFree && !underReview && (
+                  <p className="text-xs text-ink-muted mt-3 text-center">Pay by scanning our bank QR code with mBoB or any Bhutanese bank app.</p>
                 )}
 
                 <button
@@ -387,7 +424,7 @@ export default function CourseDetails() {
             </div>
             {!enrolled && (
               <button className="btn btn-primary btn-lg relative flex-shrink-0" onClick={handleEnroll}>
-                Enroll Now <ArrowRight size={14} weight="bold" />
+                {ctaLabel} <ArrowRight size={14} weight="bold" />
               </button>
             )}
           </div>

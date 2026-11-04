@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   VideoCamera, Article, PuzzlePiece, PencilSimple, Trash, ArrowUp, ArrowDown, Plus,
-  Check, X, LinkSimple, Eye, Warning,
+  Check, X, LinkSimple, Eye, Warning, CircleNotch,
 } from "@phosphor-icons/react";
 import { useToast } from "@/context/ToastContext";
 import { api, errorMessage } from "@/lib/api";
@@ -12,6 +12,8 @@ import {
   type LessonKind, type TeachCourse, type TeachLesson, type TeachModule,
 } from "@/lib/teach";
 import Field from "@/components/teach/Field";
+import VideoUpload from "@/components/teach/VideoUpload";
+import VideoFrame from "@/components/VideoFrame";
 
 const KINDS: { value: LessonKind; label: string; icon: typeof VideoCamera }[] = [
   { value: "VIDEO", label: "Video", icon: VideoCamera },
@@ -36,11 +38,37 @@ async function saveOrder<T extends { id: number; order: number }>(items: T[], fr
 
 type Run = (action: () => Promise<unknown>, success?: string) => Promise<boolean>;
 
+const VIDEO_POLL_MS = 5000;
+
 export default function CurriculumBuilder({ course, onChange }: { course: TeachCourse; onChange: () => Promise<void> }) {
   const { push } = useToast();
   const modules = course.modules ?? [];
   const [newModule, setNewModule] = useState("");
   const [busy, setBusy] = useState(false);
+
+  // Bunny processes uploads in the background. Ask about every processing video until it's done,
+  // whether or not its editor is open (on a deployed site Bunny's webhook usually answers first).
+  const processing = modules
+    .flatMap((m) => m.lessons)
+    .filter((l) => l.has_upload && l.video_status === "PROCESSING")
+    .map((l) => l.id)
+    .join(",");
+  const reload = useRef(onChange);
+  useEffect(() => {
+    reload.current = onChange;
+  }, [onChange]);
+  useEffect(() => {
+    if (!processing) return;
+    const check = async () => {
+      await Promise.all(
+        processing.split(",").map((id) => api(`/teach/lessons/${id}/video/`, { method: "POST" }).catch(() => undefined))
+      );
+      await reload.current().catch(() => undefined);
+    };
+    check();
+    const timer = setInterval(check, VIDEO_POLL_MS);
+    return () => clearInterval(timer);
+  }, [processing]);
 
   /** Run a change, reload the course, toast the outcome. Resolves true on success. */
   const run: Run = async (action, success) => {
@@ -191,7 +219,12 @@ function ModuleCard({
 
       {editingLesson === "new" ? (
         <div className="border-t border-line">
-          <LessonEditor moduleId={module.id} run={run} onDone={() => setEditingLesson(null)} />
+          <LessonEditor
+            moduleId={module.id}
+            run={run}
+            onDone={() => setEditingLesson(null)}
+            onCreatedNeedsVideo={(id) => setEditingLesson(id)}
+          />
         </div>
       ) : (
         <button
@@ -217,7 +250,9 @@ function LessonRow({
   onDelete: () => void;
 }) {
   const Kind = KINDS.find((k) => k.value === lesson.kind) ?? KINDS[0];
-  const missingVideo = lesson.kind === "VIDEO" && !lesson.video_url;
+  const missingVideo = lesson.kind === "VIDEO" && !lesson.video_url && !lesson.has_upload;
+  const videoBusy = lesson.has_upload && (lesson.video_status === "PROCESSING" || lesson.video_status === "UPLOADING");
+  const videoFailed = lesson.has_upload && lesson.video_status === "FAILED";
   return (
     <div className="flex items-center gap-2 px-5 py-3 hover:bg-bg-soft/60 transition-colors">
       <span className="w-8 h-8 mr-1 rounded-lg bg-gold-soft text-gold-dark flex items-center justify-center flex-shrink-0" title={Kind.label}>
@@ -229,7 +264,9 @@ function LessonRow({
           {formatClock(lesson.duration_seconds)}
           {lesson.is_preview && <span className="inline-flex items-center gap-1 text-gold-dark font-semibold"><Eye size={12} /> Free preview</span>}
           {lesson.resources.length > 0 && <span className="inline-flex items-center gap-1"><LinkSimple size={12} /> {lesson.resources.length} resource{lesson.resources.length === 1 ? "" : "s"}</span>}
-          {missingVideo && <span className="inline-flex items-center gap-1 text-red-dark font-semibold"><Warning size={12} /> No video link</span>}
+          {missingVideo && <span className="inline-flex items-center gap-1 text-red-dark font-semibold"><Warning size={12} /> No video yet</span>}
+          {videoBusy && <span className="inline-flex items-center gap-1 text-gold-dark font-semibold"><CircleNotch size={12} className="animate-spin" /> Video processing</span>}
+          {videoFailed && <span className="inline-flex items-center gap-1 text-red-dark font-semibold"><Warning size={12} /> Video failed, upload again</span>}
         </span>
       </button>
       <button className={iconButton} onClick={onEdit} aria-label={`Edit ${lesson.title}`}><PencilSimple size={16} /></button>
@@ -241,12 +278,14 @@ function LessonRow({
 }
 
 function LessonEditor({
-  moduleId, lesson, run, onDone,
+  moduleId, lesson, run, onDone, onCreatedNeedsVideo,
 }: {
   moduleId: number;
   lesson?: TeachLesson;
   run: Run;
   onDone: () => void;
+  /** A new video lesson without a link: keep editing it so the teacher can upload the file right away. */
+  onCreatedNeedsVideo?: (id: number) => void;
 }) {
   const [form, setForm] = useState({
     title: lesson?.title ?? "",
@@ -260,6 +299,12 @@ function LessonEditor({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [resource, setResource] = useState({ title: "", url: "" });
   const uid = lesson ? `l${lesson.id}` : `new${moduleId}`;
+  // An uploaded video replaces any pasted link and Bunny measures its length, so while there is an
+  // upload the form shows (and saves) neither an old link nor a hand-typed duration.
+  const uploaded = !!lesson?.has_upload && form.kind === "VIDEO";
+  const [linkEdited, setLinkEdited] = useState(false);
+  const videoLink = uploaded && !linkEdited ? "" : form.video_url;
+  const duration = uploaded ? formatClock(lesson.duration_seconds) : form.duration;
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -267,22 +312,26 @@ function LessonEditor({
     const body = {
       title: form.title.trim(),
       kind: form.kind,
-      duration_seconds: parseDuration(form.duration),
-      video_url: form.video_url.trim(),
+      ...(uploaded ? {} : { duration_seconds: parseDuration(form.duration) }),
+      video_url: videoLink.trim(),
       h5p_embed_url: form.h5p_embed_url.trim(),
       body: form.body,
       is_preview: form.is_preview,
     };
+    const needsUpload = !lesson && body.kind === "VIDEO" && !body.video_url;
+    let createdId: number | null = null;
     const ok = await run(async () => {
       try {
         if (lesson) await api(`/teach/lessons/${lesson.id}/`, { method: "PATCH", body });
-        else await api(`/teach/modules/${moduleId}/lessons/`, { method: "POST", body });
+        else createdId = (await api<TeachLesson>(`/teach/modules/${moduleId}/lessons/`, { method: "POST", body })).id;
       } catch (err) {
         setErrors(fieldErrors(err));
         throw err;
       }
-    }, lesson ? "Lesson saved" : "Lesson added");
-    if (ok) onDone();
+    }, lesson ? "Lesson saved" : needsUpload ? "Lesson added. Now upload its video." : "Lesson added");
+    if (!ok) return;
+    if (needsUpload && createdId !== null && onCreatedNeedsVideo) onCreatedNeedsVideo(createdId);
+    else onDone();
   };
 
   const addResource = async () => {
@@ -322,20 +371,67 @@ function LessonEditor({
       </fieldset>
 
       <div className="grid grid-cols-1 sm:grid-cols-[140px_1fr] gap-4">
-        <Field id={`${uid}-duration`} label="Duration" hint="m:ss, e.g. 7:30" error={errors.duration_seconds}>
-          <input id={`${uid}-duration`} value={form.duration} onChange={set("duration")} className={inputClass} placeholder="7:30" inputMode="numeric" />
+        <Field
+          id={`${uid}-duration`}
+          label="Duration"
+          hint={uploaded ? "Set from the uploaded video." : "m:ss, e.g. 7:30"}
+          error={errors.duration_seconds}
+        >
+          <input
+            id={`${uid}-duration`}
+            value={duration}
+            onChange={set("duration")}
+            readOnly={uploaded}
+            className={`${inputClass} read-only:bg-bg-soft read-only:text-ink-muted`}
+            placeholder="7:30"
+            inputMode="numeric"
+          />
         </Field>
-        {form.kind === "VIDEO" && (
-          <Field id={`${uid}-video`} label="Video link" hint="Link from your video host (Bunny Stream, Mux, Cloudflare Stream…)." error={errors.video_url}>
-            <input id={`${uid}-video`} type="url" value={form.video_url} onChange={set("video_url")} className={inputClass} placeholder="https://…" />
-          </Field>
-        )}
         {form.kind === "H5P" && (
           <Field id={`${uid}-h5p`} label="H5P embed link" error={errors.h5p_embed_url}>
             <input id={`${uid}-h5p`} type="url" value={form.h5p_embed_url} onChange={set("h5p_embed_url")} className={inputClass} placeholder="https://…" />
           </Field>
         )}
       </div>
+
+      {form.kind === "VIDEO" && (
+        <div className="flex flex-col gap-3">
+          <p className="text-xs font-bold text-ink-strong uppercase tracking-wider">Video</p>
+          {lesson ? (
+            <VideoUpload lesson={lesson} run={run} />
+          ) : (
+            <p className="text-sm text-ink-muted">
+              Click <strong className="text-ink-strong">Add lesson</strong> below. The upload button then appears right here, or paste a link instead.
+            </p>
+          )}
+          <Field
+            id={`${uid}-video`}
+            label="Or paste a link"
+            hint={lesson?.has_upload ? "YouTube or Vimeo. Saving a link replaces the uploaded video." : "YouTube (unlisted) or Vimeo. Anyone with the link can watch, so upload paid lessons instead."}
+            error={errors.video_url}
+          >
+            <input
+              id={`${uid}-video`}
+              type="url"
+              value={videoLink}
+              onChange={(e) => { setLinkEdited(true); set("video_url")(e); }}
+              className={inputClass}
+              placeholder="https://youtu.be/…"
+            />
+          </Field>
+          {lesson && !lesson.has_upload && lesson.playback.url && (
+            <div className="flex flex-col gap-2">
+              <div className="rounded-2xl overflow-hidden border border-line bg-black">
+                <VideoFrame playback={lesson.playback} title={`Preview of ${lesson.title}`} className="w-full aspect-video" />
+              </div>
+              <p className="text-xs text-ink-muted">
+                Check it plays here. If YouTube says &ldquo;Video unavailable&rdquo;, its owner blocks other websites:
+                pick another video or upload the file.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
 
       <Field id={`${uid}-body`} label={form.kind === "TEXT" ? "Reading content" : "Lesson notes"} hint="Shown to students under the lesson.">
         <textarea id={`${uid}-body`} rows={form.kind === "TEXT" ? 8 : 3} value={form.body} onChange={set("body")} className={`${inputClass} resize-y`} />

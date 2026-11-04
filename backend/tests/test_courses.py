@@ -1,3 +1,4 @@
+from django.test import override_settings
 from rest_framework.test import APITestCase
 
 from apps.courses.models import Course
@@ -38,6 +39,7 @@ class CatalogueTests(APITestCase):
         res = self.client.get("/api/v1/courses/?sort=price-asc")
         self.assertEqual(self.slugs(res), ["free-python", "ui-basics", "paid-java"])
 
+    @override_settings(PAYMENTS_ENABLED=True)
     def test_list_shape_matches_frontend(self):
         course = next(c for c in self.client.get("/api/v1/courses/").data["results"] if c["id"] == "paid-java")
         self.assertEqual(course["price"], 900)
@@ -52,6 +54,7 @@ class CatalogueTests(APITestCase):
         self.assertEqual(res.status_code, 200)
         lesson = res.data["curriculum"][0]["lessons"][1]
         self.assertNotIn("video_url", lesson)
+        self.assertNotIn("video", lesson)
         self.assertNotIn("body", lesson)
         self.assertEqual(lesson["duration"], "5:00")
 

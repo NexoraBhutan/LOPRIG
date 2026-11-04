@@ -3,22 +3,22 @@ from rest_framework import serializers
 from apps.courses.models import Course
 from apps.courses.serializers import format_duration
 from apps.enrollments.models import Enrollment
-from apps.payments.models import Payment
+from apps.payments.files import check_image
+from apps.payments.models import Payment, PaymentSettings
 from apps.teaching.serializers import TeacherModuleSerializer
 from apps.users.models import User
 
 
-def sync_staff_flags(user: User) -> None:
-    """Platform admins can also open Django Admin; everyone else can't."""
-    is_admin = user.role == User.Role.ADMIN
-    user.is_staff = is_admin
-    user.is_superuser = is_admin
+# Roles the admin portal can hand out. Site administrators (Django Admin) are created only with
+# `manage.py createsuperuser`, so a website admin can never grant raw-data access.
+PORTAL_ROLES = [(value, label) for value, label in User.Role.choices if value != User.Role.SITE_ADMIN]
 
 
 class AdminUserSerializer(serializers.ModelSerializer):
     # Annotated as *_count because User already has `enrollments` / courses relations.
     enrollments = serializers.IntegerField(source="enrollment_count", read_only=True, default=0)
     courses = serializers.IntegerField(source="course_count", read_only=True, default=0)
+    role = serializers.ChoiceField(choices=PORTAL_ROLES, required=False)
 
     class Meta:
         model = User
@@ -35,12 +35,6 @@ class AdminUserSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError("You can't remove your own admin access.")
         return attrs
 
-    def update(self, instance, validated_data):
-        instance = super().update(instance, validated_data)
-        sync_staff_flags(instance)
-        instance.save(update_fields=["is_staff", "is_superuser"])
-        return instance
-
 
 class AdminUserCreateSerializer(serializers.Serializer):
     """Admins create teacher (and admin) accounts; students sign up themselves.
@@ -50,7 +44,7 @@ class AdminUserCreateSerializer(serializers.Serializer):
 
     name = serializers.CharField(max_length=150)
     email = serializers.EmailField()
-    role = serializers.ChoiceField(choices=User.Role.choices, default=User.Role.TEACHER)
+    role = serializers.ChoiceField(choices=PORTAL_ROLES, default=User.Role.TEACHER)
     headline = serializers.CharField(max_length=150, required=False, allow_blank=True)
 
     def validate_email(self, value):
@@ -60,10 +54,7 @@ class AdminUserCreateSerializer(serializers.Serializer):
         return value
 
     def create(self, validated_data):
-        user = User.objects.create_user(password=None, **validated_data)  # unusable until emailed
-        sync_staff_flags(user)
-        user.save(update_fields=["is_staff", "is_superuser"])
-        return user
+        return User.objects.create_user(password=None, **validated_data)  # unusable until emailed
 
 
 class AdminCourseSerializer(serializers.ModelSerializer):
@@ -124,11 +115,51 @@ class AdminPaymentSerializer(serializers.ModelSerializer):
     course = serializers.CharField(source="course.title")
     course_id = serializers.CharField(source="course.slug")
     amount = serializers.DecimalField(max_digits=10, decimal_places=2, coerce_to_string=False)
+    has_proof = serializers.SerializerMethodField()
+    reviewed_by = serializers.CharField(source="reviewed_by.name", default="", read_only=True)
 
     class Meta:
         model = Payment
         fields = ["reference", "student", "student_email", "course", "course_id", "amount", "currency",
-                  "provider", "status", "failure_reason", "paid_at", "created_at"]
+                  "provider", "status", "failure_reason", "journal_number", "contact_number", "has_proof",
+                  "reviewed_by", "reviewed_at", "paid_at", "created_at"]
+
+    def get_has_proof(self, obj) -> bool:
+        return bool(obj.proof)
+
+
+class PaymentRejectSerializer(serializers.Serializer):
+    reason = serializers.CharField(min_length=5, max_length=250, error_messages={
+        "min_length": "Tell the student what was wrong (5+ characters).",
+    })
+
+
+class AdminQrSettingsSerializer(serializers.ModelSerializer):
+    qr_image = serializers.FileField(required=False, write_only=True)
+    qr_image_url = serializers.SerializerMethodField()
+    ready = serializers.BooleanField(source="is_ready", read_only=True)
+
+    class Meta:
+        model = PaymentSettings
+        fields = ["ready", "qr_image", "qr_image_url", "account_name", "bank_name", "account_number",
+                  "instructions", "alert_email", "updated_at"]
+        read_only_fields = ["updated_at"]
+
+    def get_qr_image_url(self, obj) -> str:
+        if not obj.qr_image:
+            return ""
+        request = self.context.get("request")
+        return request.build_absolute_uri(obj.qr_image.url) if request else obj.qr_image.url
+
+    def validate_qr_image(self, value):
+        return check_image(value, "qr_image")
+
+    def update(self, instance, validated_data):
+        old = instance.qr_image.name if "qr_image" in validated_data and instance.qr_image else None
+        instance = super().update(instance, validated_data)
+        if old and old != instance.qr_image.name:
+            instance.qr_image.storage.delete(old)
+        return instance
 
 
 class RejectSerializer(serializers.Serializer):

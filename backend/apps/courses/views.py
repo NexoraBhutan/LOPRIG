@@ -1,6 +1,16 @@
+import json
+import logging
+
+from django.conf import settings
 from django.db.models import Count, Prefetch, Q
-from rest_framework import generics
+from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import serializers
+from rest_framework import generics, status
 from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from . import video
 
 from .filters import CourseFilter
 from .models import Category, Course, CourseModule, Lesson
@@ -61,3 +71,41 @@ class CourseDetailView(generics.RetrieveAPIView):
             .select_related("category", "teacher")
             .prefetch_related(modules)
         )
+
+
+logger = logging.getLogger(__name__)
+
+
+class BunnyStreamWebhookView(APIView):
+    """Bunny calls this when a video's processing state changes (set the URL in the Stream library).
+
+    The payload is only a hint: the status we store always comes from asking Bunny directly.
+    """
+
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    @extend_schema(request=None, responses={200: None})
+    def post(self, request):
+        if not video.valid_webhook_signature(request.body, request.headers):
+            return Response(status=status.HTTP_401_UNAUTHORIZED)
+        try:
+            video_id = str(json.loads(request.body).get("VideoGuid") or "")
+        except (ValueError, AttributeError):
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+        for lesson in Lesson.objects.filter(video_id=video_id) if video_id else []:
+            try:
+                lesson.refresh_video_status()
+            except video.VideoServiceError:
+                logger.warning("Webhook for video %s: couldn't refresh its status", video_id)
+        return Response(status=status.HTTP_200_OK)
+
+
+class SiteConfigView(APIView):
+    """Public switches the frontend needs (no secrets)."""
+
+    permission_classes = [AllowAny]
+
+    @extend_schema(responses=inline_serializer("SiteConfig", {"payments_enabled": serializers.BooleanField()}))
+    def get(self, request):
+        return Response({"payments_enabled": settings.PAYMENTS_ENABLED})

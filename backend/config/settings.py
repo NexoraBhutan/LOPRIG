@@ -162,8 +162,26 @@ EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
 EMAIL_TIMEOUT = 15
 FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:3000")
 
-PAYMENT_PROVIDER = env("PAYMENT_PROVIDER", default="mock")
+# Off: every published course is free to enroll (prices stay saved for later).
+PAYMENTS_ENABLED = env.bool("PAYMENTS_ENABLED", default=True)
+# "qr": students pay with Lop-rig's bank QR code and submit the journal number + screenshot for an
+# admin to verify. "mock" is only for automated tests of the gateway code path.
+PAYMENT_PROVIDER = env("PAYMENT_PROVIDER", default="qr")
+PAYMENT_PROOF_MAX_MB = 5
 PAYMENT_WEBHOOK_SECRET = env("PAYMENT_WEBHOOK_SECRET")
+
+# Video hosting: Bunny Stream (https://bunny.net/stream). Leave the library ID empty to turn
+# uploads off; teachers can still paste a YouTube/Vimeo link.
+#   LIBRARY_ID / API_KEY: Stream library > API.
+#   TOKEN_KEY: Stream library > Security > "Token authentication key" (turn on embed token
+#     authentication there so only signed-in, enrolled students can play videos).
+#   READONLY_API_KEY: verifies the webhook signature (Stream library > API > Read-only key).
+BUNNY_STREAM_LIBRARY_ID = env("BUNNY_STREAM_LIBRARY_ID", default="")
+BUNNY_STREAM_API_KEY = env("BUNNY_STREAM_API_KEY", default="")
+BUNNY_STREAM_TOKEN_KEY = env("BUNNY_STREAM_TOKEN_KEY", default="")
+BUNNY_STREAM_READONLY_API_KEY = env("BUNNY_STREAM_READONLY_API_KEY", default="")
+VIDEO_PLAYBACK_TTL_SECONDS = env.int("VIDEO_PLAYBACK_TTL_SECONDS", default=4 * 60 * 60)
+VIDEO_MAX_UPLOAD_MB = env.int("VIDEO_MAX_UPLOAD_MB", default=2048)
 PAYMENT_CURRENCY = "BTN"
 
 # --- Admin theme (django-unfold) ------------------------------------------
@@ -181,8 +199,12 @@ UNFOLD = {
     "SITE_HEADER": "Lop-rig",
     "SITE_SUBHEADER": "Platform administration",
     "SITE_URL": FRONTEND_URL,
-    "SITE_SYMBOL": "school",
-    "SITE_FAVICONS": [{"rel": "icon", "type": "image/svg+xml", "href": lambda request: static("admin/loprig-icon.svg")}],
+    # Same artwork as the Next.js site: navy-and-teal on the light theme, all-white on the dark theme.
+    "SITE_LOGO": {
+        "light": lambda request: static("admin/loprig-logo-color.png"),
+        "dark": lambda request: static("admin/loprig-logo-white.png"),
+    },
+    "SITE_FAVICONS": [{"rel": "icon", "type": "image/png", "href": lambda request: static("admin/loprig-icon.png")}],
     "SHOW_VIEW_ON_SITE": False,
     "SHOW_HISTORY": True,
     "DASHBOARD_CALLBACK": "apps.users.dashboard.dashboard_callback",

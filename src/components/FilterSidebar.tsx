@@ -22,7 +22,9 @@ export default function FilterSidebar({
   setFilters: React.Dispatch<React.SetStateAction<Filters>>;
   resultCount?: number | null;
 }) {
-  const { categories } = useCatalog();
+  const { categories, courses } = useCatalog();
+  // While payments are off every course is free, so a price filter would only confuse.
+  const hasPaid = courses.some((c) => c.discountPrice > 0);
   const toggleCategory = (id: string) => {
     setFilters((f) => ({
       ...f,
@@ -76,7 +78,7 @@ export default function FilterSidebar({
         ))}
       </div>
 
-      <div className="flex flex-col gap-3">
+      {hasPaid && <div className="flex flex-col gap-3">
         <h4 className="text-xs font-bold text-ink-strong uppercase tracking-wider">Price</h4>
         {PRICES.map((p) => (
           <label key={p.id} className="flex items-center gap-2.5 text-sm text-ink cursor-pointer hover:text-gold-dark transition-colors">
@@ -90,7 +92,7 @@ export default function FilterSidebar({
             <span>{p.label}</span>
           </label>
         ))}
-      </div>
+      </div>}
 
       <div className="flex flex-col gap-3">
         <h4 className="text-xs font-bold text-ink-strong uppercase tracking-wider">Rating</h4>

@@ -4,13 +4,20 @@ from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
+import re
+
+from rest_framework.exceptions import APIException, ValidationError
+
 from apps.courses.models import Course
 from apps.enrollments import services as enrollment_services
+from apps.users.models import User
 from apps.notifications.models import Notification
 from apps.notifications.services import notify
 
 from .gateways import CheckoutSession, InvalidWebhook, MockGateway, get_gateway
-from .models import Payment
+from . import emails
+from .files import check_image
+from .models import Payment, PaymentSettings
 
 logger = logging.getLogger(__name__)
 
@@ -99,3 +106,106 @@ def simulate_mock_payment(payment: Payment, succeeded: bool) -> Payment:
     """Development only: act as the mock gateway and send ourselves a signed webhook."""
     body, headers = MockGateway().build_event(payment, succeeded)
     return handle_webhook(MockGateway.name, body, headers)
+
+
+# --- Bank QR payments (manual verification) -------------------------------------------------
+
+JOURNAL_NUMBER = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 /-]{3,38}[A-Za-z0-9]$")
+BHUTAN_PHONE = re.compile(r"^(?:\+?975)?(\d{8})$")
+
+
+def normalise_phone(value: str) -> str:
+    """'+975 17-12 34 56' -> '17123456'. Empty string if it isn't an 8-digit Bhutanese number."""
+    match = BHUTAN_PHONE.match(re.sub(r"[\s().-]", "", value or ""))
+    return match.group(1) if match else ""
+
+
+class AlreadySubmitted(APIException):
+    status_code = 409
+    default_detail = "Your payment for this course is already waiting for verification."
+    default_code = "payment_under_review"
+
+
+def normalise_journal(value: str) -> str:
+    return re.sub(r"\s+", "", value or "").upper()
+
+
+@transaction.atomic
+def submit_qr_payment(student, course: Course, journal_number: str, proof, contact_number: str) -> Payment:
+    """The student paid by QR: record the journal number + screenshot for an admin to check."""
+    if course.status != Course.Status.PUBLISHED:
+        raise ValidationError({"course": "This course isn't open for enrollment."})
+    if not PaymentSettings.load().is_ready:
+        raise ValidationError({"detail": "QR payments aren't set up yet. Please try again later."})
+    journal = normalise_journal(journal_number)
+    if not JOURNAL_NUMBER.match(journal):
+        raise ValidationError({"journal_number": "Enter the journal number exactly as it appears on your receipt."})
+    phone = normalise_phone(contact_number)
+    if not phone:
+        raise ValidationError({"contact_number": "Enter your 8-digit mobile number, e.g. 17123456."})
+    check_image(proof, "proof")
+
+    enrollment = enrollment_services.get_or_create_pending(student, course)  # refuses free/owned courses
+    if Payment.objects.filter(enrollment=enrollment, status=Payment.Status.PENDING, provider=Payment.QR).exists():
+        raise AlreadySubmitted()
+    if Payment.objects.filter(journal_number=journal, status__in=[Payment.Status.PENDING, Payment.Status.SUCCEEDED]).exists():
+        raise ValidationError({"journal_number": "This journal number has already been used for a payment."})
+
+    # Any unfinished attempt at an older price can't be completed any more.
+    Payment.objects.filter(enrollment=enrollment, status=Payment.Status.PENDING).update(status=Payment.Status.CANCELLED)
+    payment = Payment.objects.create(
+        student=student, course=course, enrollment=enrollment, amount=course.current_price,
+        currency=settings.PAYMENT_CURRENCY, provider=Payment.QR, journal_number=journal, proof=proof,
+        contact_number=phone,
+    )
+    for admin in User.objects.filter(role=User.Role.ADMIN, is_active=True):
+        notify(
+            admin, Notification.Kind.PAYMENT, "Payment to verify",
+            f"{student.name} paid Nu. {payment.amount:,.0f} for “{course.title}” (journal {journal}).",
+            data={"payment": payment.reference, "course": course.slug},
+        )
+    emails.after_commit(emails.payment_submitted, payment)
+    return payment
+
+
+def _lock_pending_qr(payment: Payment) -> Payment:
+    payment = Payment.objects.select_for_update().select_related("course", "student", "enrollment").get(pk=payment.pk)
+    if payment.provider != Payment.QR or payment.status != Payment.Status.PENDING:
+        raise ValidationError({"detail": "Only payments waiting for verification can be approved or rejected."})
+    return payment
+
+
+@transaction.atomic
+def approve_qr_payment(payment: Payment, admin) -> Payment:
+    payment = _lock_pending_qr(payment)
+    payment.status = Payment.Status.SUCCEEDED
+    payment.paid_at = payment.reviewed_at = timezone.now()
+    payment.reviewed_by = admin
+    payment.failure_reason = ""
+    payment.save()
+    enrollment_services.activate(payment.enrollment)
+    notify(
+        payment.student, Notification.Kind.PAYMENT, "Payment confirmed",
+        f"Your payment of Nu. {payment.amount:,.0f} was verified. “{payment.course.title}” is unlocked.",
+        data={"course": payment.course.slug, "payment": payment.reference},
+    )
+    emails.after_commit(emails.payment_approved, payment)
+    return payment
+
+
+@transaction.atomic
+def reject_qr_payment(payment: Payment, admin, reason: str) -> Payment:
+    payment = _lock_pending_qr(payment)
+    payment.status = Payment.Status.FAILED
+    payment.failure_reason = reason.strip()
+    payment.reviewed_at = timezone.now()
+    payment.reviewed_by = admin
+    payment.save()
+    notify(
+        payment.student, Notification.Kind.PAYMENT, "Payment not verified",
+        f"We couldn't verify your payment for “{payment.course.title}”: {payment.failure_reason} "
+        "You can submit it again from the course page.",
+        data={"course": payment.course.slug, "payment": payment.reference},
+    )
+    emails.after_commit(emails.payment_rejected, payment)
+    return payment

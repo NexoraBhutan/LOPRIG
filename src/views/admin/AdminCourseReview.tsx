@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
   ArrowLeft, CheckCircle, Circle, XCircle, VideoCamera, Article, PuzzlePiece, Eye, ArrowSquareOut, LinkSimple, Warning,
+  Play, CaretUp, CircleNotch,
 } from "@phosphor-icons/react";
 import { useToast } from "@/context/ToastContext";
 import { useCatalog } from "@/context/CatalogContext";
@@ -15,6 +16,7 @@ import { Card } from "@/components/admin/ui";
 import { ApiError, api, errorMessage } from "@/lib/api";
 import { formatClock, formatMoney, inputClass, timeAgo } from "@/lib/teach";
 import type { AdminCourseDetail } from "@/lib/admin";
+import VideoFrame from "@/components/VideoFrame";
 
 const KIND_ICON = { VIDEO: VideoCamera, TEXT: Article, H5P: PuzzlePiece } as const;
 
@@ -27,6 +29,7 @@ export default function AdminCourseReview() {
   const [state, setState] = useState<"loading" | "ready" | "missing" | "error">("loading");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState<"approve" | "reject" | null>(null);
+  const [watching, setWatching] = useState<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -59,12 +62,12 @@ export default function AdminCourseReview() {
   };
 
   const lessons = course.modules.flatMap((m) => m.lessons);
-  const missingVideos = lessons.filter((l) => l.kind === "VIDEO" && !l.video_url).length;
+  const missingVideos = lessons.filter((l) => l.kind === "VIDEO" && !l.playback.url).length;
   const checks: [string, boolean][] = [
     ["Description of 30+ characters", !course.review_problems.some((p) => p.includes("description"))],
     ["At least one learning outcome", !course.review_problems.some((p) => p.includes("outcome"))],
     ["At least one lesson", !course.review_problems.some((p) => p.includes("lesson"))],
-    ["Every video lesson has a video link", missingVideos === 0],
+    ["Every video lesson has a playable video", missingVideos === 0],
     ["At least one free preview lesson", lessons.some((l) => l.is_preview)],
   ];
 
@@ -120,15 +123,33 @@ export default function AdminCourseReview() {
                     {m.lessons.map((l) => {
                       const Icon = KIND_ICON[l.kind];
                       return (
-                        <li key={l.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5 text-sm">
+                        <li key={l.id} className="px-4 py-2.5 text-sm">
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                           <Icon size={16} weight="duotone" className="text-gold-dark" />
                           <span className="flex-1 min-w-[160px] text-ink-strong">{l.title}</span>
                           {l.is_preview && <span className="inline-flex items-center gap-1 text-xs font-semibold text-gold-dark"><Eye size={12} /> Preview</span>}
                           {l.resources.length > 0 && <span className="inline-flex items-center gap-1 text-xs text-ink-muted"><LinkSimple size={12} /> {l.resources.length}</span>}
-                          {l.kind === "VIDEO" && (l.video_url
-                            ? <a href={l.video_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-gold-dark hover:text-gold">Watch <ArrowSquareOut size={12} /></a>
-                            : <span className="inline-flex items-center gap-1 text-xs font-semibold text-red-dark"><Warning size={12} /> No video</span>)}
+                          {l.kind === "VIDEO" && (l.playback.url ? (
+                            <button
+                              type="button"
+                              onClick={() => setWatching(watching === l.id ? null : l.id)}
+                              aria-expanded={watching === l.id}
+                              className="inline-flex items-center gap-1 text-xs font-semibold text-gold-dark hover:text-gold bg-transparent border-none cursor-pointer p-0"
+                            >
+                              {watching === l.id ? <>Close <CaretUp size={12} /></> : <>Watch <Play size={12} weight="fill" /></>}
+                            </button>
+                          ) : l.has_upload && l.video_status !== "FAILED" ? (
+                            <span className="inline-flex items-center gap-1 text-xs font-semibold text-gold-dark"><CircleNotch size={12} className="animate-spin" /> Processing</span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-xs font-semibold text-red-dark"><Warning size={12} /> No video</span>
+                          ))}
                           <span className="text-xs text-ink-muted tabular-nums w-12 text-right">{formatClock(l.duration_seconds)}</span>
+                          </div>
+                          {watching === l.id && (
+                            <div className="mt-3 rounded-xl overflow-hidden bg-black">
+                              <VideoFrame playback={l.playback} title={l.title} className="w-full aspect-video" />
+                            </div>
+                          )}
                         </li>
                       );
                     })}

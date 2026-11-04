@@ -3,10 +3,12 @@ from datetime import timedelta
 
 from django.db.models import Count, OuterRef, Prefetch, Q, Subquery, Sum
 from django.db.models.functions import Coalesce, TruncDate
+from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
 from rest_framework import generics, serializers, status
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -15,7 +17,8 @@ from apps.certificates.models import Certificate
 from apps.courses import services as course_services
 from apps.courses.models import Course, CourseModule, Lesson
 from apps.enrollments.models import Enrollment
-from apps.payments.models import Payment
+from apps.payments import services as payment_services
+from apps.payments.models import Payment, PaymentSettings
 from apps.users.models import User
 from apps.users.permissions import IsPlatformAdmin
 
@@ -24,8 +27,10 @@ from .serializers import (
     AdminCourseSerializer,
     AdminEnrollmentSerializer,
     AdminPaymentSerializer,
+    AdminQrSettingsSerializer,
     AdminUserCreateSerializer,
     AdminUserSerializer,
+    PaymentRejectSerializer,
     RejectSerializer,
 )
 
@@ -181,7 +186,8 @@ def users_for_admin():
         .order_by().values("student").annotate(n=Count("id")).values("n")
     )
     taught = Course.objects.filter(teacher=OuterRef("pk")).order_by().values("teacher").annotate(n=Count("id")).values("n")
-    return User.objects.annotate(
+    # Site administrators live only in Django Admin; the portal can't list, edit or reset them.
+    return User.objects.exclude(role=User.Role.SITE_ADMIN).filter(is_staff=False, is_superuser=False).annotate(
         enrollment_count=Coalesce(Subquery(enrolled), 0), course_count=Coalesce(Subquery(taught), 0)
     )
 
@@ -234,7 +240,7 @@ class AdminResetPasswordView(APIView):
 
     @extend_schema(request=None, responses=AdminUserSerializer)
     def post(self, request, pk):
-        user = get_object_or_404(User, pk=pk)
+        user = get_object_or_404(users_for_admin(), pk=pk)
         if user.pk == request.user.pk:
             return Response({"detail": "Change your own password from your account page."},
                             status=status.HTTP_400_BAD_REQUEST)
@@ -288,6 +294,71 @@ class AdminPaymentListView(generics.ListAPIView):
         if params.get("status") in Payment.Status.values:
             qs = qs.filter(status=params["status"])
         if search := params.get("search", "").strip():
-            qs = qs.filter(Q(reference__icontains=search) | Q(student__name__icontains=search)
+            compact = search.replace(" ", "")
+            qs = qs.filter(Q(reference__icontains=search) | Q(journal_number__icontains=compact)
+                           | Q(contact_number__icontains=compact)
+                           | Q(student__name__icontains=search)
                            | Q(student__email__icontains=search) | Q(course__title__icontains=search))
         return qs
+
+
+def _qr_payment(reference) -> Payment:
+    return get_object_or_404(Payment.objects.select_related("student", "course", "reviewed_by"), reference=reference)
+
+
+class ApprovePaymentView(APIView):
+    """The money is in the bank statement: unlock the course for the student."""
+
+    permission_classes = [IsPlatformAdmin]
+
+    @extend_schema(request=None, responses=AdminPaymentSerializer)
+    def post(self, request, reference):
+        payment = payment_services.approve_qr_payment(_qr_payment(reference), request.user)
+        return Response(AdminPaymentSerializer(_qr_payment(payment.reference)).data)
+
+
+class RejectPaymentView(APIView):
+    """The payment couldn't be found or doesn't match: tell the student why (they can resubmit)."""
+
+    permission_classes = [IsPlatformAdmin]
+
+    @extend_schema(request=PaymentRejectSerializer, responses=AdminPaymentSerializer)
+    def post(self, request, reference):
+        serializer = PaymentRejectSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        payment = payment_services.reject_qr_payment(_qr_payment(reference), request.user, serializer.validated_data["reason"])
+        return Response(AdminPaymentSerializer(_qr_payment(payment.reference)).data)
+
+
+class PaymentProofView(APIView):
+    """The student's payment screenshot. Only admins can open it (it's never a public file link)."""
+
+    permission_classes = [IsPlatformAdmin]
+
+    @extend_schema(responses={(200, "image/*"): bytes})
+    def get(self, request, reference):
+        payment = _qr_payment(reference)
+        if not payment.proof:
+            raise Http404
+        response = FileResponse(payment.proof.open("rb"))
+        response["Cache-Control"] = "private, no-store"
+        return response
+
+
+class QrSettingsAdminView(APIView):
+    """Lop-rig's bank QR code and account details that students pay to."""
+
+    permission_classes = [IsPlatformAdmin]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
+    @extend_schema(responses=AdminQrSettingsSerializer)
+    def get(self, request):
+        return Response(AdminQrSettingsSerializer(PaymentSettings.load(), context={"request": request}).data)
+
+    @extend_schema(request={"multipart/form-data": AdminQrSettingsSerializer}, responses=AdminQrSettingsSerializer)
+    def patch(self, request):
+        serializer = AdminQrSettingsSerializer(PaymentSettings.load(), data=request.data, partial=True,
+                                               context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)

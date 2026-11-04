@@ -16,6 +16,9 @@ class HasRole(BasePermission):
         user = request.user
         if not (user and user.is_authenticated and user.role in self.allowed_roles):
             return False
+        if user.is_site_admin:
+            # Django Admin accounts never act on the website API, even with a stray token.
+            return False
         if user.must_change_password:
             # Still on the emailed temporary password: nothing else until they set their own.
             self.message = "Set your own password first."

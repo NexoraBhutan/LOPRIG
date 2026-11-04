@@ -7,9 +7,13 @@ import { motion } from "framer-motion";
 import { Envelope, Lock, Eye, EyeSlash, ArrowRight } from "@phosphor-icons/react";
 import Logo from "@/components/Logo";
 import { useAuth } from "@/context/AuthContext";
+import { API_URL } from "@/lib/api";
 import { useToast } from "@/context/ToastContext";
 import { rememberTemporaryPassword } from "@/lib/password";
 import { homeFor } from "@/utils/routes";
+
+/** Site administrators sign in to Django Admin on the API server, not here. */
+const SITE_ADMIN_URL = `${API_URL.replace(/\/api\/v1$/, "")}/admin/`;
 
 export default function Login() {
   const { login } = useAuth();
@@ -20,14 +24,19 @@ export default function Login() {
   const [form, setForm] = useState({ email: "", password: "" });
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState("");
+  const [siteAdmin, setSiteAdmin] = useState(false);
 
   const onChange = (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
 
   const submit = async (credentials: { email: string; password: string }) => {
     setError("");
+    setSiteAdmin(false);
     const res = await login(credentials);
-    if (!res.ok) return setError(res.error);
+    if (!res.ok) {
+      setSiteAdmin(res.code === "site_admin_account");
+      return setError(res.error);
+    }
     if (res.mustChangePassword) {
       // Logged in with the emailed temporary password: they choose their own before anything else.
       rememberTemporaryPassword(credentials.password);
@@ -119,7 +128,14 @@ export default function Login() {
               </div>
 
               {error && (
-                <div role="alert" className="rounded-xl bg-red-soft text-red px-5 py-3.5 text-sm font-medium">{error}</div>
+                <div role="alert" className="rounded-xl bg-red-soft text-red px-5 py-3.5 text-sm font-medium">
+                  {error}
+                  {siteAdmin && (
+                    <a href={SITE_ADMIN_URL} className="block mt-2 font-bold text-red underline underline-offset-2">
+                      Go to site administration →
+                    </a>
+                  )}
+                </div>
               )}
 
               <button type="submit" className="btn btn-primary btn-lg btn-block mt-1">

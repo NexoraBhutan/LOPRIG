@@ -3,6 +3,8 @@ from django.http import Http404
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema
 from rest_framework import generics, status
+from rest_framework.exceptions import ValidationError
+from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -12,8 +14,14 @@ from apps.users.permissions import IsStudent
 
 from . import services
 from .gateways import InvalidWebhook, UnknownGateway
-from .models import Payment
-from .serializers import CheckoutResponseSerializer, MockPaySerializer, PaymentSerializer
+from .models import Payment, PaymentSettings
+from .serializers import (
+    CheckoutResponseSerializer,
+    MockPaySerializer,
+    PaymentSerializer,
+    QrSettingsSerializer,
+    QrSubmitSerializer,
+)
 
 
 class CheckoutView(APIView):
@@ -23,6 +31,8 @@ class CheckoutView(APIView):
 
     @extend_schema(request=CourseSlugSerializer, responses={201: CheckoutResponseSerializer})
     def post(self, request):
+        if settings.PAYMENT_PROVIDER == Payment.QR:
+            raise ValidationError({"detail": "Pay by scanning the QR code on the course's payment page."})
         serializer = CourseSlugSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         payment, session = services.start_checkout(request.user, serializer.validated_data["course"])
@@ -36,7 +46,10 @@ class PaymentListView(generics.ListAPIView):
     serializer_class = PaymentSerializer
 
     def get_queryset(self):
-        return Payment.objects.filter(student=self.request.user).select_related("course")
+        qs = Payment.objects.filter(student=self.request.user).select_related("course")
+        if course := self.request.query_params.get("course"):
+            qs = qs.filter(course__slug=course)
+        return qs
 
 
 class PaymentDetailView(generics.RetrieveAPIView):
@@ -80,3 +93,30 @@ class MockPayView(APIView):
         serializer.is_valid(raise_exception=True)
         payment = services.simulate_mock_payment(payment, succeeded=serializer.validated_data["outcome"] == "success")
         return Response(PaymentSerializer(payment).data)
+
+
+class QrSettingsView(APIView):
+    """Lop-rig's bank QR code and account name, shown on the payment page."""
+
+    permission_classes = [AllowAny]
+
+    @extend_schema(responses=QrSettingsSerializer)
+    def get(self, request):
+        return Response(QrSettingsSerializer(PaymentSettings.load(), context={"request": request}).data)
+
+
+class QrSubmitView(APIView):
+    """The student paid by QR: send the journal number + screenshot. An admin verifies it."""
+
+    permission_classes = [IsStudent]
+    parser_classes = [MultiPartParser, FormParser]
+
+    @extend_schema(request={"multipart/form-data": QrSubmitSerializer}, responses={201: PaymentSerializer})
+    def post(self, request):
+        serializer = QrSubmitSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        payment = services.submit_qr_payment(
+            request.user, data["course"], data["journal_number"], data["proof"], data["contact_number"]
+        )
+        return Response(PaymentSerializer(payment).data, status=status.HTTP_201_CREATED)

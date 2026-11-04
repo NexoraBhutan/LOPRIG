@@ -4,6 +4,8 @@ from .views import (
     CourseStudentsView,
     LessonCreateView,
     LessonDetailView,
+    LessonVideoUploadView,
+    LessonVideoView,
     ModuleCreateView,
     ModuleDetailView,
     ResourceCreateView,
@@ -24,6 +26,8 @@ urlpatterns = [
     path("modules/<int:pk>/", ModuleDetailView.as_view(), name="teach-module-detail"),
     path("modules/<int:pk>/lessons/", LessonCreateView.as_view(), name="teach-lesson-create"),
     path("lessons/<int:pk>/", LessonDetailView.as_view(), name="teach-lesson-detail"),
+    path("lessons/<int:pk>/video/", LessonVideoView.as_view(), name="teach-lesson-video"),
+    path("lessons/<int:pk>/video/upload/", LessonVideoUploadView.as_view(), name="teach-lesson-video-upload"),
     path("lessons/<int:pk>/resources/", ResourceCreateView.as_view(), name="teach-resource-create"),
     path("resources/<int:pk>/", ResourceDeleteView.as_view(), name="teach-resource-delete"),
 ]

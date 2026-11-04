@@ -101,8 +101,26 @@ export interface AdminPayment {
   provider: string;
   status: PaymentStatus;
   failure_reason: string;
+  /** Bank QR payments: the receipt's journal number and whether a screenshot was attached. */
+  journal_number: string;
+  contact_number: string;
+  has_proof: boolean;
+  reviewed_by: string;
+  reviewed_at: string | null;
   paid_at: string | null;
   created_at: string;
+}
+
+export interface AdminQrSettings {
+  ready: boolean;
+  qr_image_url: string;
+  account_name: string;
+  bank_name: string;
+  account_number: string;
+  instructions: string;
+  /** Gets an email the moment a student submits a payment (empty = all admins). */
+  alert_email: string;
+  updated_at: string;
 }
 
 type Meta = { label: string; className: string };
@@ -122,7 +140,7 @@ export const ENROLLMENT_META: Record<EnrollmentStatus, Meta> = {
 
 export const PAYMENT_META: Record<PaymentStatus, Meta> = {
   SUCCEEDED: { label: "Paid", className: "bg-emerald-50 text-emerald-700" },
-  PENDING: { label: "Pending", className: "bg-gold-soft text-gold-dark" },
+  PENDING: { label: "To verify", className: "bg-gold-soft text-gold-dark" },
   FAILED: { label: "Failed", className: "bg-red-soft text-red-dark" },
   CANCELLED: { label: "Cancelled", className: "bg-bg-sunken text-ink" },
 };

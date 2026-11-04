@@ -59,8 +59,12 @@ export default function CourseCard({ course }: { course: Course }) {
           <span className="flex items-center gap-1.5"><Users size={13} /> {course.students.toLocaleString()}</span>
         </div>
         <div className="flex items-center gap-2 mt-4">
-          <strong className="text-sm font-bold text-ink-strong">Nu. {course.discountPrice.toLocaleString()}</strong>
-          {course.discountPrice < course.price && (
+          {course.discountPrice === 0 ? (
+            <strong className="text-sm font-bold text-emerald-700">Free</strong>
+          ) : (
+            <strong className="text-sm font-bold text-ink-strong">Nu. {course.discountPrice.toLocaleString()}</strong>
+          )}
+          {course.discountPrice > 0 && course.discountPrice < course.price && (
             <span className="text-xs text-ink-muted line-through">Nu. {course.price.toLocaleString()}</span>
           )}
         </div>

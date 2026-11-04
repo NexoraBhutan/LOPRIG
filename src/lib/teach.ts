@@ -1,5 +1,6 @@
 /** Types and helpers for the teacher portal API (/api/v1/teach/...). */
 import { ApiError } from "@/lib/api";
+import type { Playback } from "@/lib/video";
 
 export type CourseStatus = "DRAFT" | "PENDING_REVIEW" | "PUBLISHED" | "REJECTED";
 export type LessonKind = "VIDEO" | "TEXT" | "H5P";
@@ -21,6 +22,10 @@ export interface TeachLesson {
   body: string;
   h5p_embed_url: string;
   resources: TeachResource[];
+  /** An uploaded video (Bunny Stream) instead of a pasted link. */
+  has_upload: boolean;
+  video_status: "" | "UPLOADING" | "PROCESSING" | "READY" | "FAILED";
+  playback: Playback;
 }
 
 export interface TeachModule {

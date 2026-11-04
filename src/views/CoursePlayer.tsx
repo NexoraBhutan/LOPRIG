@@ -8,12 +8,15 @@ import {
   CaretLeft, CaretRight, Download, ArrowLeft, X, List,
 } from "@phosphor-icons/react";
 import { useEnrollment } from "@/context/EnrollmentContext";
+import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
 import ProgressRing from "@/components/ProgressRing";
 import EmptyState from "@/components/EmptyState";
 import PageLoader from "@/components/PageLoader";
 import { ApiError, api, errorMessage } from "@/lib/api";
 import type { ApiCourse, ApiModule } from "@/lib/mappers";
+import VideoFrame from "@/components/VideoFrame";
+import { isEmbedded, type Playback } from "@/lib/video";
 
 const SPEEDS = [1, 1.25, 1.5, 2];
 
@@ -22,7 +25,7 @@ interface PlayerLesson {
   title: string;
   kind: "VIDEO" | "TEXT" | "H5P";
   duration: string;
-  video_url: string;
+  video: Playback;
   body: string;
   h5p_embed_url: string;
   resources: { id: number; title: string; url: string }[];
@@ -37,6 +40,8 @@ interface Progress {
 }
 
 interface LearnCourse {
+  /** "OPEN": a free course watched without an enrollment (visitor), so nothing is saved. */
+  status: string;
   course: ApiCourse;
   progress: Progress;
   last_lesson: number | null;
@@ -60,6 +65,8 @@ export default function CoursePlayer() {
   const router = useRouter();
   const { refresh } = useEnrollment();
   const { push } = useToast();
+  const { user, ready } = useAuth();
+  const userId = user?.id;
 
   const [data, setData] = useState<LearnCourse | null>(null);
   const [loadState, setLoadState] = useState<LoadState>("loading");
@@ -72,7 +79,9 @@ export default function CoursePlayer() {
   const openedLesson = useRef<number | undefined>(undefined);
   const videoRef = useRef<HTMLVideoElement>(null);
 
+  // Free courses are open to visitors; wait for the session check so students load with progress.
   useEffect(() => {
+    if (!ready) return;
     let cancelled = false;
     api<LearnCourse>(`/learning/courses/${encodeURIComponent(id)}/`)
       .then((res) => {
@@ -82,9 +91,14 @@ export default function CoursePlayer() {
         setActiveLessonId(res.last_lesson ?? first);
         openedLesson.current = res.last_lesson ?? first;
         setLoadState("ready");
+        if (res.status !== "OPEN") refresh(); // a free course may have just been added to My Learning
       })
       .catch((err) => {
         if (cancelled) return;
+        if (err instanceof ApiError && err.status === 401) {
+          router.replace(`/login?from=${encodeURIComponent(`/learn/${id}`)}`);
+          return;
+        }
         if (err instanceof ApiError && err.status === 403) setLoadState("not-enrolled");
         else if (err instanceof ApiError && err.status === 404) setLoadState("not-found");
         else setLoadState("error");
@@ -92,14 +106,15 @@ export default function CoursePlayer() {
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, ready, userId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Remember the lesson the student opens, so "Continue learning" resumes there.
+  const tracking = data?.status !== undefined && data.status !== "OPEN";
   useEffect(() => {
-    if (activeLessonId === undefined || activeLessonId === openedLesson.current) return;
+    if (!tracking || activeLessonId === undefined || activeLessonId === openedLesson.current) return;
     openedLesson.current = activeLessonId;
     api(`/learning/lessons/${activeLessonId}/progress/`, { method: "POST", body: {} }).catch(() => undefined);
-  }, [activeLessonId]);
+  }, [activeLessonId, tracking]);
 
   useEffect(() => {
     if (videoRef.current) videoRef.current.playbackRate = speed;
@@ -176,6 +191,14 @@ export default function CoursePlayer() {
 
   const handleComplete = async () => {
     if (!activeLesson || saving) return;
+    if (!tracking) {
+      if (user) push("Progress is saved for student accounts only.", "info");
+      else {
+        push("Log in to save your progress and earn the certificate. It's free.", "info");
+        router.push(`/login?from=${encodeURIComponent(`/learn/${id}`)}`);
+      }
+      return;
+    }
     if (activeLesson.completed) {
       push("Already completed", "info");
       return;
@@ -233,6 +256,8 @@ export default function CoursePlayer() {
   };
 
   const resources = activeLesson?.resources ?? [];
+  // Bunny / YouTube / Vimeo players bring their own play and speed controls.
+  const embedded = isEmbedded(activeLesson?.video);
 
   return (
     <main className="w-full bg-bg-soft min-h-[100dvh]">
@@ -246,8 +271,10 @@ export default function CoursePlayer() {
               <span className="hidden sm:inline">My Learning</span>
             </Link>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold truncate">{course.title}</p>
-              <p className="text-xs text-white/50 truncate">{activeLesson?.sectionTitle}</p>
+              <p className="text-sm font-semibold truncate">{activeLesson?.title ?? course.title}</p>
+              <p className="text-xs text-white/50 truncate">
+                {course.title}{activeLesson?.sectionTitle ? ` · ${activeLesson.sectionTitle}` : ""}
+              </p>
             </div>
             <button
               onClick={() => setSidebarOpen((o) => !o)}
@@ -267,18 +294,20 @@ export default function CoursePlayer() {
 
           {/* Video stage */}
           <div className="flex-1 flex items-center justify-center bg-ink-strong relative overflow-hidden">
-            {activeLesson?.video_url ? (
-              <video
-                ref={videoRef}
+            {activeLesson?.video.url ? (
+              <VideoFrame
                 key={activeLesson.id}
-                src={activeLesson.video_url}
-                controls
-                className="relative z-10 w-full h-full object-contain bg-black"
-                onPlay={() => setPlaying(true)}
-                onPause={() => setPlaying(false)}
-                onLoadedMetadata={(e) => {
-                  e.currentTarget.playbackRate = speed;
-                  if (activeLesson.position_seconds) e.currentTarget.currentTime = activeLesson.position_seconds;
+                playback={activeLesson.video}
+                title={activeLesson.title}
+                className="relative z-10 w-full h-full object-contain"
+                videoRef={videoRef}
+                videoProps={{
+                  onPlay: () => setPlaying(true),
+                  onPause: () => setPlaying(false),
+                  onLoadedMetadata: (e) => {
+                    e.currentTarget.playbackRate = speed;
+                    if (activeLesson.position_seconds) e.currentTarget.currentTime = activeLesson.position_seconds;
+                  },
                 }}
               />
             ) : (
@@ -314,15 +343,17 @@ export default function CoursePlayer() {
               <button onClick={() => goTo(activeIndex - 1)} disabled={activeIndex <= 0} className="p-2 rounded-lg text-ink-muted hover:text-ink hover:bg-bg-soft transition-colors bg-transparent border-none cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed" aria-label="Previous lesson">
                 <CaretLeft size={16} weight="bold" />
               </button>
-              <button onClick={handlePlayPause} className="w-11 h-11 rounded-full bg-ink-strong text-white flex items-center justify-center hover:bg-black transition-colors cursor-pointer border-none flex-shrink-0" aria-label={playing ? "Pause" : "Play"}>
+              {!embedded && <button onClick={handlePlayPause} className="w-11 h-11 rounded-full bg-ink-strong text-white flex items-center justify-center hover:bg-black transition-colors cursor-pointer border-none flex-shrink-0" aria-label={playing ? "Pause" : "Play"}>
                 {playing ? <Pause size={16} weight="fill" /> : <Play size={16} weight="fill" className="ml-0.5" />}
-              </button>
+              </button>}
               <button onClick={() => goTo(activeIndex + 1)} disabled={activeIndex >= allLessons.length - 1} className="p-2 rounded-lg text-ink-muted hover:text-ink hover:bg-bg-soft transition-colors bg-transparent border-none cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed" aria-label="Next lesson">
                 <CaretRight size={16} weight="bold" />
               </button>
-              <button onClick={cycleSpeed} className="text-xs font-bold text-ink-muted hover:text-ink px-2 py-1 rounded bg-transparent border-none cursor-pointer transition-colors" aria-label="Change playback speed">
-                {speed}x
-              </button>
+              {!embedded && (
+                <button onClick={cycleSpeed} className="text-xs font-bold text-ink-muted hover:text-ink px-2 py-1 rounded bg-transparent border-none cursor-pointer transition-colors" aria-label="Change playback speed">
+                  {speed}x
+                </button>
+              )}
 
               <div className="flex-1 h-1.5 bg-bg-sunken rounded-full overflow-hidden mx-4 hidden sm:block">
                 <div

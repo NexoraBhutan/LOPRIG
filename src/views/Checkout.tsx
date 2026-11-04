@@ -1,43 +1,44 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { CreditCard, Lock, ArrowRight, DeviceMobile, Bank } from "@phosphor-icons/react";
+import {
+  QrCode, Receipt, UploadSimple, ArrowRight, CheckCircle, Hourglass, Warning, X, ShieldCheck,
+} from "@phosphor-icons/react";
 import { useAuth } from "@/context/AuthContext";
 import { useEnrollment } from "@/context/EnrollmentContext";
 import { useToast } from "@/context/ToastContext";
 import { useCatalog } from "@/context/CatalogContext";
 import PageLoader from "@/components/PageLoader";
-import { ApiError, api, errorMessage } from "@/lib/api";
+import { api, errorMessage } from "@/lib/api";
+import { fieldErrors } from "@/lib/teach";
 
-interface CheckoutResponse {
-  payment: { reference: string; provider: string; status: string };
-  checkout_url: string;
+interface QrSettings {
+  ready: boolean;
+  qr_image: string;
+  account_name: string;
+  bank_name: string;
+  account_number: string;
+  instructions: string;
 }
 
-const methods = [
-  {
-    id: "mobile",
-    name: "Mobile Banking",
-    desc: "Pay instantly with mBoB, DK Bank, or MyPay",
-    icon: DeviceMobile,
-  },
-  {
-    id: "card",
-    name: "Credit / Debit Card",
-    desc: "Visa, Mastercard, and UnionPay accepted",
-    icon: CreditCard,
-  },
-  {
-    id: "bank",
-    name: "Bank Transfer",
-    desc: "Transfer to our Bhutanese bank account",
-    icon: Bank,
-  },
-];
+interface MyPayment {
+  reference: string;
+  status: "PENDING" | "SUCCEEDED" | "FAILED" | "CANCELLED";
+  amount: number;
+  journal_number: string;
+  contact_number: string;
+  failure_reason: string;
+  created_at: string;
+}
 
+const MAX_MB = 5;
+const inputClass =
+  "w-full px-4 py-3.5 bg-bg-soft border-2 border-line rounded-xl text-sm text-ink-strong placeholder:text-ink-muted focus:border-gold focus:outline-none transition-colors";
+
+/** Pay for a course with Lop-rig's bank QR, then send the journal number + screenshot for verification. */
 export default function Checkout() {
   const params = useParams<{ id: string }>();
   const courseId = params?.id ?? "";
@@ -45,251 +46,296 @@ export default function Checkout() {
   const { getCourse, ready } = useCatalog();
   const course = getCourse(courseId);
   const { user } = useAuth();
-  const { refresh, enrollFree } = useEnrollment();
+  const { isEnrolled } = useEnrollment();
   const { push } = useToast();
-  const [selected, setSelected] = useState("mobile");
-  const [processing, setProcessing] = useState(false);
-  const [orderNote, setOrderNote] = useState("");
+
+  const [qr, setQr] = useState<QrSettings | null>(null);
+  const [latest, setLatest] = useState<MyPayment | null | undefined>(undefined);
+  const [journal, setJournal] = useState("");
+  const [phone, setPhone] = useState("");
+  const [proof, setProof] = useState<File | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [sending, setSending] = useState(false);
+  const preview = useMemo(() => (proof ? URL.createObjectURL(proof) : ""), [proof]);
+  useEffect(() => () => { if (preview) URL.revokeObjectURL(preview); }, [preview]);
 
   useEffect(() => {
     if (!user) {
-      push("Please log in to continue to checkout.", "info");
+      push("Please log in to enroll in this course.", "info");
       router.push(`/login?from=${encodeURIComponent(`/checkout/${courseId}`)}`);
     }
   }, [user, courseId, push, router]);
 
+  const enrolled = !!course && isEnrolled(course.id);
+  const free = !!course && course.discountPrice === 0;
+  useEffect(() => {
+    // Nothing to pay for: send them to the lessons.
+    if (course && (enrolled || free)) router.replace(`/learn/${course.id}`);
+  }, [course, enrolled, free, router]);
+
+  useEffect(() => {
+    if (!user || !courseId) return;
+    let alive = true;
+    api<QrSettings>("/payments/qr/").then((s) => alive && setQr(s)).catch(() => alive && setQr(null));
+    api<{ results: MyPayment[] }>(`/payments/?course=${encodeURIComponent(courseId)}`)
+      .then((page) => {
+        if (!alive) return;
+        setLatest(page.results[0] ?? null);
+        if (page.results[0]?.contact_number) setPhone((p) => p || page.results[0].contact_number);
+      })
+      .catch(() => alive && setLatest(null));
+    return () => {
+      alive = false;
+    };
+  }, [user, courseId]);
+
   if (!user) return null;
-  if (!ready) return <PageLoader />;
+  if (!ready || latest === undefined) return <PageLoader />;
 
   if (!course) {
     return (
       <main className="overflow-x-hidden w-full max-w-full px-8 lg:px-16 pt-36 pb-32 md:pb-48 aw-gold-wash">
         <div className="max-w-[1280px] mx-auto text-center">
           <h1 className="font-display text-3xl md:text-5xl tracking-tighter font-semibold text-ink-strong mb-4">Course not found</h1>
-          <p className="text-ink-muted text-lg mb-8">The course you are trying to purchase does not exist.</p>
+          <p className="text-ink-muted text-lg mb-8">The course you are trying to enroll in does not exist.</p>
           <Link href="/courses" className="btn btn-primary btn-lg">Browse courses</Link>
         </div>
       </main>
     );
   }
+  if (enrolled || free) return <PageLoader />;
 
-  const discount = course.price - course.discountPrice;
+  const amount = course.discountPrice;
+  const underReview = latest?.status === "PENDING";
+  const rejected = latest?.status === "FAILED" ? latest : null;
 
-  const handlePay = async () => {
-    if (processing) return;
-    setProcessing(true);
+  const pickProof = (file: File | undefined) => {
+    setErrors((e) => ({ ...e, proof: "" }));
+    if (!file) return;
+    if (!/^image\/(png|jpe?g|webp)$/.test(file.type)) {
+      setErrors((e) => ({ ...e, proof: "Choose a screenshot or photo (PNG, JPG or WebP)." }));
+      return;
+    }
+    if (file.size > MAX_MB * 1024 * 1024) {
+      setErrors((e) => ({ ...e, proof: `That image is too large. The limit is ${MAX_MB} MB.` }));
+      return;
+    }
+    setProof(file);
+  };
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const next: Record<string, string> = {};
+    if (!journal.trim()) next.journal_number = "Enter the journal number from your payment receipt.";
+    if (!/^(\+?975)?\d{8}$/.test(phone.replace(/[\s().-]/g, ""))) next.contact_number = "Enter your 8-digit mobile number, e.g. 17123456.";
+    if (!proof) next.proof = "Attach the screenshot of your payment.";
+    setErrors(next);
+    if (Object.keys(next).length || !proof) return;
+
+    const form = new FormData();
+    form.append("course", course.id);
+    form.append("journal_number", journal.trim());
+    form.append("contact_number", phone.trim());
+    form.append("proof", proof);
+    setSending(true);
     try {
-      if (course.discountPrice === 0) {
-        const res = await enrollFree(course.id);
-        if (!res.ok) throw new Error(res.error);
-      } else {
-        const { payment, checkout_url } = await api<CheckoutResponse>("/payments/checkout/", {
-          method: "POST",
-          body: { course: course.id },
-        });
-        if (payment.provider !== "mock") {
-          // A real gateway takes over here and confirms back to the API by webhook.
-          window.location.assign(checkout_url);
-          return;
-        }
-        // Development gateway: confirms through the same signed-webhook path a real gateway uses.
-        const result = await api<{ status: string; failure_reason: string }>(
-          `/payments/mock/${payment.reference}/pay/`,
-          { method: "POST", body: { outcome: "success" } }
-        );
-        if (result.status !== "SUCCEEDED") throw new Error(result.failure_reason || "The payment was not completed.");
-        await refresh();
-      }
-      push("Payment successful. You're enrolled!", "success");
-      router.push(`/payment-success/${course.id}`);
+      const payment = await api<MyPayment>("/payments/qr/submit/", { method: "POST", body: form });
+      setLatest(payment);
+      setJournal("");
+      setProof(null);
+      push("Payment details sent. We'll unlock the course once it's verified.", "success");
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (err) {
-      if (err instanceof ApiError && err.status === 409) {
-        await refresh();
-        push("You're already enrolled in this course.", "info");
-        router.push(`/learn/${course.id}`);
-        return;
-      }
-      push(errorMessage(err), "error");
-      setProcessing(false);
+      const fields = fieldErrors(err);
+      setErrors(fields);
+      if (!Object.keys(fields).length) push(errorMessage(err), "error");
+    } finally {
+      setSending(false);
     }
   };
 
   return (
-    <main className="overflow-x-hidden w-full max-w-full px-8 lg:px-16 pt-36 pb-32 md:pb-48 aw-gold-wash">
-      <div className="max-w-[1280px] mx-auto">
-
+    <main className="overflow-x-hidden w-full max-w-full px-6 sm:px-8 lg:px-16 pt-36 pb-32 md:pb-48 aw-gold-wash">
+      <div className="max-w-[1180px] mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-          className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-14"
+          className="mb-12"
         >
-          <div>
-            <h1 className="font-display text-3xl md:text-5xl tracking-tighter font-semibold text-ink-strong">Checkout</h1>
-            <p className="text-ink-muted text-lg mt-3">Secure payment · Instant access after purchase</p>
-          </div>
-          <span className="inline-flex items-center gap-2 bg-emerald-50 text-emerald-700 text-xs font-bold px-4 py-2 rounded-full">
-            <Lock size={13} weight="bold" /> Secure checkout
-          </span>
+          <Link href={`/courses/${course.id}`} className="text-xs font-bold text-gold-dark hover:text-gold no-underline">← Back to course</Link>
+          <h1 className="font-display text-3xl md:text-5xl tracking-tighter font-semibold text-ink-strong mt-4">Enroll in {course.title}</h1>
+          <p className="text-ink-muted text-lg mt-3">Pay with any Bhutanese bank app by scanning the QR code, then send us the receipt details.</p>
         </motion.div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-10 items-start">
-          {/* Payment form */}
-          <motion.div
-            initial="hidden" whileInView="visible" viewport={{ once: true }}
-            variants={{ hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0 } }}
-            className="bg-white border-2 border-line rounded-2xl p-8 flex flex-col gap-8"
-          >
-            {/* Course */}
-            <div className="flex gap-5 pb-8 border-b border-line">
-              <img
-                src={`https://picsum.photos/seed/checkout${course.id}/400/225`}
-                alt=""
-                aria-hidden="true"
-                className="w-28 h-[63px] rounded-lg object-cover flex-shrink-0"
-              />
-              <div className="flex-1 min-w-0">
-                <span className="text-[0.65rem] font-bold text-gold-dark uppercase tracking-widest">{course.category.replace("-", " ")}</span>
-                <h2 className="font-semibold text-ink-strong mt-1 line-clamp-2">{course.title}</h2>
-                <p className="text-xs text-ink-muted mt-1">{course.instructor.name}</p>
-              </div>
-            </div>
-
-            {/* Payment method */}
-            <section>
-              <h3 className="text-sm font-bold text-ink-strong uppercase tracking-wider mb-4">Payment method</h3>
-              <div className="flex flex-col gap-3">
-                {methods.map((m) => {
-                  const active = selected === m.id;
-                  return (
-                    <label
-                      key={m.id}
-                      className={`flex items-center gap-4 p-5 border-2 rounded-xl cursor-pointer transition-all ${
-                        active ? "border-gold bg-gold-soft/60" : "border-line hover:border-gold"
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="method"
-                        checked={active}
-                        onChange={() => setSelected(m.id)}
-                        className="accent-gold w-4 h-4"
-                      />
-                      <span className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${active ? "bg-gold text-ink-strong" : "bg-bg-sunken text-ink-muted"}`}>
-                        <m.icon size={20} weight="duotone" />
-                      </span>
-                      <span className="flex-1">
-                        <span className="block text-sm font-bold text-ink-strong">{m.name}</span>
-                        <span className="block text-xs text-ink-muted mt-0.5">{m.desc}</span>
-                      </span>
-                    </label>
-                  );
-                })}
-              </div>
-            </section>
-
-            {/* Billing details */}
-            <section>
-              <h3 className="text-sm font-bold text-ink-strong uppercase tracking-wider mb-4">Billing details</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                <div className="flex flex-col gap-2">
-                  <label htmlFor="billing-name" className="text-xs font-bold text-ink-strong uppercase tracking-wider">Full name</label>
-                  <input
-                    id="billing-name"
-                    defaultValue={user.name}
-                    className="w-full px-4 py-3.5 bg-bg-soft border-2 border-line rounded-xl text-sm text-ink-strong focus:border-gold focus:outline-none transition-colors"
-                  />
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-8 items-start">
+          <div className="flex flex-col gap-6">
+            {underReview && latest && (
+              <section className="bg-white border-2 border-gold rounded-2xl p-7 flex gap-4" aria-live="polite">
+                <Hourglass size={28} weight="duotone" className="text-gold-dark flex-shrink-0" />
+                <div>
+                  <h2 className="font-semibold text-ink-strong text-lg">Payment under review</h2>
+                  <p className="text-sm text-ink mt-1">
+                    We received journal number <strong className="text-ink-strong">{latest.journal_number}</strong> for{" "}
+                    <strong className="text-ink-strong">Nu. {latest.amount.toLocaleString()}</strong>. An admin will check it against
+                    the bank statement and unlock the course. You&apos;ll get a notification, usually within a day.
+                  </p>
+                  <Link href="/courses" className="inline-flex items-center gap-1 text-sm font-bold text-gold-dark hover:text-gold no-underline mt-4">
+                    Keep browsing courses <ArrowRight size={13} weight="bold" />
+                  </Link>
                 </div>
-                <div className="flex flex-col gap-2">
-                  <label htmlFor="billing-email" className="text-xs font-bold text-ink-strong uppercase tracking-wider">Email</label>
-                  <input
-                    id="billing-email"
-                    type="email"
-                    defaultValue={user.email}
-                    className="w-full px-4 py-3.5 bg-bg-soft border-2 border-line rounded-xl text-sm text-ink-strong focus:border-gold focus:outline-none transition-colors"
-                  />
-                </div>
-                <div className="flex flex-col gap-2 sm:col-span-2">
-                  <label htmlFor="billing-note" className="text-xs font-bold text-ink-strong uppercase tracking-wider">Order note (optional)</label>
-                  <textarea
-                    id="billing-note"
-                    rows={3}
-                    value={orderNote}
-                    onChange={(e) => setOrderNote(e.target.value)}
-                    placeholder="Any special instructions for your order…"
-                    className="w-full px-4 py-3.5 bg-bg-soft border-2 border-line rounded-xl text-sm text-ink-strong placeholder:text-ink-muted focus:border-gold focus:outline-none transition-colors resize-none"
-                  />
-                </div>
-              </div>
-            </section>
+              </section>
+            )}
 
-            <p className="text-xs text-ink-muted flex items-center gap-2 bg-bg-soft px-4 py-3 rounded-lg">
-              <Lock size={13} weight="bold" className="text-gold-dark flex-shrink-0" />
-              This is a simulated checkout for demo purposes. No real payment will be processed.
-            </p>
-          </motion.div>
+            {rejected && (
+              <section className="bg-red-soft rounded-2xl p-6 flex gap-4" role="alert">
+                <Warning size={24} weight="fill" className="text-red-dark flex-shrink-0" />
+                <div className="text-sm text-ink">
+                  <p className="font-semibold text-ink-strong">Your last payment couldn&apos;t be verified.</p>
+                  <p className="mt-1">Reason: {rejected.failure_reason || "No reason given."}</p>
+                  <p className="mt-1">Check the details below and submit again. If you were charged, keep your receipt.</p>
+                </div>
+              </section>
+            )}
 
-          {/* Order summary */}
-          <motion.aside
-            initial="hidden" whileInView="visible" viewport={{ once: true }}
-            variants={{ hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0 } }}
-            className="bg-white border-2 border-line rounded-2xl p-8 lg:sticky lg:top-32 flex flex-col gap-6"
-          >
+            {!underReview && !qr?.ready && (
+              <section className="bg-white border-2 border-line rounded-2xl p-8 text-center">
+                <QrCode size={36} weight="duotone" className="text-ink-muted mx-auto" />
+                <h2 className="font-semibold text-ink-strong mt-3">Payments open soon</h2>
+                <p className="text-sm text-ink-muted mt-1">The payment QR code isn&apos;t set up yet. Please check back later.</p>
+              </section>
+            )}
+
+            {!underReview && qr?.ready && (
+              <>
+                {/* Step 1: pay */}
+                <section className="bg-white border-2 border-line rounded-2xl p-7 md:p-8">
+                  <Step n={1} title="Scan and pay" />
+                  <div className="grid grid-cols-1 md:grid-cols-[240px_1fr] gap-8 mt-6 items-start">
+                    <div className="rounded-2xl border-2 border-line p-3 bg-white">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={qr.qr_image} alt={`Payment QR code for ${qr.account_name}`} className="w-full aspect-square object-contain" />
+                    </div>
+                    <div className="flex flex-col gap-4 text-sm">
+                      <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2">
+                        <dt className="text-ink-muted">Amount</dt>
+                        <dd className="font-bold text-ink-strong text-lg">Nu. {amount.toLocaleString()}</dd>
+                        <dt className="text-ink-muted">Pay to</dt>
+                        <dd className="font-semibold text-ink-strong">{qr.account_name}</dd>
+                        {qr.bank_name && (<><dt className="text-ink-muted">Bank</dt><dd className="text-ink-strong">{qr.bank_name}</dd></>)}
+                        {qr.account_number && (<><dt className="text-ink-muted">Account no.</dt><dd className="text-ink-strong tabular-nums">{qr.account_number}</dd></>)}
+                      </dl>
+                      <ol className="list-decimal pl-5 text-ink flex flex-col gap-1.5">
+                        <li>Open mBoB, mPAY, DK Bank or any bank app and choose <strong>Scan QR</strong>.</li>
+                        <li>Pay exactly <strong>Nu. {amount.toLocaleString()}</strong>. A different amount can delay verification.</li>
+                        <li>Keep the success screen open, or take a screenshot of it.</li>
+                      </ol>
+                      {qr.instructions && <p className="text-ink-muted whitespace-pre-line">{qr.instructions}</p>}
+                    </div>
+                  </div>
+                </section>
+
+                {/* Step 2: proof */}
+                <form onSubmit={submit} className="bg-white border-2 border-line rounded-2xl p-7 md:p-8 flex flex-col gap-6" noValidate>
+                  <Step n={2} title="Send your receipt details" />
+                  <div className="flex flex-col gap-2">
+                    <label htmlFor="journal" className="text-xs font-bold text-ink-strong uppercase tracking-wider">Journal number</label>
+                    <input
+                      id="journal"
+                      value={journal}
+                      onChange={(e) => setJournal(e.target.value)}
+                      placeholder="e.g. 126-812333463"
+                      autoComplete="off"
+                      className={inputClass}
+                      aria-invalid={!!errors.journal_number}
+                      aria-describedby="journal-hint"
+                    />
+                    <p id="journal-hint" className={`text-xs ${errors.journal_number ? "text-red-dark" : "text-ink-muted"}`}>
+                      {errors.journal_number || "Shown as “Jrnl. No” on the receipt. Type it exactly as it appears."}
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <label htmlFor="phone" className="text-xs font-bold text-ink-strong uppercase tracking-wider">Contact number</label>
+                    <input
+                      id="phone"
+                      type="tel"
+                      inputMode="tel"
+                      autoComplete="tel"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="e.g. 17123456"
+                      className={inputClass}
+                      aria-invalid={!!errors.contact_number}
+                      aria-describedby="phone-hint"
+                    />
+                    <p id="phone-hint" className={`text-xs ${errors.contact_number ? "text-red-dark" : "text-ink-muted"}`}>
+                      {errors.contact_number || "We'll only call if we can't match your payment."}
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <span className="text-xs font-bold text-ink-strong uppercase tracking-wider">Payment screenshot</span>
+                    {proof && preview ? (
+                      <div className="flex items-start gap-4">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={preview} alt="Your payment screenshot" className="w-28 rounded-xl border border-line object-cover" />
+                        <div className="text-sm">
+                          <p className="text-ink-strong font-medium break-all">{proof.name}</p>
+                          <button type="button" onClick={() => setProof(null)} className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-ink-muted hover:text-red-dark bg-transparent border-none cursor-pointer p-0">
+                            <X size={12} weight="bold" /> Remove
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <label className={`flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-2xl px-6 py-8 cursor-pointer transition-colors ${errors.proof ? "border-red-dark" : "border-line hover:border-gold"}`}>
+                        <UploadSimple size={24} className="text-gold-dark" />
+                        <span className="text-sm font-semibold text-ink-strong">Choose screenshot</span>
+                        <span className="text-xs text-ink-muted">PNG, JPG or WebP, up to {MAX_MB} MB</span>
+                        <input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={(e) => pickProof(e.target.files?.[0])} />
+                      </label>
+                    )}
+                    {errors.proof && <p className="text-xs text-red-dark">{errors.proof}</p>}
+                  </div>
+
+                  {(errors.detail || errors.course) && <p role="alert" className="text-sm text-red-dark">{errors.detail || errors.course}</p>}
+
+                  <button type="submit" disabled={sending} className="btn btn-primary btn-lg btn-block disabled:opacity-70">
+                    {sending ? "Sending…" : <>I&apos;ve paid, submit for verification <ArrowRight size={15} weight="bold" /></>}
+                  </button>
+                </form>
+              </>
+            )}
+          </div>
+
+          {/* Summary */}
+          <aside className="bg-white border-2 border-line rounded-2xl p-7 lg:sticky lg:top-32 flex flex-col gap-5">
             <h2 className="text-sm font-bold text-ink-strong uppercase tracking-wider">Order summary</h2>
-
-            <div className="flex gap-5 pb-6 border-b border-line">
-              <img
-                src={`https://picsum.photos/seed/summary${course.id}/400/225`}
-                alt=""
-                aria-hidden="true"
-                className="w-20 h-[45px] rounded-lg object-cover flex-shrink-0"
-              />
-              <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-ink-strong text-sm leading-snug line-clamp-2">{course.title}</h3>
-                <p className="text-xs text-ink-muted mt-1">{course.instructor.name}</p>
-              </div>
+            <div>
+              <h3 className="font-semibold text-ink-strong leading-snug">{course.title}</h3>
+              <p className="text-xs text-ink-muted mt-1">{course.instructor.name}</p>
             </div>
-
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-ink-muted">List price</span>
-                <span className="text-sm text-ink line-through">Nu. {course.price.toLocaleString()}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-ink-muted">Discount</span>
-                <span className="text-sm font-bold text-emerald-600">− Nu. {discount.toLocaleString()}</span>
-              </div>
-              <div className="flex items-center justify-between pt-3 border-t border-line">
-                <span className="text-sm font-bold text-ink-strong">Total</span>
-                <span className="text-xl font-bold text-ink-strong">Nu. {course.discountPrice.toLocaleString()}</span>
-              </div>
+            <div className="flex items-center justify-between pt-4 border-t border-line">
+              <span className="text-sm font-bold text-ink-strong">Total</span>
+              <span className="text-xl font-bold text-ink-strong">Nu. {amount.toLocaleString()}</span>
             </div>
-
-            <button
-              type="button"
-              onClick={handlePay}
-              disabled={processing}
-              className={`w-full flex items-center justify-center gap-2 py-4 rounded-full font-bold text-sm tracking-wide transition-all cursor-pointer border-none bg-ink-strong text-white hover:bg-black ${
-                processing ? "opacity-80 cursor-wait" : ""
-              }`}
-            >
-              {processing ? (
-                <>Processing payment…</>
-              ) : (
-                <>Pay Nu. {course.discountPrice.toLocaleString()} <ArrowRight size={15} weight="bold" /></>
-              )}
-            </button>
-
-            <p className="text-[0.7rem] text-ink-muted text-center flex items-center justify-center gap-1.5">
-              <Lock size={11} weight="bold" /> 256-bit SSL encrypted
-            </p>
-
-            <Link href={`/courses/${course.id}`} className="text-xs font-bold text-gold-dark hover:text-gold transition-colors text-center no-underline">
-              ← Back to course
-            </Link>
-          </motion.aside>
+            <ul className="flex flex-col gap-3 text-sm text-ink">
+              <li className="flex gap-2.5"><Receipt size={17} className="text-gold-dark flex-shrink-0" /> One journal number unlocks one course.</li>
+              <li className="flex gap-2.5"><ShieldCheck size={17} className="text-gold-dark flex-shrink-0" /> Only Lop-rig admins see your screenshot.</li>
+              <li className="flex gap-2.5"><CheckCircle size={17} className="text-gold-dark flex-shrink-0" /> Lifetime access once verified.</li>
+            </ul>
+          </aside>
         </div>
       </div>
     </main>
+  );
+}
+
+function Step({ n, title }: { n: number; title: string }) {
+  return (
+    <h2 className="flex items-center gap-3 font-semibold text-ink-strong text-lg">
+      <span className="w-8 h-8 rounded-full bg-ink-strong text-gold text-sm font-bold flex items-center justify-center">{n}</span>
+      {title}
+    </h2>
   );
 }

@@ -1,24 +1,29 @@
+import Image from "next/image";
 import type { LogoSize, LogoTone } from "@/types";
 
+// Both PNGs have transparent backgrounds. The navy-and-teal one (975x284) is for light
+// surfaces like the navbar; the all-white one (975x267) is for dark surfaces like the footer.
+const SRC: Record<LogoTone, { src: string; ratio: number }> = {
+  dark: { src: "/loprig-logo-color.png", ratio: 975 / 284 },
+  light: { src: "/loprig-logo-white.png", ratio: 975 / 267 },
+};
+
 export default function Logo({ size = "md", tone = "dark" }: { size?: LogoSize; tone?: LogoTone }) {
-  const sizes: Record<LogoSize, { svg: number; text: string }> = {
-    sm: { svg: 24, text: "text-base" },
-    md: { svg: 32, text: "text-xl" },
-    lg: { svg: 40, text: "text-2xl" },
-  };
-  const s = sizes[size] ?? sizes.md;
-  const wordmark = tone === "light" ? "text-white" : "text-ink-strong";
+  const heights: Record<LogoSize, number> = { sm: 28, md: 36, lg: 46 };
+  const h = heights[size] ?? heights.md;
+  const { src, ratio } = SRC[tone] ?? SRC.dark;
+  // Wrapped so a stretching flex parent (e.g. the footer's flex-col) can't widen the image.
   return (
-    <span className="inline-flex items-center gap-2">
-      <svg viewBox="0 0 32 32" width={s.svg} height={s.svg} aria-hidden="true">
-        <rect width="32" height="32" rx="6" fill="#ffb606" />
-        <rect x="8" y="17" width="4" height="8" rx="2" fill="#1a1a1a" />
-        <rect x="14" y="12" width="4" height="13" rx="2" fill="#1a1a1a" />
-        <rect x="20" y="7" width="4" height="18" rx="2" fill="#1a1a1a" />
-      </svg>
-      <span className={`${s.text} font-bold ${wordmark} tracking-tight`}>
-        Lop<span className="text-gold-dark">-rig</span>
-      </span>
+    <span className="inline-flex shrink-0 self-start items-center">
+      <Image
+        src={src}
+        alt="Lop-rig"
+        width={Math.round(h * ratio)}
+        height={h}
+        priority
+        className="block max-w-none object-contain"
+        style={{ height: h, width: Math.round(h * ratio) }}
+      />
     </span>
   );
 }

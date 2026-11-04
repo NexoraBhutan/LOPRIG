@@ -1,6 +1,7 @@
 from django.db.models import Prefetch
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema
+from rest_framework.exceptions import NotAuthenticated, PermissionDenied
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -29,21 +30,43 @@ def progress_map(enrollment) -> dict:
 
 
 class LearnCourseView(APIView):
-    """The course player: every module and lesson with content and the student's progress."""
+    """The course player: every module and lesson with content and the student's progress.
 
-    permission_classes = [IsStudent]
+    Free published courses are open to everyone (visitors get the lessons without progress);
+    paid courses need an active enrollment.
+    """
+
+    permission_classes = [AllowAny]
 
     @extend_schema(responses=LearnCourseSerializer)
     def get(self, request, slug):
         # Not limited to published: students keep access to courses they enrolled in.
         course = get_object_or_404(Course.objects.with_stats().select_related("category", "teacher"), slug=slug)
-        enrollment = services.require_access(request.user, course)
+        user = request.user
+        is_student = user.is_authenticated and user.is_student and not user.must_change_password
+        if is_student:
+            enrollment = services.require_access(user, course)
+        elif services.is_open_course(course):
+            enrollment = None  # a visitor (or staff) watching a free course
+        elif not user.is_authenticated:
+            raise NotAuthenticated()
+        else:
+            raise PermissionDenied("Only student accounts can open paid courses.")
 
         lessons = Prefetch("lessons", queryset=Lesson.objects.prefetch_related("resources"))
         modules = CourseModule.objects.filter(course=course).prefetch_related(lessons)
         context = {"request": request, "progress": progress_map(enrollment)}
+        total = sum(len(m.lessons.all()) for m in modules)
+        if enrollment is None:
+            return Response({
+                "course": CourseListSerializer(course, context=context).data,
+                "status": "OPEN",
+                "progress": {"completed_lessons": 0, "total_lessons": total, "percent": 0},
+                "last_lesson": None,
+                "certificate": None,
+                "modules": ModuleContentSerializer(modules, many=True, context=context).data,
+            })
         certificate = Certificate.objects.filter(enrollment=enrollment).values_list("code", flat=True).first()
-
         return Response({
             "course": CourseListSerializer(course, context=context).data,
             "status": enrollment.status,

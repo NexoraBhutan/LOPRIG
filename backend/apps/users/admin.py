@@ -3,6 +3,7 @@ from django.contrib import admin, messages
 from django.contrib.auth.admin import GroupAdmin as BaseGroupAdmin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import Group
+from django.db.models import Q
 from django.shortcuts import redirect
 from django.urls import reverse
 from unfold.admin import ModelAdmin
@@ -21,6 +22,11 @@ EMAIL_FAILED = (
 )
 
 
+def is_site_admin_q() -> Q:
+    """Database version of User.is_site_admin."""
+    return Q(role=User.Role.SITE_ADMIN) | Q(is_staff=True) | Q(is_superuser=True)
+
+
 class CreateUserForm(forms.ModelForm):
     """No password here: the new user is emailed a temporary one and must replace it."""
 
@@ -28,6 +34,11 @@ class CreateUserForm(forms.ModelForm):
         model = User
         fields = ["email", "name", "role", "headline"]
         help_texts = {"email": "Their login details (with a temporary password) are emailed here."}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Website accounts only. Site administrators are made with `manage.py createsuperuser`.
+        self.fields["role"].choices = [c for c in User.Role.choices if c[0] != User.Role.SITE_ADMIN]
 
     def clean_email(self):
         email = self.cleaned_data["email"].strip().lower()
@@ -38,7 +49,7 @@ class CreateUserForm(forms.ModelForm):
     def save(self, commit=True):
         user = super().save(commit=False)
         user.set_unusable_password()
-        user.is_staff = user.is_superuser = user.role == User.Role.ADMIN
+        user.is_staff = user.is_superuser = False  # website accounts never open Django Admin
         if commit:
             user.save()
         return user
@@ -74,7 +85,8 @@ class UserAdmin(BaseUserAdmin, ModelAdmin):
     def get_readonly_fields(self, request, obj=None):
         return ["must_change_password", "password_changed_at"] if obj else []
 
-    @display(description="Role", label={"Admin": "danger", "Teacher": "warning", "Student": "info"})
+    @display(description="Role", label={"Site administrator": "danger", "Admin": "primary",
+                                        "Teacher": "warning", "Student": "info"})
     def show_role(self, obj):
         return obj.get_role_display()
 
@@ -95,7 +107,12 @@ class UserAdmin(BaseUserAdmin, ModelAdmin):
     @action(description="Email new login details (resets their password)")
     def email_new_login(self, request, queryset):
         sent, failed = [], []
-        for user in queryset.exclude(pk=request.user.pk):
+        # The email points at the website login, which site administrators can't use.
+        site_admins = queryset.filter(is_site_admin_q())
+        if site_admins.exists():
+            messages.warning(request, "Skipped site administrators: they reset with "
+                                      "“manage.py changepassword <email>”.")
+        for user in queryset.exclude(pk=request.user.pk).exclude(is_site_admin_q()):
             (sent if email_login_details(user, reset=True) else failed).append(user.email)
         if sent:
             messages.success(request, f"New login details emailed to {', '.join(sent)}.")

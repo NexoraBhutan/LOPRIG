@@ -1,5 +1,6 @@
 import json
 
+from django.test import override_settings
 from rest_framework.test import APITestCase
 
 from apps.enrollments.models import Enrollment
@@ -37,6 +38,7 @@ class FreeEnrollmentTests(APITestCase):
         self.assertEqual(res.data["results"][0]["progress"], 0)
         self.assertEqual(self.client.get("/api/v1/enrollments/free-course/").status_code, 200)
 
+    @override_settings(PAYMENTS_ENABLED=True)
     def test_paid_course_needs_checkout(self):
         make_course("paid-course", price="500")
         self.client.force_authenticate(self.student)
@@ -58,6 +60,7 @@ class FreeEnrollmentTests(APITestCase):
         self.assertEqual(self.client.get("/api/v1/saved-courses/").data["count"], 0)
 
 
+@override_settings(PAYMENTS_ENABLED=True, PAYMENT_PROVIDER="mock")
 class PaymentTests(APITestCase):
     def setUp(self):
         self.student = make_user()
@@ -164,3 +167,34 @@ class PaymentTests(APITestCase):
         self.assertEqual(self.client.get(f"/api/v1/payments/{ref}/").status_code, 404)
         self.assertEqual(self.client.post(f"/api/v1/payments/mock/{ref}/pay/", {"outcome": "success"}).status_code, 404)
         self.assertEqual(self.client.get("/api/v1/payments/").data["count"], 0)
+
+
+@override_settings(PAYMENTS_ENABLED=False)
+class PaymentsSwitchedOffTests(APITestCase):
+    """Until a gateway is chosen, every course is free to join; prices are kept for later."""
+
+    def setUp(self):
+        self.student = make_user()
+        self.course = make_course("paid-course", price="499")
+
+    def test_paid_course_enrolls_for_free(self):
+        self.client.force_authenticate(self.student)
+        res = self.client.post("/api/v1/courses/paid-course/enroll/")
+        self.assertEqual(res.status_code, 201)
+        self.assertEqual(res.data["status"], "ACTIVE")
+        self.assertEqual(Payment.objects.count(), 0)
+
+    def test_catalogue_shows_free_but_keeps_the_real_price(self):
+        listed = self.client.get("/api/v1/courses/paid-course/").data
+        self.assertEqual((listed["price"], listed["discount_price"]), (0.0, 0.0))
+        self.course.refresh_from_db()
+        self.assertEqual(int(self.course.price), 499)
+
+    def test_checkout_is_refused(self):
+        self.client.force_authenticate(self.student)
+        res = self.client.post("/api/v1/payments/checkout/", {"course": "paid-course"})
+        self.assertEqual(res.status_code, 400)
+        self.assertEqual(Payment.objects.count(), 0)
+
+    def test_public_config_reports_the_switch(self):
+        self.assertEqual(self.client.get("/api/v1/config/").data, {"payments_enabled": False})

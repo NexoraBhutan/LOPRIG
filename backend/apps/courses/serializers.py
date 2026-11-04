@@ -1,3 +1,4 @@
+from django.conf import settings
 from rest_framework import serializers
 
 from .models import Category, Course, CourseModule, Lesson
@@ -56,7 +57,7 @@ class CourseListSerializer(serializers.ModelSerializer):
     instructor = InstructorSerializer(source="teacher", read_only=True)
     students = serializers.IntegerField(source="students_count", read_only=True)
     rating = serializers.FloatField(read_only=True)
-    price = serializers.DecimalField(max_digits=10, decimal_places=2, coerce_to_string=False, read_only=True)
+    price = serializers.SerializerMethodField()
     discount_price = serializers.SerializerMethodField()
     lessons_count = serializers.IntegerField(read_only=True)
     duration = serializers.SerializerMethodField()
@@ -70,9 +71,13 @@ class CourseListSerializer(serializers.ModelSerializer):
             "gradient", "thumbnail_url",
         ]
 
+    def get_price(self, obj) -> float:
+        # While payments are off there's no "was" price to show, just Free.
+        return float(obj.price) if settings.PAYMENTS_ENABLED else 0.0
+
     def get_discount_price(self, obj) -> float:
         # The frontend always shows discountPrice as the price to pay.
-        return float(obj.current_price)
+        return float(obj.student_price)
 
     def get_duration(self, obj) -> str:
         return format_duration(obj.total_seconds)

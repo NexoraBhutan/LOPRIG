@@ -28,7 +28,7 @@ export const metadata: Metadata = {
   title: "Lop-rig — Learn. Grow. Build Your Future.",
   description:
     "Lop-rig is Bhutan's online learning platform for practical, skills-first courses in programming, business, design, languages, and more.",
-  icons: { icon: "/favicon.svg" },
+  icons: { icon: "/loprig-icon.png", apple: "/loprig-icon.png" },
 };
 
 export const viewport: Viewport = {
