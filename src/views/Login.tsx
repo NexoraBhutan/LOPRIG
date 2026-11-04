@@ -8,6 +8,8 @@ import { Envelope, Lock, Eye, EyeSlash, ArrowRight } from "@phosphor-icons/react
 import Logo from "@/components/Logo";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
+import { rememberTemporaryPassword } from "@/lib/password";
+import { homeFor } from "@/utils/routes";
 
 export default function Login() {
   const { login } = useAuth();
@@ -26,8 +28,13 @@ export default function Login() {
     setError("");
     const res = await login(credentials);
     if (!res.ok) return setError(res.error);
+    if (res.mustChangePassword) {
+      // Logged in with the emailed temporary password: they choose their own before anything else.
+      rememberTemporaryPassword(credentials.password);
+      return router.replace("/set-password");
+    }
     push("Welcome back.", "success");
-    router.push(from || (res.role === "TEACHER" ? "/teach" : res.role === "ADMIN" ? "/admin" : "/dashboard"));
+    router.push(from || homeFor(res.role));
   };
 
   const onSubmit = (e: React.FormEvent) => {

@@ -1,3 +1,6 @@
+import re
+
+from django.core import mail
 from rest_framework.test import APITestCase
 
 from apps.courses.models import Course
@@ -7,6 +10,10 @@ from apps.users.models import User
 from .factories import PASSWORD, lessons_of, make_course, make_teacher, make_user
 
 BASE = "/api/v1/manage"
+
+
+def emailed_password(index=-1):
+    return re.search(r"Temporary password: (\S+)", mail.outbox[index].body).group(1)
 
 
 class AdminPortalTests(APITestCase):
@@ -58,14 +65,12 @@ class AdminPortalTests(APITestCase):
         self.assertIsNotNone(pending.published_at)
 
     def test_create_teacher_and_manage_users(self):
-        res = self.client.post(f"{BASE}/users/", {
-            "name": "Pema Lhamo", "email": "Pema@Teachers.bt", "role": "TEACHER", "password": "Teach-2026-strong",
-        })
+        res = self.client.post(f"{BASE}/users/", {"name": "Pema Lhamo", "email": "Pema@Teachers.bt", "role": "TEACHER"})
         self.assertEqual(res.status_code, 201, res.data)
         created = User.objects.get(email="pema@teachers.bt")
-        self.assertTrue(created.check_password("Teach-2026-strong"))
+        self.assertTrue(created.check_password(emailed_password()))
         self.assertFalse(created.is_staff)
-        dup = self.client.post(f"{BASE}/users/", {"name": "X", "email": "pema@teachers.bt", "password": "Teach-2026-strong"})
+        dup = self.client.post(f"{BASE}/users/", {"name": "X", "email": "pema@teachers.bt"})
         self.assertEqual(dup.status_code, 400)
 
         teachers = self.client.get(f"{BASE}/users/?role=TEACHER").data["results"]
@@ -83,6 +88,62 @@ class AdminPortalTests(APITestCase):
         self.assertFalse(self.student.is_active)
         login = self.client.post("/api/v1/auth/login/", {"email": "student@example.com", "password": PASSWORD})
         self.assertEqual(login.status_code, 401)
+
+    def test_generated_password_flow(self):
+        """Admin creates a teacher, the password is emailed (never shown to the admin), the teacher
+        logs in, is blocked from the portal until they set their own password."""
+        res = self.client.post(f"{BASE}/users/", {"name": "Sonam Choden", "email": "sonam@teachers.bt", "role": "TEACHER"})
+        self.assertEqual(res.status_code, 201, res.data)
+        self.assertTrue(res.data["email_sent"])
+        self.assertTrue(res.data["must_change_password"])
+        self.assertNotIn("temporary_password", res.data)
+        self.assertNotIn("password", res.data)
+        self.assertEqual(mail.outbox[-1].to, ["sonam@teachers.bt"])
+        temp = emailed_password()
+        self.assertEqual(len(temp), 19)
+        self.assertIn("/login", mail.outbox[-1].body)
+
+        self.client.force_authenticate(None)
+        login = self.client.post("/api/v1/auth/login/", {"email": "sonam@teachers.bt", "password": temp})
+        self.assertEqual(login.status_code, 200, login.data)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {login.data['access']}")
+        self.assertTrue(self.client.get("/api/v1/users/me/").data["must_change_password"])
+        blocked = self.client.get("/api/v1/teach/summary/")
+        self.assertEqual(blocked.status_code, 403)
+        self.assertIn("own password", str(blocked.data))
+
+        weak = self.client.post("/api/v1/users/me/password/", {"current_password": temp, "new_password": "password"})
+        self.assertEqual(weak.status_code, 400)
+        done = self.client.post("/api/v1/users/me/password/", {"current_password": temp, "new_password": "My-own-Pass-77"})
+        self.assertEqual(done.status_code, 204)
+        self.assertFalse(self.client.get("/api/v1/users/me/").data["must_change_password"])
+        self.assertEqual(self.client.get("/api/v1/teach/summary/").status_code, 200)
+
+        self.client.credentials()
+        self.client.force_authenticate(self.admin)
+        row = self.client.get(f"{BASE}/users/?search=sonam").data["results"][0]
+        self.assertFalse(row["must_change_password"])
+
+    def test_admin_reset_password(self):
+        login = self.client.post("/api/v1/auth/login/", {"email": "teacher@example.com", "password": PASSWORD})
+        refresh = login.data["refresh"]
+
+        self.client.force_authenticate(self.student)
+        self.assertEqual(self.client.post(f"{BASE}/users/{self.teacher.id}/reset-password/").status_code, 403)
+        self.client.force_authenticate(self.admin)
+        self.assertEqual(self.client.post(f"{BASE}/users/{self.admin.id}/reset-password/").status_code, 400)
+
+        res = self.client.post(f"{BASE}/users/{self.teacher.id}/reset-password/")
+        self.assertEqual(res.status_code, 200, res.data)
+        self.assertTrue(res.data["must_change_password"] and res.data["email_sent"])
+        self.assertNotIn("temporary_password", res.data)
+        self.assertEqual(mail.outbox[-1].to, ["teacher@example.com"])
+        self.client.force_authenticate(None)
+        self.assertEqual(self.client.post("/api/v1/auth/refresh/", {"refresh": refresh}).status_code, 401)
+        old = self.client.post("/api/v1/auth/login/", {"email": "teacher@example.com", "password": PASSWORD})
+        self.assertEqual(old.status_code, 401)
+        new = self.client.post("/api/v1/auth/login/", {"email": "teacher@example.com", "password": emailed_password()})
+        self.assertEqual(new.status_code, 200)
 
     def test_admin_cannot_lock_themselves_out(self):
         self.assertEqual(self.client.patch(f"{BASE}/users/{self.admin.id}/", {"role": "STUDENT"}).status_code, 400)

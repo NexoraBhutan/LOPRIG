@@ -112,6 +112,8 @@ export interface User {
   bio: string;
   avatarColor: string;
   joined: string;
+  /** Still using a temporary password an admin gave them. */
+  mustChangePassword: boolean;
 }
 
 /** A course the student is enrolled in and/or has saved. `enrolledAt` is null for saved-only courses. */

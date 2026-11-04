@@ -7,7 +7,7 @@ import { EnrollmentProvider } from "@/context/EnrollmentContext";
 import { ToastProvider } from "@/context/ToastContext";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { ScrollToTop } from "@/components/RouteUtils";
+import { PasswordSetupGuard, ScrollToTop } from "@/components/RouteUtils";
 import "./globals.css";
 
 const outfit = Outfit({
@@ -48,6 +48,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             <EnrollmentProvider>
               <ToastProvider>
                 <ScrollToTop />
+                <PasswordSetupGuard />
                 <div className="app-shell">
                   <Navbar />
                   <main>{children}</main>

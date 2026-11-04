@@ -26,6 +26,5 @@ class ChangePasswordView(APIView):
     def post(self, request):
         serializer = ChangePasswordSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
-        request.user.set_password(serializer.validated_data["new_password"])
-        request.user.save(update_fields=["password"])
+        request.user.set_own_password(serializer.validated_data["new_password"])
         return Response(status=status.HTTP_204_NO_CONTENT)

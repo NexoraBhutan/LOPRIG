@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { UserPlus, X } from "@phosphor-icons/react";
+import { EnvelopeSimple, PaperPlaneTilt, UserPlus, X } from "@phosphor-icons/react";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
 import PageLoader from "@/components/PageLoader";
@@ -21,7 +21,26 @@ const FILTERS: { value: Filter; label: string }[] = [
   { value: "TEACHER", label: "Teachers" },
   { value: "ADMIN", label: "Admins" },
 ];
-const EMPTY_FORM = { name: "", email: "", role: "TEACHER" as UserRole, headline: "", password: "" };
+const EMPTY_FORM = { name: "", email: "", role: "TEACHER" as UserRole, headline: "" };
+
+function PasswordStatus({ u }: { u: AdminUser }) {
+  if (u.must_change_password) {
+    return (
+      <span className="flex flex-col items-start gap-1">
+        <Pill className="bg-gold-soft text-gold-dark">Temporary</Pill>
+        <span className="text-xs text-ink-muted whitespace-nowrap">Not changed yet</span>
+      </span>
+    );
+  }
+  return (
+    <span className="flex flex-col items-start gap-1">
+      <Pill className="bg-emerald-50 text-emerald-700">Own password</Pill>
+      <span className="text-xs text-ink-muted whitespace-nowrap">
+        {u.password_changed_at ? `Changed ${timeAgo(u.password_changed_at)}` : "Set at sign-up"}
+      </span>
+    </span>
+  );
+}
 
 export default function AdminUsers() {
   const { user: me } = useAuth();
@@ -45,7 +64,11 @@ export default function AdminUsers() {
     setSaving(true);
     try {
       const created = await api<AdminUser>("/manage/users/", { method: "POST", body: form });
-      push(`${created.name} can now log in as ${ROLE_META[created.role].label.toLowerCase()}.`, "success");
+      if (created.email_sent) {
+        push(`Account created. Login details were emailed to ${created.email}.`, "success");
+      } else {
+        push(`Account created, but the email to ${created.email} couldn't be sent. Check the email settings, then use “Email new login”.`, "error");
+      }
       setForm(EMPTY_FORM);
       setAdding(false);
       list.reload();
@@ -62,6 +85,18 @@ export default function AdminUsers() {
       const updated = await api<AdminUser>(`/manage/users/${u.id}/`, { method: "PATCH", body: changes });
       list.update((row) => row.id === u.id, updated);
       push(message, "success");
+    } catch (err) {
+      push(errorMessage(err), "error");
+    }
+  };
+
+  const emailNewLogin = async (u: AdminUser) => {
+    if (!window.confirm(`Email ${u.name} new login details? Their current password stops working, they're signed out everywhere, and they'll set a new password after logging in.`)) return;
+    try {
+      const updated = await api<AdminUser>(`/manage/users/${u.id}/reset-password/`, { method: "POST" });
+      list.update((row) => row.id === u.id, updated);
+      push(updated.email_sent ? `New login details emailed to ${updated.email}.` : `Couldn't send the email to ${updated.email}. Try again later.`,
+        updated.email_sent ? "success" : "error");
     } catch (err) {
       push(errorMessage(err), "error");
     }
@@ -84,7 +119,7 @@ export default function AdminUsers() {
       />
 
       {adding && (
-        <Card title="New account" description="They can log in straight away with this email and password, and change the password from their profile.">
+        <Card title="New account" description="No password needed. We email them a temporary password; after logging in they must set their own from the teacher portal.">
           <form onSubmit={createUser} className="grid grid-cols-1 md:grid-cols-2 gap-5" noValidate>
             <Field id="new-name" label="Full name" error={errors.name}>
               <input id="new-name" value={form.name} onChange={set("name")} className={inputClass} required />
@@ -102,9 +137,10 @@ export default function AdminUsers() {
             <Field id="new-headline" label="Title (optional)" hint="Shown under a teacher's name, e.g. “Senior Developer, Thimphu”.">
               <input id="new-headline" value={form.headline} onChange={set("headline")} className={inputClass} />
             </Field>
-            <Field id="new-password" label="Temporary password" error={errors.password} hint="At least 8 characters. Share it privately.">
-              <input id="new-password" type="text" autoComplete="new-password" value={form.password} onChange={set("password")} className={inputClass} required />
-            </Field>
+            <p className="md:col-span-2 flex items-start gap-2.5 text-sm text-ink-muted bg-bg-soft rounded-xl px-4 py-3">
+              <EnvelopeSimple size={18} className="text-gold-dark shrink-0 mt-0.5" />
+              Login details go straight to this email address. Nobody else, including you, sees the password.
+            </p>
             <div className="flex items-end">
               <button type="submit" disabled={saving} className="btn btn-md btn-primary disabled:opacity-60">
                 {saving ? "Creating…" : "Create account"}
@@ -121,7 +157,7 @@ export default function AdminUsers() {
 
       {list.loading ? <PageLoader /> : list.error ? <p role="alert" className="text-sm text-red-dark">{list.error}</p> : (
         <>
-          <TableShell head={["Person", "Role", "Activity", "Joined", "Last login", "Account"]} empty={list.items.length ? undefined : "Nobody matches."}>
+          <TableShell head={["Person", "Role", "Activity", "Password", "Last login", "Account"]} empty={list.items.length ? undefined : "Nobody matches."}>
             {list.items.map((u) => {
               const self = String(u.id) === me?.id;
               return (
@@ -155,10 +191,14 @@ export default function AdminUsers() {
                   <td className="px-5 py-3.5 text-ink-muted whitespace-nowrap">
                     {u.role === "TEACHER" ? `${u.courses} course${u.courses === 1 ? "" : "s"}` : u.role === "STUDENT" ? `${u.enrollments} enrolled` : "—"}
                   </td>
-                  <td className="px-5 py-3.5 text-ink-muted whitespace-nowrap">{formatDate(u.date_joined)}</td>
-                  <td className="px-5 py-3.5 text-ink-muted whitespace-nowrap">{u.last_login ? timeAgo(u.last_login) : "Never"}</td>
+                  <td className="px-5 py-3.5"><PasswordStatus u={u} /></td>
+                  <td className="px-5 py-3.5 text-ink-muted whitespace-nowrap">
+                    {u.last_login ? timeAgo(u.last_login) : "Never"}
+                    <span className="block text-xs">Joined {formatDate(u.date_joined)}</span>
+                  </td>
                   <td className="px-5 py-3.5">
                     {self ? <Pill className="bg-emerald-50 text-emerald-700">Active</Pill> : (
+                      <div className="flex flex-col items-stretch gap-1.5 w-max">
                       <button
                         onClick={() => {
                           const verb = u.is_active ? "Deactivate" : "Reactivate";
@@ -172,6 +212,15 @@ export default function AdminUsers() {
                       >
                         {u.is_active ? "Deactivate" : "Reactivate"}
                       </button>
+                      {u.is_active && (
+                        <button
+                          onClick={() => emailNewLogin(u)}
+                          className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border-2 border-solid border-line text-ink bg-white hover:border-gold hover:text-gold-dark cursor-pointer transition-colors whitespace-nowrap"
+                        >
+                          <PaperPlaneTilt size={13} weight="bold" /> Email new login
+                        </button>
+                      )}
+                      </div>
                     )}
                   </td>
                 </tr>

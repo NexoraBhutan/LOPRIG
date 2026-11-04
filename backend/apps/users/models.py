@@ -5,6 +5,19 @@ from django.db import models
 AVATAR_COLORS = ["#ffb606", "#1a1a1a", "#c88e00", "#3a3a3a", "#ff6347"]
 
 
+_PASSWORD_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789"  # no 0/O, 1/l/I
+
+
+def generate_temporary_password() -> str:
+    """Strong, easy-to-read password like 'Kp7x-Qm2R-hT9w-3NeZ' (16 random characters)."""
+    import secrets
+
+    while True:
+        chars = "".join(secrets.choice(_PASSWORD_ALPHABET) for _ in range(16))
+        if any(c.isupper() for c in chars) and any(c.islower() for c in chars) and any(c.isdigit() for c in chars):
+            return "-".join(chars[i:i + 4] for i in range(0, 16, 4))
+
+
 def pick_avatar_color(seed: str) -> str:
     return AVATAR_COLORS[ord(seed[0]) % len(AVATAR_COLORS)] if seed else AVATAR_COLORS[0]
 
@@ -54,6 +67,9 @@ class User(AbstractUser):
     bio = models.TextField(blank=True, default="Lifelong learner exploring new skills on Lop-rig.")
     headline = models.CharField(max_length=150, blank=True, help_text="Shown under a teacher's name.")
     avatar_color = models.CharField(max_length=7, blank=True)
+    # True while the account still uses a temporary password an admin generated.
+    must_change_password = models.BooleanField(default=False)
+    password_changed_at = models.DateTimeField(null=True, blank=True)
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["name"]
@@ -66,6 +82,26 @@ class User(AbstractUser):
 
     def __str__(self):
         return f"{self.name} <{self.email}>"
+
+    def set_own_password(self, raw_password: str) -> None:
+        """The user chose this password themselves (change password / forgot password)."""
+        from django.utils import timezone
+
+        self.set_password(raw_password)
+        self.must_change_password = False
+        self.password_changed_at = timezone.now()
+        self.save(update_fields=["password", "must_change_password", "password_changed_at"])
+
+    def set_temporary_password(self) -> str:
+        """An admin issued a new password; the user is asked to replace it. Returns it once."""
+        from django.utils import timezone
+
+        raw = generate_temporary_password()
+        self.set_password(raw)
+        self.must_change_password = True
+        self.password_changed_at = timezone.now()
+        self.save(update_fields=["password", "must_change_password", "password_changed_at"])
+        return raw
 
     # Django (and the admin theme) expect these; this model has one `name` field instead.
     def get_full_name(self):

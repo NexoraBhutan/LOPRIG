@@ -1,0 +1,234 @@
+{% if teacher_cards %}
+<section class="lr-teachers" aria-label="Browse lessons by teacher">
+    <div class="lr-teachers-head">
+        <div>
+            <p class="lr-eyebrow">Teachers</p>
+            {% if teacher_selected %}
+                <h2>Lessons by {{ teacher_selected.name }}</h2>
+                <p>{{ teacher_selected.lesson_count }} lesson{{ teacher_selected.lesson_count|pluralize }} across {{ teacher_selected.course_count }} course{{ teacher_selected.course_count|pluralize }}. Click the card again to see all lessons.</p>
+            {% else %}
+                <h2>Browse lessons by teacher</h2>
+                <p>Pick a teacher to see only the lesson topics they teach.</p>
+            {% endif %}
+        </div>
+        <div class="lr-teachers-tools">
+            {% if teacher_selected %}
+                <a class="lr-teachers-clear" href="{{ all_teachers_url }}">
+                    <span class="material-symbols-outlined" aria-hidden="true">close</span> Show all teachers
+                </a>
+            {% endif %}
+            <button type="button" class="lr-teachers-arrow" data-dir="-1" aria-label="Scroll teachers left">
+                <span class="material-symbols-outlined" aria-hidden="true">chevron_left</span>
+            </button>
+            <button type="button" class="lr-teachers-arrow" data-dir="1" aria-label="Scroll teachers right">
+                <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="lr-teacher-row" id="lr-teacher-row">
+        <a class="lr-teacher-card{% if not teacher_selected %} is-active{% endif %}" href="{{ all_teachers_url }}"
+           {% if not teacher_selected %}aria-current="true"{% endif %}>
+            <span class="lr-teacher-avatar lr-teacher-avatar-all"><span class="material-symbols-outlined" aria-hidden="true">groups</span></span>
+            <span class="lr-teacher-name">All teachers</span>
+            <span class="lr-teacher-headline">{{ teacher_cards|length }} teacher{{ teacher_cards|length|pluralize }}</span>
+            <span class="lr-teacher-stats"><span><strong>{{ all_lessons_count }}</strong> lessons</span></span>
+        </a>
+        {% for card in teacher_cards %}
+            {% with t=card.teacher %}
+            <a class="lr-teacher-card{% if card.active %} is-active{% endif %}" href="{{ card.url }}"
+               {% if card.active %}aria-current="true"{% endif %}
+               title="{% if card.active %}Show all teachers{% else %}Show lessons by {{ t.name }}{% endif %}">
+                <span class="lr-teacher-avatar" style="background: {{ t.avatar_color|default:'#ffb606' }}">{{ card.initial }}</span>
+                <span class="lr-teacher-name">{{ t.name }}</span>
+                <span class="lr-teacher-headline">{{ t.headline|default:t.email }}</span>
+                <span class="lr-teacher-stats">
+                    <span><strong>{{ t.lesson_count }}</strong> lesson{{ t.lesson_count|pluralize }}</span>
+                    <span><strong>{{ t.course_count }}</strong> course{{ t.course_count|pluralize }}</span>
+                    {% if t.published_count %}<span class="lr-teacher-live">{{ t.published_count }} live</span>{% endif %}
+                </span>
+                {% if card.active %}<span class="lr-teacher-check material-symbols-outlined" aria-hidden="true">check_circle</span>{% endif %}
+            </a>
+            {% endwith %}
+        {% endfor %}
+    </div>
+</section>
+
+<section class="lr-courses" aria-labelledby="lr-courses-title">
+    <div class="lr-teachers-head">
+        <div>
+            <p class="lr-eyebrow">{% if teacher_selected %}Courses{% else %}Review requests{% endif %}</p>
+            {% if teacher_selected %}
+                <h2 id="lr-courses-title">{{ teacher_selected.name }}&rsquo;s courses</h2>
+                <p>Approve to publish a course, or send it back with a note. Open a card to check its lessons first.</p>
+            {% else %}
+                <h2 id="lr-courses-title">Courses awaiting your review{% if pending_total %} <span class="lr-count-pill">{{ pending_total }}</span>{% endif %}</h2>
+                <p>{% if pending_total %}Teachers submitted these. Check the lessons, then approve or reject.{% else %}Nothing to review right now. Pick a teacher above to see all their courses.{% endif %}</p>
+            {% endif %}
+        </div>
+        <div class="lr-teachers-tools">
+            <button type="button" class="lr-teachers-clear" id="lr-table-toggle" aria-controls="changelist-form" aria-expanded="false">
+                <span class="material-symbols-outlined" aria-hidden="true">table_rows</span>
+                <span data-label>Show lesson table</span>
+            </button>
+        </div>
+    </div>
+
+    {% if course_cards %}
+    <div class="lr-course-grid">
+        {% for card in course_cards %}
+        {% with c=card.course %}
+        <article class="lr-course-card is-{{ card.tone }}">
+            <div class="lr-course-band" style="background: linear-gradient(135deg, {{ c.gradient_start }}, {{ c.gradient_end }})">
+                <span class="lr-course-status is-{{ card.tone }}">{{ card.status_label }}</span>
+                <span class="lr-course-category">{{ c.category.title }}</span>
+            </div>
+            <div class="lr-course-body">
+                <h3 class="lr-course-title">{{ c.title }}</h3>
+                {% if not teacher_selected %}
+                    <p class="lr-course-teacher">
+                        <span class="lr-course-teacher-dot" style="background: {{ c.teacher.avatar_color|default:'#ffb606' }}">{{ c.teacher.name|first|upper }}</span>
+                        {{ c.teacher.name }}
+                    </p>
+                {% endif %}
+                <ul class="lr-course-meta">
+                    <li><span class="material-symbols-outlined" aria-hidden="true">signal_cellular_alt</span>{{ c.get_level_display }}</li>
+                    <li><span class="material-symbols-outlined" aria-hidden="true">view_module</span>{{ card.modules|length }} module{{ card.modules|length|pluralize }}</li>
+                    <li><span class="material-symbols-outlined" aria-hidden="true">play_lesson</span>{{ card.lesson_count }} lesson{{ card.lesson_count|pluralize }}</li>
+                    <li><span class="material-symbols-outlined" aria-hidden="true">schedule</span>{{ card.duration }}</li>
+                    <li><span class="material-symbols-outlined" aria-hidden="true">sell</span>{% if c.is_free %}Free{% else %}Nu. {{ c.current_price|floatformat:0 }}{% endif %}</li>
+                </ul>
+                <p class="lr-course-when">
+                    {% if c.status == "PENDING_REVIEW" %}Submitted {{ c.updated_at|timesince }} ago
+                    {% elif c.status == "PUBLISHED" and c.published_at %}Live since {{ c.published_at|date:"j M Y" }}
+                    {% else %}Updated {{ c.updated_at|timesince }} ago{% endif %}
+                </p>
+
+                {% if card.problems %}
+                    <div class="lr-course-note is-warn">
+                        <strong>Still missing</strong>
+                        <ul>{% for p in card.problems %}<li>{{ p }}</li>{% endfor %}</ul>
+                    </div>
+                {% endif %}
+                {% if c.status == "REJECTED" and c.review_note %}
+                    <div class="lr-course-note is-rejected"><strong>Your note to the teacher</strong><p>{{ c.review_note }}</p></div>
+                {% endif %}
+
+                <details class="lr-course-lessons">
+                    <summary>
+                        <span class="material-symbols-outlined" aria-hidden="true">expand_more</span>
+                        Check the {{ card.lesson_count }} lesson{{ card.lesson_count|pluralize }}
+                    </summary>
+                    {% for m in card.modules %}
+                        <p class="lr-course-module">{{ forloop.counter }}. {{ m.title }}</p>
+                        <ol>
+                            {% for l in m.lessons.all %}
+                                <li>
+                                    <span class="lr-lesson-title">{{ l.title }}</span>
+                                    {% if l.is_preview %}<span class="lr-lesson-tag">Preview</span>{% endif %}
+                                    <span class="lr-lesson-dur">{{ l.get_kind_display }} · {{ l.duration_seconds|floatformat:0 }}s</span>
+                                </li>
+                            {% empty %}
+                                <li class="lr-muted">No lessons in this module yet.</li>
+                            {% endfor %}
+                        </ol>
+                    {% empty %}
+                        <p class="lr-muted">This course has no modules yet.</p>
+                    {% endfor %}
+                </details>
+            </div>
+
+            <footer class="lr-course-actions">
+                {% if c.status == "PENDING_REVIEW" %}
+                    <form method="post" action="{% url 'admin:courses_lesson_review' c.pk 'approve' %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                        <button type="submit" class="lr-btn-approve" onclick="return confirm('Approve and publish “{{ c.title|escapejs }}”? Students can enroll right away.')">
+                            <span class="material-symbols-outlined" aria-hidden="true">check_circle</span> Approve &amp; publish
+                        </button>
+                    </form>
+                    <details class="lr-reject">
+                        <summary class="lr-btn-reject"><span class="material-symbols-outlined" aria-hidden="true">undo</span> Reject</summary>
+                        <form method="post" action="{% url 'admin:courses_lesson_review' c.pk 'reject' %}" class="lr-reject-form">
+                            {% csrf_token %}
+                            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                            <label for="note-{{ c.pk }}">What should {{ c.teacher.name }} fix?</label>
+                            <textarea id="note-{{ c.pk }}" name="note" rows="3" required minlength="{{ min_reject_note }}"
+                                      placeholder="e.g. Please add captions to the videos in module 2."></textarea>
+                            <button type="submit" class="lr-btn-reject-send">Send back to teacher</button>
+                        </form>
+                    </details>
+                {% elif c.status == "PUBLISHED" %}
+                    <a class="lr-btn-ghost" href="{{ card.site_url }}" target="_blank" rel="noopener">
+                        <span class="material-symbols-outlined" aria-hidden="true">open_in_new</span> View on site
+                    </a>
+                {% elif c.status == "REJECTED" %}
+                    <span class="lr-course-wait">Waiting for the teacher to fix and resubmit</span>
+                {% else %}
+                    <span class="lr-course-wait">The teacher is still building this course</span>
+                {% endif %}
+                <a class="lr-btn-ghost lr-push" href="{{ card.admin_url }}">
+                    <span class="material-symbols-outlined" aria-hidden="true">edit</span> Open course
+                </a>
+            </footer>
+        </article>
+        {% endwith %}
+        {% endfor %}
+    </div>
+    {% else %}
+        <div class="lr-course-empty">
+            <span class="material-symbols-outlined" aria-hidden="true">task_alt</span>
+            {% if teacher_selected %}{{ teacher_selected.name }} has no courses yet.{% else %}All caught up: no courses are waiting for review.{% endif %}
+        </div>
+    {% endif %}
+</section>
+<script>
+  // Runs after the page is parsed: Unfold's list form comes after this template.
+  document.addEventListener("DOMContentLoaded", function () {
+    // The flat lesson table is hidden while course cards are shown; one click brings it back.
+    var toggle = document.getElementById("lr-table-toggle");
+    var form = document.getElementById("changelist-form");
+    var section = document.querySelector(".lr-courses");
+    if (!toggle || !form || !section) return;
+    var searchBar = form.previousElementSibling;  // Unfold's search + filters bar
+    var hasCards = {{ course_cards|length }} > 0;
+    function set(show) {
+      form.style.display = show ? "" : "none";
+      if (searchBar) searchBar.style.display = show ? "" : "none";
+      toggle.setAttribute("aria-expanded", String(show));
+      toggle.querySelector("[data-label]").textContent = show ? "Hide lesson table" : "Show lesson table";
+    }
+    set({{ show_table|yesno:"true,false" }} || !hasCards);
+    toggle.addEventListener("click", function () { set(form.style.display === "none"); });
+  });
+</script>
+<script>
+  (function () {
+    var row = document.getElementById("lr-teacher-row");
+    if (!row) return;
+    var arrows = document.querySelectorAll(".lr-teachers-arrow");
+    // Bring the selected teacher's card into view (without moving the page up or down).
+    function reveal() {
+      var active = row.querySelector(".lr-teacher-card.is-active");
+      if (!active) return;
+      var a = active.getBoundingClientRect(), r = row.getBoundingClientRect();
+      row.scrollLeft += a.left - r.left - (r.width - a.width) / 2;
+      update();
+    }
+    if (document.readyState === "complete") reveal();
+    else window.addEventListener("load", reveal);
+    function update() {
+      arrows[0].disabled = row.scrollLeft <= 2;
+      arrows[1].disabled = row.scrollLeft + row.clientWidth >= row.scrollWidth - 2;
+    }
+    arrows.forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        row.scrollBy({ left: Number(btn.dataset.dir) * row.clientWidth * 0.8, behavior: "smooth" });
+      });
+    });
+    row.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+    update();
+  })();
+</script>
+{% endif %}

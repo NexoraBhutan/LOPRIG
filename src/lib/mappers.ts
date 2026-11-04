@@ -12,6 +12,7 @@ export interface ApiUser {
   bio: string;
   avatar_color: string;
   joined: string;
+  must_change_password?: boolean;
 }
 
 export interface ApiCategory {
@@ -67,6 +68,7 @@ export function toUser(u: ApiUser): User {
     bio: u.bio,
     avatarColor: u.avatar_color,
     joined: u.joined,
+    mustChangePassword: Boolean(u.must_change_password),
   };
 }
 

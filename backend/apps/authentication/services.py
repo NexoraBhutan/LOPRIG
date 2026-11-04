@@ -1,6 +1,8 @@
 import hashlib
 import hmac
+import logging
 import secrets
+import smtplib
 from datetime import timedelta
 
 from django.conf import settings
@@ -16,6 +18,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.users.models import PasswordResetCode, User
 
+logger = logging.getLogger(__name__)
+
 INVALID_CODE = "This code is incorrect or has expired. Request a new one."
 TOO_MANY = "Too many wrong attempts. Request a new code."
 
@@ -23,6 +27,54 @@ TOO_MANY = "Too many wrong attempts. Request a new code."
 def issue_tokens(user: User) -> dict:
     refresh = RefreshToken.for_user(user)
     return {"access": str(refresh.access_token), "refresh": str(refresh)}
+
+
+def sign_out_everywhere(user: User) -> None:
+    """Revoke every refresh token the user holds, so all their sessions end."""
+    for token in OutstandingToken.objects.filter(user=user):
+        BlacklistedToken.objects.get_or_create(token=token)
+
+
+def email_login_details(user: User, *, reset: bool = False) -> bool:
+    """Give an admin-created (or reset) account a new temporary password and email it to the user.
+
+    Nobody else ever sees the password. The user must replace it from their own account page
+    before they can use the portal. Returns False if the email couldn't be sent; the account then
+    keeps an unknown password and the admin can simply send the login email again.
+    """
+    password = user.set_temporary_password()
+    if reset:
+        sign_out_everywhere(user)
+    login_url = f"{settings.FRONTEND_URL.rstrip('/')}/login"
+    sent_at = timezone.localtime().strftime("%d %b %Y, %I:%M %p")
+    intro = (
+        "An admin has reset your Lop-rig password. Your old password no longer works."
+        if reset else
+        f"An admin has created your Lop-rig {user.get_role_display().lower()} account."
+    )
+    try:
+        send_mail(
+            # The time keeps Gmail from threading several resets together, so the newest is easy to find.
+            subject=(f"Your new Lop-rig login details ({sent_at})" if reset
+                     else f"Welcome to Lop-rig: your login details ({sent_at})"),
+            message=(
+                f"Hi {user.name},\n\n"
+                f"{intro}\n\n"
+                f"Log in at: {login_url}\n"
+                f"Email: {user.email}\n"
+                f"Temporary password: {password}\n\n"
+                f"Sent {sent_at}. This replaces any earlier Lop-rig login email: only this newest password works.\n"
+                "Type or paste the password exactly, without spaces before or after it.\n\n"
+                "After you log in you'll be asked to set your own password before you can continue.\n"
+                "Never share your password with anyone, including Lop-rig staff."
+            ),
+            from_email=None,
+            recipient_list=[user.email],
+        )
+    except (smtplib.SMTPException, OSError):
+        logger.exception("Could not send login details to %s", user.email)
+        return False
+    return True
 
 
 def _hash_code(user_id: int, code: str) -> str:
@@ -91,8 +143,6 @@ def reset_password(email: str, code: str, new_password: str) -> None:
             raise ValidationError({"code": INVALID_CODE})
         entry.used_at = timezone.now()
         entry.save(update_fields=["used_at"])
-        user.set_password(new_password)
-        user.save(update_fields=["password"])
+        user.set_own_password(new_password)
         # Anyone still logged in with the old password is signed out.
-        for token in OutstandingToken.objects.filter(user=user):
-            BlacklistedToken.objects.get_or_create(token=token)
+        sign_out_everywhere(user)

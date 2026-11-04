@@ -65,6 +65,10 @@ export interface AdminUser {
   last_login: string | null;
   enrollments: number;
   courses: number;
+  must_change_password: boolean;
+  password_changed_at: string | null;
+  /** Only after creating the account or emailing new login details: did the email go out? */
+  email_sent?: boolean;
 }
 
 export type EnrollmentStatus = "PENDING_PAYMENT" | "ACTIVE" | "COMPLETED" | "CANCELLED";

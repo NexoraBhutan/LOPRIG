@@ -5,6 +5,7 @@ from .views import (
     AdminCourseListView,
     AdminEnrollmentListView,
     AdminPaymentListView,
+    AdminResetPasswordView,
     AdminUserDetailView,
     AdminUserListView,
     ApproveCourseView,
@@ -20,6 +21,7 @@ urlpatterns = [
     path("courses/<slug:slug>/reject/", RejectCourseView.as_view(), name="manage-course-reject"),
     path("users/", AdminUserListView.as_view(), name="manage-user-list"),
     path("users/<int:pk>/", AdminUserDetailView.as_view(), name="manage-user-detail"),
+    path("users/<int:pk>/reset-password/", AdminResetPasswordView.as_view(), name="manage-user-reset-password"),
     path("enrollments/", AdminEnrollmentListView.as_view(), name="manage-enrollment-list"),
     path("payments/", AdminPaymentListView.as_view(), name="manage-payment-list"),
 ]

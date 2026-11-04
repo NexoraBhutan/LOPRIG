@@ -14,7 +14,13 @@ class HasRole(BasePermission):
 
     def has_permission(self, request, view):
         user = request.user
-        return bool(user and user.is_authenticated and user.role in self.allowed_roles)
+        if not (user and user.is_authenticated and user.role in self.allowed_roles):
+            return False
+        if user.must_change_password:
+            # Still on the emailed temporary password: nothing else until they set their own.
+            self.message = "Set your own password first."
+            return False
+        return True
 
 
 class IsStudent(HasRole):

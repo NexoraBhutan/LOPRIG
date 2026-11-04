@@ -13,7 +13,9 @@ env = environ.Env(
     ALLOWED_HOSTS=(list, ["localhost", "127.0.0.1"]),
     CORS_ALLOWED_ORIGINS=(list, ["http://localhost:3000"]),
 )
-environ.Env.read_env(BASE_DIR / ".env")
+# overwrite=True: when runserver reloads, the new process inherits the old environment;
+# without it, edits to .env (e.g. a new email password) would be ignored until a full restart.
+environ.Env.read_env(BASE_DIR / ".env", overwrite=True)
 
 SECRET_KEY = env("SECRET_KEY")
 DEBUG = env("DEBUG")

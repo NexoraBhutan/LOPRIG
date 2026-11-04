@@ -20,6 +20,23 @@ export function ScrollToTop() {
 }
 
 /**
+ * Anyone still on a temporary password (emailed by an admin) is sent to /set-password,
+ * whatever page they try to open. The API refuses portal requests until then as well.
+ */
+export function PasswordSetupGuard() {
+  const { user } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname() ?? "/";
+  const mustSet = Boolean(user?.mustChangePassword) && pathname !== "/set-password";
+
+  useEffect(() => {
+    if (mustSet) router.replace("/set-password");
+  }, [mustSet, router]);
+
+  return null;
+}
+
+/**
  * Blocks a route behind a logged-in session. While auth is still resolving it
  * renders nothing (no flash of the protected content); once resolution is done
  * and there is no user, it sends the visitor to /login and remembers where

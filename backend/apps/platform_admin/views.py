@@ -10,6 +10,7 @@ from rest_framework import generics, serializers, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.authentication.services import email_login_details
 from apps.certificates.models import Certificate
 from apps.courses import services as course_services
 from apps.courses.models import Course, CourseModule, Lesson
@@ -210,7 +211,9 @@ class AdminUserListView(generics.ListCreateAPIView):
         serializer = AdminUserCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
+        sent = email_login_details(user)
         data = AdminUserSerializer(users_for_admin().get(pk=user.pk), context={"request": request}).data
+        data["email_sent"] = sent
         return Response(data, status=status.HTTP_201_CREATED)
 
 
@@ -222,6 +225,23 @@ class AdminUserDetailView(generics.RetrieveUpdateAPIView):
 
     def get_queryset(self):
         return users_for_admin()
+
+
+class AdminResetPasswordView(APIView):
+    """Email the user a new temporary password and sign them out everywhere. Admins never see it."""
+
+    permission_classes = [IsPlatformAdmin]
+
+    @extend_schema(request=None, responses=AdminUserSerializer)
+    def post(self, request, pk):
+        user = get_object_or_404(User, pk=pk)
+        if user.pk == request.user.pk:
+            return Response({"detail": "Change your own password from your account page."},
+                            status=status.HTTP_400_BAD_REQUEST)
+        sent = email_login_details(user, reset=True)
+        data = AdminUserSerializer(users_for_admin().get(pk=user.pk), context={"request": request}).data
+        data["email_sent"] = sent
+        return Response(data)
 
 
 class AdminEnrollmentListView(generics.ListAPIView):

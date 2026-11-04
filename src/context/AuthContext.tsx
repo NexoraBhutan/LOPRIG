@@ -30,7 +30,9 @@ interface ProfileUpdates {
 }
 
 /** Like ActionResult, but tells the caller who signed in so it can route teachers to /teach. */
-export type LoginResult = { ok: true; role: User["role"] } | { ok: false; error: string };
+export type LoginResult =
+  | { ok: true; role: User["role"]; mustChangePassword: boolean }
+  | { ok: false; error: string };
 
 interface AuthContextValue {
   user: User | null;
@@ -39,6 +41,8 @@ interface AuthContextValue {
   login: (input: LoginInput) => Promise<LoginResult>;
   logout: () => Promise<void>;
   updateProfile: (updates: ProfileUpdates) => Promise<ActionResult>;
+  /** Re-read the signed-in user from the server (e.g. after a password change). */
+  refreshUser: () => Promise<void>;
 }
 
 interface AuthResponse {
@@ -96,7 +100,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const res = await api<AuthResponse>("/auth/login/", { method: "POST", body: input });
         startSession(res);
-        return { ok: true, role: toUser(res.user).role };
+        const signedIn = toUser(res.user);
+        return { ok: true, role: signedIn.role, mustChangePassword: signedIn.mustChangePassword };
       } catch (err) {
         return { ok: false, error: errorMessage(err, "Invalid email or password.") };
       }
@@ -124,8 +129,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const refreshUser = useCallback(async () => {
+    setUser(toUser(await api<ApiUser>("/users/me/")));
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ user, ready, signup, login, logout, updateProfile }}>
+    <AuthContext.Provider value={{ user, ready, signup, login, logout, updateProfile, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

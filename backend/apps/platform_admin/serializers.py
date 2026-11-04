@@ -1,5 +1,3 @@
-from django.contrib.auth.password_validation import validate_password
-from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 
 from apps.courses.models import Course
@@ -25,8 +23,10 @@ class AdminUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ["id", "name", "email", "role", "headline", "is_active", "avatar_color",
-                  "date_joined", "last_login", "enrollments", "courses"]
-        read_only_fields = ["id", "email", "avatar_color", "date_joined", "last_login"]
+                  "date_joined", "last_login", "enrollments", "courses",
+                  "must_change_password", "password_changed_at"]
+        read_only_fields = ["id", "email", "avatar_color", "date_joined", "last_login",
+                            "must_change_password", "password_changed_at"]
 
     def validate(self, attrs):
         me = self.context["request"].user
@@ -43,13 +43,15 @@ class AdminUserSerializer(serializers.ModelSerializer):
 
 
 class AdminUserCreateSerializer(serializers.Serializer):
-    """Admins create teacher (and admin) accounts; students sign up themselves."""
+    """Admins create teacher (and admin) accounts; students sign up themselves.
+
+    There is no password field: the user is emailed a temporary password (see the view).
+    """
 
     name = serializers.CharField(max_length=150)
     email = serializers.EmailField()
     role = serializers.ChoiceField(choices=User.Role.choices, default=User.Role.TEACHER)
     headline = serializers.CharField(max_length=150, required=False, allow_blank=True)
-    password = serializers.CharField(write_only=True)
 
     def validate_email(self, value):
         value = value.strip().lower()
@@ -57,15 +59,8 @@ class AdminUserCreateSerializer(serializers.Serializer):
             raise serializers.ValidationError("An account with this email already exists.")
         return value
 
-    def validate(self, attrs):
-        try:
-            validate_password(attrs["password"], User(email=attrs["email"], name=attrs["name"]))
-        except DjangoValidationError as exc:
-            raise serializers.ValidationError({"password": list(exc.messages)})
-        return attrs
-
     def create(self, validated_data):
-        user = User.objects.create_user(**validated_data)
+        user = User.objects.create_user(password=None, **validated_data)  # unusable until emailed
         sync_staff_flags(user)
         user.save(update_fields=["is_staff", "is_superuser"])
         return user
