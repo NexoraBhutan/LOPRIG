@@ -11,6 +11,14 @@ def format_duration(seconds: int) -> str:
     return f"{hours}h {minutes:02d}m" if hours else f"{minutes}m"
 
 
+def cover_url(course, request=None) -> str:
+    """The uploaded cover (absolute, so the frontend on another origin can load it), else the pasted URL."""
+    if course.cover_image:
+        url = course.cover_image.url
+        return request.build_absolute_uri(url) if request else url
+    return course.thumbnail_url
+
+
 def format_clock(seconds: int) -> str:
     minutes, secs = divmod(int(seconds or 0), 60)
     return f"{minutes}:{secs:02d}"
@@ -62,6 +70,7 @@ class CourseListSerializer(serializers.ModelSerializer):
     lessons_count = serializers.IntegerField(read_only=True)
     duration = serializers.SerializerMethodField()
     gradient = serializers.SerializerMethodField()
+    thumbnail_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Course
@@ -84,6 +93,9 @@ class CourseListSerializer(serializers.ModelSerializer):
 
     def get_gradient(self, obj) -> list[str]:
         return [obj.gradient_start, obj.gradient_end]
+
+    def get_thumbnail_url(self, obj) -> str:
+        return cover_url(obj, self.context.get("request"))
 
 
 class CourseDetailSerializer(CourseListSerializer):

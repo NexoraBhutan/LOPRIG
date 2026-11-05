@@ -71,6 +71,8 @@ export interface Course {
   language: string;
   bestseller: boolean;
   gradient: [string, string];
+  /** Cover image uploaded by the teacher; empty = show the gradient. */
+  thumbnail?: string;
   requirements: string[];
   whatYouLearn: string[];
   curriculum: CurriculumSection[];

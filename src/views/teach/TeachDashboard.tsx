@@ -7,6 +7,7 @@ import {
   Users, BookOpen, Hourglass, Coins, Plus, CaretRight, WarningCircle, ArrowRight,
 } from "@phosphor-icons/react";
 import { useAuth } from "@/context/AuthContext";
+import { CoverArt } from "@/components/CourseThumb";
 import PageLoader from "@/components/PageLoader";
 import EmptyState from "@/components/EmptyState";
 import StatusBadge from "@/components/teach/StatusBadge";
@@ -116,11 +117,7 @@ export default function TeachDashboard() {
               {courses.slice(0, 5).map((c) => (
                 <li key={c.id}>
                   <Link href={`/teach/courses/${c.id}`} className="group flex items-center gap-4 py-3.5 no-underline">
-                    <span
-                      className="w-14 h-10 rounded-lg flex-shrink-0"
-                      style={{ background: `linear-gradient(135deg, ${c.gradient_start}, ${c.gradient_end})` }}
-                      aria-hidden="true"
-                    />
+                    <CoverArt src={c.thumbnail_url} gradient={[c.gradient_start, c.gradient_end]} iconSize={0} className="w-14 h-10 rounded-lg flex-shrink-0" />
                     <span className="flex-1 min-w-0">
                       <span className="block text-sm font-semibold text-ink-strong truncate group-hover:text-gold-dark transition-colors">{c.title}</span>
                       <span className="block text-xs text-ink-muted">{c.lessons_count} lessons · {c.enrolled} enrolled</span>

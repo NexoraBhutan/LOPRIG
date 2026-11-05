@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { Book, FloppyDisk } from "@phosphor-icons/react";
+import { useEffect, useRef, useState } from "react";
+import { FloppyDisk, ImageSquare, Trash } from "@phosphor-icons/react";
+import { CoverArt } from "@/components/CourseThumb";
 import { useCatalog } from "@/context/CatalogContext";
 import { useToast } from "@/context/ToastContext";
 import { api, errorMessage } from "@/lib/api";
@@ -17,6 +18,9 @@ const SWATCHES: [string, string][] = [
   ["#1e3a8a", "#3b82f6"],
   ["#6d28d9", "#c084fc"],
 ];
+
+const COVER_TYPES = ["image/png", "image/jpeg", "image/webp"];
+const COVER_MAX_MB = 5;
 
 const lines = (text: string) => text.split("\n").map((l) => l.trim()).filter(Boolean);
 
@@ -45,6 +49,42 @@ export default function CourseForm({
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  // Cover image: a newly picked file, or the course's saved one unless the teacher removed it.
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [coverRemoved, setCoverRemoved] = useState(false);
+  const [coverPreview, setCoverPreview] = useState("");
+  const coverInput = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!coverFile) return setCoverPreview("");
+    const url = URL.createObjectURL(coverFile);
+    setCoverPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [coverFile]);
+
+  const cover = coverPreview || (coverRemoved ? "" : course?.thumbnail_url ?? "");
+
+  const pickCover = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // picking the same file again should still fire
+    if (!file) return;
+    if (!COVER_TYPES.includes(file.type)) {
+      setErrors((x) => ({ ...x, cover: "Use a PNG, JPG or WebP image." }));
+      return;
+    }
+    if (file.size > COVER_MAX_MB * 1024 * 1024) {
+      setErrors((x) => ({ ...x, cover: `The image is too large. The limit is ${COVER_MAX_MB} MB.` }));
+      return;
+    }
+    setErrors(({ cover: _, ...rest }) => rest);
+    setCoverFile(file);
+    setCoverRemoved(false);
+  };
+
+  const removeCover = () => {
+    setCoverFile(null);
+    setCoverRemoved(true);
+  };
 
   const set = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     setForm((f) => ({ ...f, [key]: e.target.value }));
@@ -72,9 +112,21 @@ export default function CourseForm({
       gradient_end: form.gradient_end,
     };
     try {
-      const saved = course
+      let saved = course
         ? await api<TeachCourse>(`/teach/courses/${course.id}/`, { method: "PATCH", body })
         : await api<TeachCourse>("/teach/courses/", { method: "POST", body });
+      try {
+        if (coverFile) {
+          const data = new FormData();
+          data.append("image", coverFile);
+          saved = await api<TeachCourse>(`/teach/courses/${saved.id}/cover/`, { method: "POST", body: data });
+        } else if (coverRemoved && course?.thumbnail_url) {
+          saved = await api<TeachCourse>(`/teach/courses/${saved.id}/cover/`, { method: "DELETE" });
+        }
+      } catch (coverErr) {
+        // The course itself is saved; only the image failed.
+        push(`Course saved, but the cover image wasn't: ${fieldErrors(coverErr).image ?? errorMessage(coverErr)}`, "error");
+      }
       onSaved(saved);
     } catch (err) {
       const fields = fieldErrors(err);
@@ -153,10 +205,9 @@ export default function CourseForm({
 
       <aside className="flex flex-col gap-5 lg:sticky lg:top-8">
         <div className="bg-white border-2 border-line rounded-2xl overflow-hidden">
-          <div className="relative flex items-center justify-center aspect-video" style={{ background: `linear-gradient(135deg, ${form.gradient_start}, ${form.gradient_end})` }}>
-            <Book size={40} weight="duotone" className="text-white/30" />
+          <CoverArt src={cover} gradient={[form.gradient_start, form.gradient_end]} className="aspect-video">
             <span className="absolute bottom-3 left-3 bg-white/90 text-ink-strong text-[0.65rem] font-bold px-2.5 py-1 rounded tracking-wider uppercase">{categoryTitle}</span>
-          </div>
+          </CoverArt>
           <div className="p-5">
             <p className="text-[0.7rem] font-bold text-gold-dark uppercase tracking-wider">Preview · {form.level}</p>
             <h3 className="text-sm font-semibold text-ink-strong mt-1.5 leading-snug line-clamp-2">{form.title || "Your course title"}</h3>
@@ -167,9 +218,28 @@ export default function CourseForm({
           </div>
         </div>
 
+        <div className="bg-white border-2 border-line rounded-2xl p-5">
+          <p className="text-xs font-bold text-ink-strong uppercase tracking-wider mb-1">Cover image</p>
+          <p className="text-xs text-ink-muted mb-3">Shown on the course card. Landscape 16:9 works best (e.g. 1280×720). PNG, JPG or WebP, up to {COVER_MAX_MB} MB.</p>
+          <input ref={coverInput} id="cover" type="file" accept={COVER_TYPES.join(",")} onChange={pickCover} className="sr-only" aria-describedby={errors.cover ? "cover-error" : undefined} />
+          <div className="flex gap-2">
+            <button type="button" onClick={() => coverInput.current?.click()} className="flex-1 flex items-center justify-center gap-2 border-2 border-line rounded-xl py-2.5 text-xs font-bold text-ink-strong bg-bg-soft hover:border-gold transition-colors cursor-pointer">
+              <ImageSquare size={16} weight="bold" /> {cover ? "Change image" : "Upload image"}
+            </button>
+            {cover && (
+              <button type="button" onClick={removeCover} className="flex items-center justify-center px-3 border-2 border-line rounded-xl text-ink-muted hover:text-red-600 hover:border-red-200 bg-white transition-colors cursor-pointer" aria-label="Remove cover image">
+                <Trash size={16} weight="bold" />
+              </button>
+            )}
+          </div>
+          {errors.cover && <p id="cover-error" role="alert" className="text-xs text-red-600 font-semibold mt-2">{errors.cover}</p>}
+          {coverFile && <p className="text-xs text-ink-muted mt-2 truncate">New image: {coverFile.name} (saved with the course)</p>}
+        </div>
+
         <fieldset className="bg-white border-2 border-line rounded-2xl p-5">
           <legend className="sr-only">Card colours</legend>
-          <p className="text-xs font-bold text-ink-strong uppercase tracking-wider mb-3" aria-hidden="true">Card colours</p>
+          <p className="text-xs font-bold text-ink-strong uppercase tracking-wider mb-1" aria-hidden="true">Card colours</p>
+          <p className="text-xs text-ink-muted mb-3">{cover ? "Used if the image is removed." : "Used when there's no cover image."}</p>
           <div className="flex flex-wrap gap-2">
             {SWATCHES.map(([a, b]) => {
               const active = form.gradient_start === a && form.gradient_end === b;

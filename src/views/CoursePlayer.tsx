@@ -10,7 +10,6 @@ import {
 import { useEnrollment } from "@/context/EnrollmentContext";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
-import ProgressRing from "@/components/ProgressRing";
 import EmptyState from "@/components/EmptyState";
 import PageLoader from "@/components/PageLoader";
 import { ApiError, api, errorMessage } from "@/lib/api";
@@ -19,6 +18,9 @@ import VideoFrame from "@/components/VideoFrame";
 import { isEmbedded, type Playback } from "@/lib/video";
 
 const SPEEDS = [1, 1.25, 1.5, 2];
+
+/** Lessons without a known length come back as "0:00"; don't show that. */
+const hasDuration = (d: string) => Boolean(d) && !/^0+(:0+)*$/.test(d);
 
 interface PlayerLesson {
   id: number;
@@ -120,15 +122,7 @@ export default function CoursePlayer() {
     if (videoRef.current) videoRef.current.playbackRate = speed;
   }, [speed]);
 
-  // Open sidebar by default on large screens
-  useEffect(() => {
-    const mq = window.matchMedia("(min-width: 1024px)");
-    setSidebarOpen(mq.matches);
-    const handler = (e: MediaQueryListEvent) => setSidebarOpen(e.matches);
-    mq.addEventListener("change", handler);
-    return () => mq.removeEventListener("change", handler);
-  }, []);
-
+  // The sidebar is always shown on large screens; sidebarOpen only drives the mobile drawer.
   // Close on Escape
   useEffect(() => {
     if (!sidebarOpen) return;
@@ -260,10 +254,10 @@ export default function CoursePlayer() {
   const embedded = isEmbedded(activeLesson?.video);
 
   return (
-    <main className="w-full bg-bg-soft min-h-[100dvh]">
-      <div className="grid lg:grid-cols-[1fr_360px] h-screen">
+    <main className="w-full bg-bg-soft">
+      <div className="grid lg:grid-cols-[1fr_360px] h-[100dvh] overflow-hidden">
         {/* Video Area */}
-        <div className="flex flex-col">
+        <div className="flex flex-col min-h-0 min-w-0">
           {/* Top bar */}
           <div className="flex items-center gap-4 px-6 py-4 bg-ink-strong text-white">
             <Link href="/my-learning" className="flex items-center gap-2 text-sm font-medium text-white/70 hover:text-white transition-colors no-underline">
@@ -317,7 +311,7 @@ export default function CoursePlayer() {
                     <p className="text-white/50 text-xs font-bold uppercase tracking-widest mb-4">Lesson {activeIndex + 1} of {allLessons.length}</p>
                     <h2 className="font-display text-2xl md:text-3xl text-white max-w-[640px] mx-auto leading-tight">{activeLesson.title}</h2>
                     <p className="text-white/40 text-sm mt-6 max-w-[420px] mx-auto">
-                      {activeLesson.duration} · {activeLesson.sectionTitle}
+                      {hasDuration(activeLesson.duration) && `${activeLesson.duration} · `}{activeLesson.sectionTitle}
                     </p>
                     {activeLesson.body && (
                       <p className="text-white/60 text-sm mt-6 max-w-[520px] mx-auto leading-relaxed">{activeLesson.body}</p>
@@ -338,66 +332,57 @@ export default function CoursePlayer() {
           </div>
 
           {/* Player controls */}
-          <div className="px-6 py-4 bg-white border-t border-line">
-            <div className="flex items-center gap-3 mb-4">
-              <button onClick={() => goTo(activeIndex - 1)} disabled={activeIndex <= 0} className="p-2 rounded-lg text-ink-muted hover:text-ink hover:bg-bg-soft transition-colors bg-transparent border-none cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed" aria-label="Previous lesson">
-                <CaretLeft size={16} weight="bold" />
-              </button>
-              {!embedded && <button onClick={handlePlayPause} className="w-11 h-11 rounded-full bg-ink-strong text-white flex items-center justify-center hover:bg-black transition-colors cursor-pointer border-none flex-shrink-0" aria-label={playing ? "Pause" : "Play"}>
+          <div className="flex items-center gap-2 sm:gap-3 px-4 sm:px-6 py-3 bg-white border-t border-line">
+            <button onClick={() => goTo(activeIndex - 1)} disabled={activeIndex <= 0} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold text-ink-muted hover:text-ink hover:bg-bg-soft transition-colors bg-transparent border-none cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed" aria-label="Previous lesson">
+              <CaretLeft size={14} weight="bold" />
+              <span className="hidden md:inline">Previous</span>
+            </button>
+            {!embedded && (
+              <button onClick={handlePlayPause} className="w-10 h-10 rounded-full bg-ink-strong text-white flex items-center justify-center hover:bg-black transition-colors cursor-pointer border-none flex-shrink-0" aria-label={playing ? "Pause" : "Play"}>
                 {playing ? <Pause size={16} weight="fill" /> : <Play size={16} weight="fill" className="ml-0.5" />}
-              </button>}
-              <button onClick={() => goTo(activeIndex + 1)} disabled={activeIndex >= allLessons.length - 1} className="p-2 rounded-lg text-ink-muted hover:text-ink hover:bg-bg-soft transition-colors bg-transparent border-none cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed" aria-label="Next lesson">
-                <CaretRight size={16} weight="bold" />
               </button>
-              {!embedded && (
-                <button onClick={cycleSpeed} className="text-xs font-bold text-ink-muted hover:text-ink px-2 py-1 rounded bg-transparent border-none cursor-pointer transition-colors" aria-label="Change playback speed">
-                  {speed}x
-                </button>
-              )}
-
-              <div className="flex-1 h-1.5 bg-bg-sunken rounded-full overflow-hidden mx-4 hidden sm:block">
-                <div
-                  className="h-full bg-gold rounded-full transition-all duration-300"
-                  style={{ width: `${allLessons.length ? ((activeIndex + (playing ? 0.4 : 0)) / allLessons.length) * 100 : 0}%` }}
-                />
-              </div>
-
-              <span className="text-xs font-bold text-ink-muted tabular-nums">
-                {activeIndex + 1} / {allLessons.length}
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between gap-4 flex-wrap">
-              <button
-                onClick={handleComplete}
-                disabled={saving}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-bold tracking-widest uppercase transition-all cursor-pointer border-2 disabled:cursor-wait ${
-                  isCompleted
-                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                    : "bg-gold text-ink-strong border-gold hover:bg-gold-dark hover:border-gold-dark"
-                }`}
-              >
-                <CheckCircle size={14} weight={isCompleted ? "fill" : "regular"} />
-                {isCompleted ? "Completed" : saving ? "Saving…" : "Mark as complete"}
-              </button>
-              <div className="flex items-center gap-4">
-                <span className="text-xs text-ink-muted hidden sm:inline">
-                  {data.progress.completed_lessons} of {data.progress.total_lessons} lessons done
-                </span>
-                <ProgressRing value={progress} size={40} showValue={false} label={`${progress}% of the course complete`} />
-                <span className="text-xs font-bold text-ink-strong">{progress}%</span>
-              </div>
-            </div>
-            {data.certificate && (
-              <p className="text-xs text-emerald-700 font-bold mt-4">
-                Certificate earned · code {data.certificate}
-              </p>
             )}
+            <button onClick={() => goTo(activeIndex + 1)} disabled={activeIndex >= allLessons.length - 1} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold text-ink-muted hover:text-ink hover:bg-bg-soft transition-colors bg-transparent border-none cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed" aria-label="Next lesson">
+              <span className="hidden md:inline">Next</span>
+              <CaretRight size={14} weight="bold" />
+            </button>
+            {!embedded && (
+              <button onClick={cycleSpeed} className="text-xs font-bold text-ink-muted hover:text-ink px-2 py-1 rounded bg-transparent border-none cursor-pointer transition-colors" aria-label="Change playback speed">
+                {speed}x
+              </button>
+            )}
+
+            <p className="flex-1 min-w-0 truncate text-xs text-ink-muted px-2">
+              <span className="font-bold text-ink-strong tabular-nums">Lesson {activeIndex + 1} of {allLessons.length}</span>
+              {data.certificate ? (
+                <span className="hidden sm:inline text-emerald-700 font-bold"> · Certificate earned · code {data.certificate}</span>
+              ) : (
+                <span className="hidden sm:inline"> · {data.progress.completed_lessons} of {data.progress.total_lessons} done</span>
+              )}
+            </p>
+
+            <button
+              onClick={handleComplete}
+              disabled={saving}
+              className={`flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-full text-xs font-bold tracking-wider uppercase whitespace-nowrap transition-all cursor-pointer border-2 disabled:cursor-wait ${
+                isCompleted
+                  ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                  : "bg-gold text-ink-strong border-gold hover:bg-gold-dark hover:border-gold-dark"
+              }`}
+            >
+              <CheckCircle size={14} weight={isCompleted ? "fill" : "bold"} />
+              {isCompleted ? "Completed" : saving ? "Saving…" : <><span className="hidden sm:inline">Mark as complete</span><span className="sm:hidden">Complete</span></>}
+            </button>
           </div>
         </div>
 
+        {/* Mobile drawer backdrop */}
+        {sidebarOpen && (
+          <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={() => setSidebarOpen(false)} aria-hidden="true" />
+        )}
+
         {/* Lesson sidebar */}
-        <aside className={`${sidebarOpen ? "fixed inset-y-0 right-0 z-50 w-[320px] lg:static lg:w-auto lg:z-auto" : "hidden"} bg-white border-l border-line overflow-y-auto`}>
+        <aside className={`${sidebarOpen ? "fixed inset-y-0 right-0 z-50 w-[320px] max-w-[85vw] shadow-2xl" : "hidden"} lg:static lg:block lg:w-auto lg:max-w-none lg:z-auto lg:shadow-none bg-white border-l border-line overflow-y-auto`}>
           <div className="p-6 border-b border-line sticky top-0 bg-white z-10">
             <h3 className="text-sm font-bold text-ink-strong mb-1">Course content</h3>
             <p className="text-xs text-ink-muted">{allLessons.length} lessons &middot; {progress}% complete</p>
@@ -431,7 +416,9 @@ export default function CoursePlayer() {
                           )}
                           <span className="flex-1 min-w-0">
                             <span className={`block text-xs leading-relaxed ${active ? "font-bold text-ink-strong" : "text-ink"}`}>{l.title}</span>
-                            <span className="block text-[0.65rem] text-ink-muted mt-1">{l.duration}</span>
+                            {hasDuration(l.duration) && (
+                              <span className="block text-[0.65rem] text-ink-muted mt-1 tabular-nums">{l.duration}</span>
+                            )}
                           </span>
                         </button>
                       </li>
@@ -442,16 +429,15 @@ export default function CoursePlayer() {
             ))}
           </nav>
 
-          <div className="p-6 border-t border-line">
+          {resources.length > 0 && <div className="p-6">
             <button
               onClick={() => setResourcesOpen((o) => !o)}
-              disabled={!resources.length}
               aria-expanded={resourcesOpen}
-              className="flex items-center justify-center gap-2 w-full bg-bg-soft border-2 border-line rounded-xl py-3.5 text-xs font-bold text-ink-strong hover:border-gold transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center justify-center gap-2 w-full bg-bg-soft border-2 border-line rounded-xl py-3.5 text-xs font-bold text-ink-strong hover:border-gold transition-colors cursor-pointer"
             >
-              <Download size={14} weight="bold" /> {resources.length ? "Download resources" : "No resources for this lesson"}
+              <Download size={14} weight="bold" /> Download resources ({resources.length})
             </button>
-            {resourcesOpen && resources.length > 0 && (
+            {resourcesOpen && (
               <ul className="mt-3 flex flex-col gap-2">
                 {resources.map((r) => (
                   <li key={r.id}>
@@ -462,7 +448,7 @@ export default function CoursePlayer() {
                 ))}
               </ul>
             )}
-          </div>
+          </div>}
         </aside>
       </div>
     </main>

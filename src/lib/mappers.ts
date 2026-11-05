@@ -101,6 +101,7 @@ export function toCourse(c: ApiCourse): Course {
     language: c.language,
     bestseller: c.bestseller,
     gradient: c.gradient,
+    thumbnail: c.thumbnail_url || undefined,
     requirements: c.requirements ?? [],
     whatYouLearn: c.what_you_learn ?? [],
     curriculum: c.curriculum ? toSections(c.curriculum) : [],

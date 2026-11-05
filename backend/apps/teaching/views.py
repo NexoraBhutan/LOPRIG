@@ -6,6 +6,7 @@ from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema, inline_serializer
 from rest_framework import generics, serializers, status
 from rest_framework.exceptions import APIException
+from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -17,6 +18,7 @@ from apps.payments.models import Payment
 from apps.users.permissions import IsTeacher
 
 from .serializers import (
+    CourseCoverSerializer,
     StudentProgressSerializer,
     TeacherCourseDetailSerializer,
     TeacherCourseSerializer,
@@ -131,6 +133,34 @@ class TeacherCourseDetailView(APIView):
             raise Conflict("Only unpublished courses without students can be deleted.")
         course.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class CourseCoverView(APIView):
+    """POST: upload the course card image (replaces the old one). DELETE: back to the colour gradient."""
+
+    permission_classes = [IsTeacher]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def _save(self, request, course, image):
+        old = course.cover_image.name if course.cover_image else None
+        course.cover_image = image
+        course.save(update_fields=["cover_image", "updated_at"])
+        if old:
+            course.cover_image.storage.delete(old)
+        detail = course_with_curriculum(request.user, course.slug)
+        return Response(TeacherCourseDetailSerializer(detail, context={"request": request}).data)
+
+    @extend_schema(request={"multipart/form-data": CourseCoverSerializer}, responses=TeacherCourseDetailSerializer)
+    def post(self, request, slug):
+        course = get_object_or_404(Course, teacher=request.user, slug=slug)
+        serializer = CourseCoverSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        return self._save(request, course, serializer.validated_data["image"])
+
+    @extend_schema(responses=TeacherCourseDetailSerializer)
+    def delete(self, request, slug):
+        course = get_object_or_404(Course, teacher=request.user, slug=slug)
+        return self._save(request, course, None)
 
 
 class SubmitForReviewView(APIView):

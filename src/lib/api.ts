@@ -9,6 +9,12 @@ import { safeGetItem, safeRemoveItem, safeSetItem } from "@/utils/storage";
 
 export const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1").replace(/\/$/, "");
 
+/** Uploaded files can come back as "/media/…"; those live on the API's server, not this site. */
+export function mediaUrl(url: string | null | undefined): string {
+  if (!url) return "";
+  return url.startsWith("/") ? `${new URL(API_URL).origin}${url}` : url;
+}
+
 const REFRESH_KEY = "loprig_refresh";
 
 let accessToken: string | null = null;

@@ -1,3 +1,4 @@
+import uuid
 from decimal import Decimal
 
 from django.conf import settings
@@ -8,6 +9,12 @@ from django.db.models.signals import post_delete
 from django.dispatch import receiver
 from django.db.models.functions import Coalesce
 from django.utils import timezone
+
+
+def cover_upload_path(instance, filename: str) -> str:
+    """Random name: the uploader's file name isn't kept."""
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else "jpg"
+    return f"course-covers/{uuid.uuid4().hex}.{ext}"
 
 
 class Category(models.Model):
@@ -75,6 +82,7 @@ class Course(models.Model):
     what_you_learn = models.JSONField(default=list, blank=True)
 
     thumbnail_url = models.URLField(blank=True)
+    cover_image = models.FileField(upload_to=cover_upload_path, blank=True, help_text="Card image uploaded by the teacher.")
     gradient_start = models.CharField(max_length=7, default="#ffb606")
     gradient_end = models.CharField(max_length=7, default="#c88e00")
     bestseller = models.BooleanField(default=False)

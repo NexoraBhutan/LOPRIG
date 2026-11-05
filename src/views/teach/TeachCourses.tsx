@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Book, Plus, Users, Clock } from "@phosphor-icons/react";
+import { Plus, Users, Clock } from "@phosphor-icons/react";
+import { CoverArt } from "@/components/CourseThumb";
 import PageLoader from "@/components/PageLoader";
 import EmptyState from "@/components/EmptyState";
 import StatusBadge from "@/components/teach/StatusBadge";
@@ -71,10 +72,9 @@ export default function TeachCourses() {
           {shown.map((c) => (
             <motion.div key={c.id} variants={fadeUp}>
               <Link href={`/teach/courses/${c.id}`} className="group flex flex-col h-full bg-white border-2 border-line rounded-2xl overflow-hidden no-underline hover:border-gold hover:-translate-y-1 hover:shadow-[0_8px_32px_rgba(255,182,6,0.12)] transition-all duration-300">
-                <div className="relative flex items-center justify-center aspect-[16/8]" style={{ background: `linear-gradient(135deg, ${c.gradient_start}, ${c.gradient_end})` }}>
-                  <Book size={36} weight="duotone" className="text-white/30" />
+                <CoverArt src={c.thumbnail_url} gradient={[c.gradient_start, c.gradient_end]} iconSize={36} className="aspect-[16/8]">
                   <span className="absolute top-3 left-3 rounded-full bg-white/95"><StatusBadge status={c.status} /></span>
-                </div>
+                </CoverArt>
                 <div className="flex flex-col flex-1 p-5">
                   <h2 className="text-base font-semibold text-ink-strong leading-snug line-clamp-2 group-hover:text-gold-dark transition-colors">{c.title}</h2>
                   <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3 text-xs text-ink-muted">

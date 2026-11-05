@@ -6,9 +6,10 @@ from rest_framework import serializers
 
 from apps.courses import video
 from apps.courses.models import Category, Course, CourseModule, Lesson, LessonResource
-from apps.courses.serializers import format_duration
+from apps.courses.serializers import cover_url, format_duration
 from apps.courses.services import review_problems
 from apps.enrollments.models import Enrollment
+from apps.payments.files import check_image
 
 HEX_COLOR = re.compile(r"^#[0-9a-fA-F]{6}$")
 
@@ -90,6 +91,8 @@ class TeacherCourseSerializer(serializers.ModelSerializer):
     enrolled = serializers.IntegerField(read_only=True, default=0)
     lessons_count = serializers.IntegerField(read_only=True, default=0)
     duration = serializers.SerializerMethodField()
+    # Set through the cover upload endpoint, not this form.
+    thumbnail_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Course
@@ -103,6 +106,9 @@ class TeacherCourseSerializer(serializers.ModelSerializer):
 
     def get_duration(self, obj) -> str:
         return format_duration(getattr(obj, "total_seconds", 0))
+
+    def get_thumbnail_url(self, obj) -> str:
+        return cover_url(obj, self.context.get("request"))
 
     def validate_title(self, value):
         value = value.strip()
@@ -138,6 +144,13 @@ class TeacherCourseDetailSerializer(TeacherCourseSerializer):
 
     def get_review_problems(self, obj) -> list[str]:
         return review_problems(obj)
+
+
+class CourseCoverSerializer(serializers.Serializer):
+    image = serializers.FileField()
+
+    def validate_image(self, value):
+        return check_image(value, "image", max_mb=5)
 
 
 class StudentProgressSerializer(serializers.ModelSerializer):
