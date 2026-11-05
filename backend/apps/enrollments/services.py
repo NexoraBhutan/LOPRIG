@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import transaction
 from django.db.models import F
 from django.utils import timezone
@@ -71,5 +72,12 @@ def activate(enrollment: Enrollment) -> Enrollment:
         "Your course is unlocked. Start learning whenever you're ready.",
         data={"course": course.slug},
         email=True,
+        email_body=[
+            f"Welcome to “{course.title}”! You're now enrolled, and every lesson is unlocked and ready for you.",
+            "Learn at your own pace: even a few minutes a day adds up faster than you think. When you "
+            "finish every lesson, you'll earn your certificate.",
+            "We're so glad you're here. Happy learning!",
+        ],
+        email_button=("Start learning", f"{settings.FRONTEND_URL.rstrip('/')}/learn/{course.slug}"),
     )
     return enrollment

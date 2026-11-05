@@ -8,7 +8,6 @@ from datetime import timedelta
 from django.conf import settings
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
-from django.core.mail import send_mail
 from django.db import transaction
 from django.db.models import F
 from django.utils import timezone
@@ -17,6 +16,8 @@ from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, Ou
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.users.models import PasswordResetCode, User
+
+from . import emails
 
 logger = logging.getLogger(__name__)
 
@@ -45,32 +46,8 @@ def email_login_details(user: User, *, reset: bool = False) -> bool:
     password = user.set_temporary_password()
     if reset:
         sign_out_everywhere(user)
-    login_url = f"{settings.FRONTEND_URL.rstrip('/')}/login"
-    sent_at = timezone.localtime().strftime("%d %b %Y, %I:%M %p")
-    intro = (
-        "An admin has reset your Lop-rig password. Your old password no longer works."
-        if reset else
-        f"An admin has created your Lop-rig {user.get_role_display().lower()} account."
-    )
     try:
-        send_mail(
-            # The time keeps Gmail from threading several resets together, so the newest is easy to find.
-            subject=(f"Your new Lop-rig login details ({sent_at})" if reset
-                     else f"Welcome to Lop-rig: your login details ({sent_at})"),
-            message=(
-                f"Hi {user.name},\n\n"
-                f"{intro}\n\n"
-                f"Log in at: {login_url}\n"
-                f"Email: {user.email}\n"
-                f"Temporary password: {password}\n\n"
-                f"Sent {sent_at}. This replaces any earlier Lop-rig login email: only this newest password works.\n"
-                "Type or paste the password exactly, without spaces before or after it.\n\n"
-                "After you log in you'll be asked to set your own password before you can continue.\n"
-                "Never share your password with anyone, including Lop-rig staff."
-            ),
-            from_email=None,
-            recipient_list=[user.email],
-        )
+        emails.login_details(user, password, reset=reset)
     except (smtplib.SMTPException, OSError):
         logger.exception("Could not send login details to %s", user.email)
         return False
@@ -108,17 +85,7 @@ def send_password_reset(email: str) -> None:
             code_hash=_hash_code(user.pk, code),
             expires_at=now + timedelta(minutes=PasswordResetCode.LIFETIME_MINUTES),
         )
-    send_mail(
-        subject=f"{code} is your Lop-rig reset code",
-        message=(
-            f"Hi {user.name},\n\n"
-            f"Your Lop-rig password reset code is: {code}\n\n"
-            f"Enter it on the reset page within {PasswordResetCode.LIFETIME_MINUTES} minutes.\n"
-            "If you did not ask for this, you can ignore this email. Never share this code with anyone."
-        ),
-        from_email=None,
-        recipient_list=[user.email],
-    )
+    emails.password_reset_code(user, code, PasswordResetCode.LIFETIME_MINUTES)
 
 
 def reset_password(email: str, code: str, new_password: str) -> None:
@@ -155,3 +122,4 @@ def reset_password(email: str, code: str, new_password: str) -> None:
         user.set_own_password(new_password)
         # Anyone still logged in with the old password is signed out.
         sign_out_everywhere(user)
+        transaction.on_commit(lambda: emails.password_changed(user))

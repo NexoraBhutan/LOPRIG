@@ -41,7 +41,7 @@ class DjangoAdminUserTests(TestCase):
         self.assertEqual(login.status_code, 200)
 
     def test_email_failure_is_reported(self):
-        with mock.patch("apps.authentication.services.send_mail", side_effect=OSError("no network")):
+        with mock.patch("django.core.mail.EmailMultiAlternatives.send", side_effect=OSError("no network")):
             res = self.client.post(ADD_URL, {"email": "a@b.bt", "name": "A", "role": "TEACHER"}, follow=True)
         self.assertTrue(User.objects.filter(email="a@b.bt").exists())
         self.assertIn("Couldn&#x27;t send the email", res.content.decode())

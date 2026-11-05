@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from datetime import date, timedelta
 
+from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 from rest_framework.exceptions import NotAuthenticated, PermissionDenied
@@ -121,6 +122,14 @@ def complete_course_if_done(enrollment: Enrollment) -> Certificate | None:
             f"Congratulations. Your certificate code is {certificate.code}.",
             data={"course": course.slug, "certificate": certificate.code},
             email=True,
+            email_body=[
+                f"Congratulations! You've completed every lesson in “{course.title}”. 🏆 "
+                "We're truly proud of your hard work and dedication.",
+                f"Your certificate is ready. Certificate code: {certificate.code}",
+                "Keep that curiosity going: your next course is waiting whenever you are. "
+                "Thank you for learning with Lop-rig!",
+            ],
+            email_button=("See my learning", f"{settings.FRONTEND_URL.rstrip('/')}/my-learning"),
         )
     return certificate
 

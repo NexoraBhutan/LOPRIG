@@ -158,6 +158,21 @@ class PasswordResetTests(APITestCase):
         self.assertEqual(self.confirm(code, "Third-Pass-Value-7").status_code, 400)  # single use
         self.assertEqual(self.client.post("/api/v1/auth/refresh/", {"refresh": old_refresh}).status_code, 401)
 
+    def test_reset_emails_are_friendly_html(self):
+        code = self.request_code()
+        email = mail.outbox[-1]
+        html = email.alternatives[0][0]
+        self.assertIn(code, html)
+        self.assertIn("Didn't ask for this?", html)
+        self.assertIn("Warm regards", email.body)
+
+        with self.captureOnCommitCallbacks(execute=True):
+            self.assertEqual(self.confirm(code).status_code, 204)
+        changed = mail.outbox[-1]
+        self.assertEqual(changed.subject, "Your Lop-rig password has been changed")
+        self.assertEqual(changed.to, ["reset@example.com"])
+        self.assertIn("Wasn't you?", changed.alternatives[0][0])
+
     def test_code_is_stored_hashed(self):
         code = self.request_code()
         stored = PasswordResetCode.objects.get(user=self.user)

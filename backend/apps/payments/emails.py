@@ -11,24 +11,18 @@ import logging
 import mimetypes
 from html import escape
 
-from django.conf import settings
-from django.core.mail import EmailMultiAlternatives
 from django.db import transaction
 from django.utils import timezone
 
+from apps.notifications.emails import details_table as _details_table
+from apps.notifications.emails import layout as _layout
+from apps.notifications.emails import send
+from apps.notifications.emails import site as _site
 from apps.users.models import User
 
 from .models import Payment, PaymentSettings
 
 logger = logging.getLogger(__name__)
-
-GOLD = "#ffb606"
-INK = "#1a1a1a"
-MUTED = "#6b6b6b"
-
-
-def _site(path: str) -> str:
-    return f"{settings.FRONTEND_URL.rstrip('/')}{path}"
 
 
 def _money(amount) -> str:
@@ -39,59 +33,20 @@ def _when(dt) -> str:
     return timezone.localtime(dt).strftime("%d %b %Y, %I:%M %p")
 
 
-def _layout(preheader: str, body_html: str, button: tuple[str, str] | None = None) -> str:
-    """A simple, email-client-safe card (tables + inline styles), in Lop-rig's colours."""
-    cta = ""
-    if button:
-        label, url = button
-        cta = (
-            f'<p style="margin:28px 0 8px"><a href="{escape(url)}" style="background:{GOLD};color:{INK};'
-            f'text-decoration:none;font-weight:700;padding:14px 26px;border-radius:999px;display:inline-block">'
-            f"{escape(label)}</a></p>"
-        )
-    return f"""<!doctype html>
-<html><body style="margin:0;padding:0;background:#f6f5f2;font-family:Segoe UI,Helvetica,Arial,sans-serif;color:{INK}">
-<span style="display:none;max-height:0;overflow:hidden">{escape(preheader)}</span>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f6f5f2;padding:32px 12px">
-<tr><td align="center">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:18px;overflow:hidden">
-<tr><td style="background:{INK};padding:22px 32px;font-size:20px;font-weight:700;color:#ffffff">Lop<span style="color:{GOLD}">-rig</span></td></tr>
-<tr><td style="padding:32px;font-size:15px;line-height:1.65">{body_html}{cta}</td></tr>
-<tr><td style="padding:18px 32px 28px;font-size:12px;color:{MUTED};border-top:1px solid #eee">
-Lop-rig · Learn. Grow. Build your future, made in Bhutan.</td></tr>
-</table></td></tr></table></body></html>"""
-
-
-def _details_table(rows: list[tuple[str, str]]) -> str:
-    cells = "".join(
-        f'<tr><td style="padding:7px 16px 7px 0;color:{MUTED};white-space:nowrap">{escape(k)}</td>'
-        f'<td style="padding:7px 0;font-weight:600">{escape(v)}</td></tr>'
-        for k, v in rows
-    )
-    return (f'<table role="presentation" cellpadding="0" cellspacing="0" style="margin:20px 0;'
-            f'background:#fffaeb;border-radius:12px;padding:8px 18px;width:100%">{cells}</table>')
-
-
 def _send(subject: str, to: list[str], text: str, html: str, reply_to: list[str] | None = None,
           attach_proof: Payment | None = None) -> None:
-    if not to:
-        logger.warning("Payment email %r has no recipients; skipped.", subject)
-        return
-    message = EmailMultiAlternatives(subject, text, None, to, reply_to=reply_to or None)
-    message.attach_alternative(html, "text/html")
+    """Never raises: SMTP down, bad password, ... is logged, so it can't break the payment."""
+    attachments = []
     if attach_proof and attach_proof.proof:
         try:
             with attach_proof.proof.open("rb") as f:
                 content = f.read()
             name = f"payment-{attach_proof.journal_number or attach_proof.reference}"
             ext = attach_proof.proof.name.rsplit(".", 1)[-1]
-            message.attach(f"{name}.{ext}", content, mimetypes.guess_type(f"x.{ext}")[0] or "image/png")
+            attachments.append((f"{name}.{ext}", content, mimetypes.guess_type(f"x.{ext}")[0] or "image/png"))
         except OSError:
             logger.warning("Couldn't attach the screenshot for payment %s", attach_proof.reference)
-    try:
-        message.send()
-    except Exception:  # SMTP down, bad password, ...: log it, never break the payment
-        logger.exception("Couldn't send payment email %r to %s", subject, to)
+    send(subject, to, text, html, reply_to=reply_to, attachments=attachments)
 
 
 def _alert_recipients() -> list[str]:

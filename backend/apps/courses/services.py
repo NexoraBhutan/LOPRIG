@@ -58,6 +58,14 @@ def approve(course: Course) -> Course:
         "Your course was approved and students can now enroll.",
         data={"course": course.slug, "url": f"{settings.FRONTEND_URL}/courses/{course.slug}"},
         email=True,
+        email_body=[
+            f"Wonderful news: your course “{course.title}” has been reviewed and approved. 🎉 "
+            "It's now live on Lop-rig, and students can enroll right away.",
+            "Thank you for the time and care you've put into creating it. Courses like yours help "
+            "learners across Bhutan build new skills and brighter futures.",
+            "Why not share the link with your friends and community? We can't wait to see your first students join.",
+        ],
+        email_button=("View your course", f"{settings.FRONTEND_URL.rstrip('/')}/courses/{course.slug}"),
     )
     return course
 
@@ -70,5 +78,13 @@ def reject(course: Course, note: str = "") -> Course:
     notify(
         course.teacher, Notification.Kind.SYSTEM, f"“{course.title}” needs changes",
         course.review_note, data={"course": course.slug}, email=True,
+        email_body=[
+            f"Thank you for submitting “{course.title}” to Lop-rig. Our reviewers have gone through it "
+            "carefully, and it just needs a few changes before it can be published.",
+            f"Reviewer's note: {course.review_note}",
+            "Once you've made the updates, simply submit the course for review again. You're almost "
+            "there, and we're here to help if you have any questions: just reply to this email.",
+        ],
+        email_button=("Edit your course", f"{settings.FRONTEND_URL.rstrip('/')}/teach/courses/{course.slug}"),
     )
     return course
