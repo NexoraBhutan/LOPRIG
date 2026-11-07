@@ -36,6 +36,43 @@ def sign_out_everywhere(user: User) -> None:
         BlacklistedToken.objects.get_or_create(token=token)
 
 
+def google_sign_in(credential: str) -> tuple[User, bool]:
+    """Sign in (or sign up) with a Google ID token. Returns (user, created).
+
+    An existing account with the same email signs in, whatever its role, so teachers and admins
+    can use Google too. A new email gets a STUDENT account, exactly like the public sign-up form,
+    with no usable password (they can set one later with "Forgot password").
+    """
+    from django.contrib.auth.models import update_last_login
+    from rest_framework.exceptions import AuthenticationFailed
+
+    from .google import sized_picture, verify_id_token
+
+    claims = verify_id_token(credential)
+    email = claims["email"].strip().lower()
+    picture = sized_picture(claims.get("picture", ""))[:500]
+
+    user = User.objects.filter(email__iexact=email).first()
+    created = user is None
+    if created:
+        name = (claims.get("name") or email.split("@")[0]).strip()[:150]
+        user = User.objects.create_user(email=email, password=None, name=name, role=User.Role.STUDENT)
+    elif not user.is_active:
+        raise AuthenticationFailed("This account has been deactivated. Please contact Lop-rig support.",
+                                   code="user_inactive")
+    elif user.is_site_admin:
+        raise AuthenticationFailed(
+            "This is a site administration account. Sign in at the site administration page instead.",
+            code="site_admin_account",
+        )
+
+    if picture and picture != user.google_picture:
+        user.google_picture = picture  # kept fresh; an uploaded photo still takes priority
+        user.save(update_fields=["google_picture"])
+    update_last_login(None, user)
+    return user, created
+
+
 def email_login_details(user: User, *, reset: bool = False) -> bool:
     """Give an admin-created (or reset) account a new temporary password and email it to the user.
 

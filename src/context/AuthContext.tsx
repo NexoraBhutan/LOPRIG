@@ -40,7 +40,11 @@ interface AuthContextValue {
   ready: boolean;
   signup: (input: SignupInput) => Promise<ActionResult>;
   login: (input: LoginInput) => Promise<LoginResult>;
+  /** Sign in (or sign up) with the credential from Google's button. */
+  loginWithGoogle: (credential: string) => Promise<LoginResult>;
   logout: () => Promise<void>;
+  /** End every session on every device, then sign out here too. */
+  logoutEverywhere: () => Promise<ActionResult>;
   updateProfile: (updates: ProfileUpdates) => Promise<ActionResult>;
   /** Re-read the signed-in user from the server (e.g. after a password change). */
   refreshUser: () => Promise<void>;
@@ -96,20 +100,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [startSession]
   );
 
-  const login = useCallback(
-    async (input: LoginInput): Promise<LoginResult> => {
+  const signIn = useCallback(
+    async (path: string, body: unknown, fallbackError: string): Promise<LoginResult> => {
       try {
-        const res = await api<AuthResponse>("/auth/login/", { method: "POST", body: input });
+        const res = await api<AuthResponse>(path, { method: "POST", body });
         startSession(res);
         const signedIn = toUser(res.user);
         return { ok: true, role: signedIn.role, mustChangePassword: signedIn.mustChangePassword };
       } catch (err) {
         // e.g. "site_admin_account": the account exists but signs in on Django Admin instead.
         const code = err instanceof ApiError ? (err.data as { code?: string } | null)?.code : undefined;
-        return { ok: false, error: errorMessage(err, "Invalid email or password."), code };
+        return { ok: false, error: errorMessage(err, fallbackError), code };
       }
     },
     [startSession]
+  );
+
+  const login = useCallback(
+    (input: LoginInput) => signIn("/auth/login/", input, "Invalid email or password."),
+    [signIn]
+  );
+
+  const loginWithGoogle = useCallback(
+    (credential: string) => signIn("/auth/google/", { credential }, "Google sign-in didn't work. Please try again."),
+    [signIn]
   );
 
   const logout = useCallback(async () => {
@@ -120,6 +134,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await api("/auth/logout/", { method: "POST", body: { refresh } }).catch(() => undefined);
     }
     clearTokens();
+  }, []);
+
+  const logoutEverywhere = useCallback(async (): Promise<ActionResult> => {
+    try {
+      await api("/auth/logout-all/", { method: "POST" });
+    } catch (err) {
+      return { ok: false, error: errorMessage(err) };
+    }
+    setUser(null);
+    clearTokens();
+    return { ok: true };
   }, []);
 
   const updateProfile = useCallback(async (updates: ProfileUpdates): Promise<ActionResult> => {
@@ -137,7 +162,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, ready, signup, login, logout, updateProfile, refreshUser }}>
+    <AuthContext.Provider value={{ user, ready, signup, login, loginWithGoogle, logout, logoutEverywhere, updateProfile, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

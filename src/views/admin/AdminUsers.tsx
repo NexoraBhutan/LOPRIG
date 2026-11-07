@@ -164,7 +164,7 @@ export default function AdminUsers() {
                 <tr key={u.id} className={u.is_active ? "" : "opacity-60"}>
                   <td className="px-5 py-3.5">
                     <div className="flex items-center gap-3">
-                      <Avatar name={u.name} color={u.avatar_color} />
+                      <Avatar name={u.name} color={u.avatar_color} src={u.avatar} />
                       <span className="min-w-0">
                         <span className="block font-semibold text-ink-strong truncate">{u.name}{self && <span className="text-ink-muted font-normal"> (you)</span>}</span>
                         <span className="block text-xs text-ink-muted truncate">{u.email}</span>

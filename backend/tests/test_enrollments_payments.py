@@ -197,4 +197,4 @@ class PaymentsSwitchedOffTests(APITestCase):
         self.assertEqual(Payment.objects.count(), 0)
 
     def test_public_config_reports_the_switch(self):
-        self.assertEqual(self.client.get("/api/v1/config/").data, {"payments_enabled": False})
+        self.assertIs(self.client.get("/api/v1/config/").data["payments_enabled"], False)

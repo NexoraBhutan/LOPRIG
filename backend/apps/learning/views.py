@@ -1,4 +1,4 @@
-from django.db.models import Prefetch
+from django.db.models import Count, Prefetch
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema
 from rest_framework.exceptions import NotAuthenticated, PermissionDenied
@@ -53,15 +53,22 @@ class LearnCourseView(APIView):
         else:
             raise PermissionDenied("Only student accounts can open paid courses.")
 
-        lessons = Prefetch("lessons", queryset=Lesson.objects.prefetch_related("resources"))
-        modules = CourseModule.objects.filter(course=course).prefetch_related(lessons)
-        context = {"request": request, "progress": progress_map(enrollment)}
+        lessons = Prefetch("lessons", queryset=Lesson.objects.prefetch_related("resources")
+                           .annotate(views_count=Count("views", distinct=True)))
+        modules = (
+            CourseModule.objects.filter(course=course).select_related("quiz").prefetch_related(lessons)
+            .annotate(quiz_questions=Count("quiz__questions", distinct=True))
+        )
+        context = {"request": request, "progress": progress_map(enrollment),
+                   "quiz_results": services.quiz_results(enrollment)}
         total = sum(len(m.lessons.all()) for m in modules)
         if enrollment is None:
+            quizzes = sum(1 for m in modules if m.quiz_questions)
             return Response({
                 "course": CourseListSerializer(course, context=context).data,
                 "status": "OPEN",
-                "progress": {"completed_lessons": 0, "total_lessons": total, "percent": 0},
+                "progress": {"completed_lessons": 0, "total_lessons": total, "passed_quizzes": 0,
+                             "total_quizzes": quizzes, "percent": 0},
                 "last_lesson": None,
                 "certificate": None,
                 "modules": ModuleContentSerializer(modules, many=True, context=context).data,

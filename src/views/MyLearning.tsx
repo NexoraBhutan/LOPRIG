@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { PlayCircle, Bookmark, Fire, Diamond } from "@phosphor-icons/react";
+import { PlayCircle, Bookmark, Fire, Diamond, Certificate } from "@phosphor-icons/react";
+import { apiAll } from "@/lib/api";
 import { useEnrollment } from "@/context/EnrollmentContext";
 import CourseThumb from "@/components/CourseThumb";
 import ProgressBar from "@/components/ProgressBar";
@@ -20,6 +21,18 @@ const stagger = { visible: { transition: { staggerChildren: 0.06 } } };
 export default function MyLearning() {
   const { enrolledCourses, savedCourses, isEnrolled, getProgress, streak, xp } = useEnrollment();
   const [tab, setTab] = useState<Tab>("All");
+  // course slug -> certificate code, for "View certificate" on finished courses.
+  const [certificates, setCertificates] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    let alive = true;
+    apiAll<{ code: string; course: string }>("/certificates/")
+      .then((list) => alive && setCertificates(Object.fromEntries(list.map((c) => [c.course, c.code]))))
+      .catch(() => undefined); // the cards still work without it
+    return () => {
+      alive = false;
+    };
+  }, []);
   const rootRef = useRef<HTMLElement>(null);
 
   const items = useMemo(() => {
@@ -144,9 +157,22 @@ export default function MyLearning() {
                     <p className="text-xs text-ink-muted">{course.instructor.name}</p>
                     <ProgressBar value={progress} />
                     {enrolled ? (
-                      <Link href={`/learn/${course.id}`} className="btn btn-primary btn-sm self-start mt-1">
-                        <PlayCircle size={14} /> {progress > 0 ? "Continue" : "Start"}
-                      </Link>
+                      <div className="flex flex-wrap gap-2 mt-1">
+                        {certificates[course.id] ? (
+                          <>
+                            <Link href={`/certificates/${certificates[course.id]}`} className="btn btn-primary btn-sm">
+                              <Certificate size={14} weight="fill" /> View certificate
+                            </Link>
+                            <Link href={`/learn/${course.id}`} className="btn btn-outline-neutral btn-sm">
+                              <PlayCircle size={14} /> Review
+                            </Link>
+                          </>
+                        ) : (
+                          <Link href={`/learn/${course.id}`} className="btn btn-primary btn-sm">
+                            <PlayCircle size={14} /> {progress > 0 ? "Continue" : "Start"}
+                          </Link>
+                        )}
+                      </div>
                     ) : (
                       <Link href={`/courses/${course.id}`} className="btn btn-outline btn-sm self-start mt-1">View course</Link>
                     )}

@@ -33,13 +33,19 @@ class LessonContentSerializer(serializers.ModelSerializer):
     completed = serializers.SerializerMethodField()
     position_seconds = serializers.SerializerMethodField()
     video = serializers.SerializerMethodField()
+    views = serializers.SerializerMethodField()
 
     class Meta:
         model = Lesson
         fields = [
             "id", "title", "kind", "duration", "duration_seconds", "is_preview",
-            "video", "body", "h5p_embed_url", "resources", "completed", "position_seconds",
+            "video", "body", "h5p_embed_url", "resources", "completed", "position_seconds", "views",
         ]
+
+    def get_views(self, obj) -> int:
+        """Unique students who opened it. Annotated by the course player; counted for one lesson."""
+        count = getattr(obj, "views_count", None)
+        return count if count is not None else obj.views.count()
 
     @extend_schema_field(PlaybackSerializer)
     def get_video(self, obj) -> dict:
@@ -62,16 +68,39 @@ class LessonContentSerializer(serializers.ModelSerializer):
 
 
 class ModuleContentSerializer(serializers.ModelSerializer):
+    """context["quiz_results"] maps quiz id -> the student's best result (see services.quiz_results)."""
+
     lessons = LessonContentSerializer(many=True, read_only=True)
+    quiz = serializers.SerializerMethodField()
 
     class Meta:
         model = CourseModule
-        fields = ["id", "title", "lessons"]
+        fields = ["id", "title", "lessons", "quiz"]
+
+    def get_quiz(self, obj) -> dict | None:
+        quiz = getattr(obj, "quiz", None)  # select_related; None when the chapter has no quiz
+        count = getattr(obj, "quiz_questions", None)
+        if count is None and quiz:
+            count = quiz.questions.count()
+        if not quiz or not count:
+            return None
+        result = self.context.get("quiz_results", {}).get(quiz.id, {})
+        return {
+            "id": quiz.id,
+            "title": quiz.title,
+            "pass_percent": quiz.pass_percent,
+            "questions_count": count,
+            "best_score": result.get("best_score"),
+            "passed": result.get("passed", False),
+            "pending": result.get("pending", False),
+        }
 
 
 class ProgressSerializer(serializers.Serializer):
     completed_lessons = serializers.IntegerField()
     total_lessons = serializers.IntegerField()
+    passed_quizzes = serializers.IntegerField()
+    total_quizzes = serializers.IntegerField()
     percent = serializers.IntegerField()
 
 

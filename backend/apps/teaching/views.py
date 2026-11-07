@@ -2,6 +2,7 @@
 so another teacher's course simply does not exist (404) from here."""
 from django.db.models import Count, Max, OuterRef, Prefetch, Q, Subquery, Sum
 from django.db.models.functions import Coalesce
+from django.db import transaction
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema, inline_serializer
 from rest_framework import generics, serializers, status
@@ -12,8 +13,9 @@ from rest_framework.views import APIView
 
 from apps.courses import services as course_services
 from apps.courses import video
-from apps.courses.models import Course, CourseModule, Lesson, LessonResource
+from apps.courses.models import Course, CourseModule, Lesson, LessonResource, Quiz, QuizQuestion
 from apps.enrollments.models import Enrollment
+from apps.learning.models import QuizAttempt
 from apps.payments.models import Payment
 from apps.users.permissions import IsTeacher
 
@@ -24,6 +26,7 @@ from .serializers import (
     TeacherCourseSerializer,
     TeacherLessonSerializer,
     TeacherModuleSerializer,
+    QuizInputSerializer,
     TeacherResourceSerializer,
 )
 
@@ -69,6 +72,7 @@ class TeacherSummaryView(APIView):
         "completions": serializers.IntegerField(),
         "revenue": serializers.FloatField(),
         "recent_enrollments": serializers.ListField(child=serializers.DictField()),
+        "pending_reviews": serializers.IntegerField(),
     }))
     def get(self, request):
         courses = Course.objects.filter(teacher=request.user)
@@ -83,6 +87,8 @@ class TeacherSummaryView(APIView):
             "students": access.values("student").distinct().count(),
             "completions": access.filter(status=Enrollment.Status.COMPLETED).count(),
             "revenue": float(revenue or 0),
+            "pending_reviews": QuizAttempt.objects.filter(
+                quiz__module__course__teacher=request.user, status=QuizAttempt.Status.PENDING).count(),
             "recent_enrollments": [
                 {"student": e.student.name, "course": e.course.title, "course_id": e.course.slug,
                  "enrolled_at": e.activated_at}
@@ -184,6 +190,55 @@ class ModuleCreateView(APIView):
         order = serializer.validated_data.pop("order", None)
         module = serializer.save(course=course, order=next_order(course.modules) if order is None else order)
         return Response(TeacherModuleSerializer(module).data, status=status.HTTP_201_CREATED)
+
+
+def _quiz_data(module: CourseModule) -> dict:
+    """The chapter's quiz with answers (for its teacher), or an empty draft when there is none."""
+    quiz = Quiz.objects.filter(module=module).prefetch_related("questions").first()
+    if quiz is None:
+        return {"id": None, "title": f"{module.title} quiz"[:200], "pass_percent": 70, "questions": []}
+    return {
+        "id": quiz.id, "title": quiz.title, "pass_percent": quiz.pass_percent,
+        "questions": [{"kind": q.kind, "prompt": q.prompt, "options": q.options, "correct": q.correct,
+                       "model_answer": q.model_answer, "explanation": q.explanation}
+                      for q in quiz.questions.all()],
+    }
+
+
+class ModuleQuizView(APIView):
+    """GET: the chapter quiz with answers. PUT: save the whole quiz. DELETE: remove it."""
+
+    permission_classes = [IsTeacher]
+
+    def _module(self, request, pk) -> CourseModule:
+        return get_object_or_404(CourseModule, pk=pk, course__teacher=request.user)
+
+    def get(self, request, pk):
+        return Response(_quiz_data(self._module(request, pk)))
+
+    @extend_schema(request=QuizInputSerializer)
+    def put(self, request, pk):
+        module = self._module(request, pk)
+        data = QuizInputSerializer(data=request.data)
+        data.is_valid(raise_exception=True)
+        v = data.validated_data
+        with transaction.atomic():
+            quiz, _ = Quiz.objects.update_or_create(
+                module=module, defaults={"title": v["title"], "pass_percent": v["pass_percent"]},
+            )
+            quiz.questions.all().delete()
+            QuizQuestion.objects.bulk_create([
+                QuizQuestion(quiz=quiz, order=i, kind=q["kind"], prompt=q["prompt"], options=q["options"],
+                             correct=q["correct"], model_answer=q.get("model_answer", ""),
+                             explanation=q.get("explanation", ""))
+                for i, q in enumerate(v["questions"])
+            ])
+        return Response(_quiz_data(module))
+
+    @extend_schema(responses={204: None})
+    def delete(self, request, pk):
+        Quiz.objects.filter(module=self._module(request, pk)).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class ModuleDetailView(generics.UpdateAPIView, generics.DestroyAPIView):

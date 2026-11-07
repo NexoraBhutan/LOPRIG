@@ -225,3 +225,57 @@ class LessonResource(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class Quiz(models.Model):
+    """The exercise at the end of a chapter (module). Students must pass it to finish the course."""
+
+    module = models.OneToOneField(CourseModule, on_delete=models.CASCADE, related_name="quiz")
+    title = models.CharField(max_length=200, default="Chapter quiz")
+    pass_percent = models.PositiveSmallIntegerField(
+        default=70, validators=[MinValueValidator(1), MaxValueValidator(100)],
+        help_text="Score needed to pass, in percent.",
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "quizzes"
+        verbose_name_plural = "quizzes"
+
+    def __str__(self):
+        return f"{self.title} ({self.module})"
+
+
+class QuizQuestion(models.Model):
+    """Multiple choice (2-6 options, exactly one correct) or a written answer the teacher marks."""
+
+    class Kind(models.TextChoices):
+        CHOICE = "CHOICE", "Multiple choice"
+        WRITTEN = "WRITTEN", "Written answer"
+
+    quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE, related_name="questions")
+    kind = models.CharField(max_length=10, choices=Kind.choices, default=Kind.CHOICE)
+    prompt = models.TextField(max_length=1000)
+    options = models.JSONField(default=list, blank=True, help_text="The answer choices, in order (multiple choice).")
+    correct = models.PositiveSmallIntegerField(
+        null=True, blank=True, help_text="Index of the right option in `options` (multiple choice).",
+    )
+    model_answer = models.TextField(
+        blank=True, max_length=2000,
+        help_text="Written questions: what a good answer includes. Guides marking; students see it once marked.",
+    )
+    explanation = models.TextField(blank=True, max_length=1000, help_text="Shown after the student answers.")
+    order = models.PositiveIntegerField(default=0)
+
+    def snapshot(self) -> dict:
+        return {
+            "id": self.id, "kind": self.kind, "prompt": self.prompt, "options": self.options,
+            "correct": self.correct, "model_answer": self.model_answer, "explanation": self.explanation,
+        }
+
+    class Meta:
+        db_table = "quiz_questions"
+        ordering = ["order", "id"]
+
+    def __str__(self):
+        return self.prompt[:60]

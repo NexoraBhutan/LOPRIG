@@ -1,64 +1,31 @@
 "use client";
 
-import { useState } from "react";
-import { Eye, EyeSlash, ShieldCheck } from "@phosphor-icons/react";
+import Link from "next/link";
+import { ShieldCheck } from "@phosphor-icons/react";
 import { useAuth } from "@/context/AuthContext";
-import { useToast } from "@/context/ToastContext";
-import PasswordStrength from "@/components/PasswordStrength";
-import Field from "@/components/teach/Field";
+import ChangePasswordForm from "@/components/ChangePasswordForm";
+import ProfilePhotoPicker from "@/components/ProfilePhotoPicker";
 import { Card, PageHeader } from "@/components/admin/ui";
-import { api, errorMessage } from "@/lib/api";
-import { isAcceptable } from "@/lib/password";
-import { fieldErrors, inputClass } from "@/lib/teach";
-
-const EMPTY = { current_password: "", new_password: "", confirm: "" };
 
 export default function TeachAccount() {
-  const { user, refreshUser } = useAuth();
-  const { push } = useToast();
-  const [form, setForm] = useState(EMPTY);
-  const [show, setShow] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [saving, setSaving] = useState(false);
-
+  const { user } = useAuth();
   if (!user) return null;
-
-  const mismatch = form.confirm.length > 0 && form.confirm !== form.new_password;
-  const sameAsOld = form.new_password.length > 0 && form.new_password === form.current_password;
-  const canSave = Boolean(form.current_password) && isAcceptable(form.new_password, user.email)
-    && form.confirm === form.new_password && !sameAsOld;
-
-  const set = (key: keyof typeof EMPTY) => (e: React.ChangeEvent<HTMLInputElement>) =>
-    setForm((f) => ({ ...f, [key]: e.target.value }));
-
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!canSave) return;
-    setErrors({});
-    setSaving(true);
-    try {
-      await api("/users/me/password/", {
-        method: "POST",
-        body: { current_password: form.current_password, new_password: form.new_password },
-      });
-      await refreshUser();
-      setForm(EMPTY);
-      push("Password updated. Use your new password next time you log in.", "success");
-    } catch (err) {
-      setErrors(fieldErrors(err));
-      push(errorMessage(err), "error");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const type = show ? "text" : "password";
 
   return (
     <div className="flex flex-col gap-6 max-w-[760px]">
       <PageHeader eyebrow="Settings" title="Account" description="Your login details. Only you know your password; admins can't see it." />
 
       <Card title="Profile">
+        <div className="mb-6 pb-6 border-b border-line">
+          <ProfilePhotoPicker>
+            <div className="min-w-0">
+              <p className="font-display text-2xl font-semibold text-ink-strong tracking-tight">{user.name}</p>
+              <p className="text-sm text-ink-muted break-all">{user.email}</p>
+              <span className="inline-block mt-2 rounded-full bg-gold-soft px-3 py-1 text-[0.7rem] font-bold uppercase tracking-wider text-gold-dark">Teacher</span>
+            </div>
+          </ProfilePhotoPicker>
+          <p className="text-xs text-ink-muted mt-5">Shown to your students on your courses. Signed in with Google? Your Google picture is used until you upload one.</p>
+        </div>
         <dl className="grid grid-cols-1 sm:grid-cols-2 gap-5 text-sm">
           <div>
             <dt className="text-xs font-bold uppercase tracking-wider text-ink-muted">Name</dt>
@@ -72,37 +39,20 @@ export default function TeachAccount() {
       </Card>
 
       <Card title="Password" description="Choose a strong password that you don't use on any other website.">
-        <div role="status" className="flex gap-3 p-4 mb-6 rounded-xl bg-emerald-50 text-emerald-800 text-sm">
-          <ShieldCheck size={22} weight="fill" className="text-emerald-600 shrink-0" />
-          <p>You&apos;ve set your own password. You can change it again any time.</p>
-        </div>
-
-        <form onSubmit={submit} className="flex flex-col gap-5" noValidate>
-          <Field id="current-password" label="Current password" error={errors.current_password}>
-            <input id="current-password" type={type} autoComplete="current-password" value={form.current_password} onChange={set("current_password")} className={inputClass} required />
-          </Field>
-
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center justify-between">
-              <label htmlFor="new-password" className="text-xs font-bold text-ink-strong uppercase tracking-wider">New password</label>
-              <button type="button" onClick={() => setShow((s) => !s)} className="flex items-center gap-1.5 text-xs font-bold text-ink-muted hover:text-ink-strong bg-transparent border-none cursor-pointer">
-                {show ? <EyeSlash size={15} /> : <Eye size={15} />} {show ? "Hide" : "Show"} passwords
-              </button>
+        {user.hasPassword ? (
+          <>
+            <div role="status" className="flex gap-3 p-4 mb-6 rounded-xl bg-emerald-50 text-emerald-800 text-sm">
+              <ShieldCheck size={22} weight="fill" className="text-emerald-600 shrink-0" />
+              <p>You&apos;ve set your own password. You can change it again any time.</p>
             </div>
-            <input id="new-password" type={type} autoComplete="new-password" value={form.new_password} onChange={set("new_password")} className={inputClass} aria-describedby="password-rules" required />
-            <PasswordStrength password={form.new_password} email={user.email} />
-            {sameAsOld && <p role="alert" className="text-xs text-red-dark">Pick a password different from the current one.</p>}
-            {errors.new_password && <p role="alert" className="text-xs text-red-dark">{errors.new_password}</p>}
-          </div>
-
-          <Field id="confirm-password" label="Confirm new password" error={mismatch ? "Passwords don't match." : undefined}>
-            <input id="confirm-password" type={type} autoComplete="new-password" value={form.confirm} onChange={set("confirm")} className={inputClass} required />
-          </Field>
-
-          <button type="submit" disabled={!canSave || saving} className="btn btn-md btn-primary self-start disabled:opacity-50 disabled:cursor-not-allowed">
-            {saving ? "Saving…" : "Update password"}
-          </button>
-        </form>
+            <ChangePasswordForm />
+          </>
+        ) : (
+          <p className="text-sm text-ink">
+            You sign in with Google, so there&apos;s no password on this account. To be able to log in with your email
+            too, <Link href="/forgot-password" className="font-bold text-gold-dark hover:text-gold">set a password</Link>.
+          </p>
+        )}
       </Card>
     </div>
   );

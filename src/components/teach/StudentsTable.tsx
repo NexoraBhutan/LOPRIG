@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Users } from "@phosphor-icons/react";
 import PageLoader from "@/components/PageLoader";
 import ProgressBar from "@/components/ProgressBar";
+import UserAvatar from "@/components/UserAvatar";
 import { apiAll, errorMessage } from "@/lib/api";
 import { timeAgo, type TeachStudent } from "@/lib/teach";
 
@@ -57,9 +58,7 @@ export default function StudentsTable({ courseId }: { courseId: string }) {
                 <tr key={s.id}>
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-3">
-                      <span className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-xs flex-shrink-0" style={{ background: s.avatar_color }} aria-hidden="true">
-                        {s.name.charAt(0).toUpperCase()}
-                      </span>
+                      <UserAvatar name={s.name} src={s.avatar} color={s.avatar_color} />
                       <span className="min-w-0">
                         <span className="block font-semibold text-ink-strong truncate">{s.name}</span>
                         <span className="block text-xs text-ink-muted truncate">{s.email}</span>

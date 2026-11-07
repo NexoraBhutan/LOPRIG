@@ -151,3 +151,22 @@ body {
   overflow: hidden;
   clip: rect(0 0 0 0);
 }
+/* Printing a certificate ("Download PDF"): one landscape A4 page holding only the certificate.
+   The print copy is a direct child of <body>; everything else is taken out of the layout, so
+   nothing can spill onto extra pages. Zero margins also drop the browser's date/URL lines. */
+.certificate-print-root { display: none; }
+@page certificate { size: A4 landscape; margin: 0; }
+@media print {
+  html, body:has(.certificate-print-root) {
+    margin: 0 !important; padding: 0 !important; background: #fff !important;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  body:has(.certificate-print-root) > *:not(.certificate-print-root) { display: none !important; }
+  .certificate-print-root {
+    display: block !important;
+    page: certificate;
+    width: 297mm; height: 209.5mm; overflow: hidden;
+    break-inside: avoid; break-after: avoid;
+  }
+  .certificate-print-root .certificate-sheet { width: 297mm !important; height: 209.5mm !important; aspect-ratio: auto !important; }
+}

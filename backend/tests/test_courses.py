@@ -47,7 +47,7 @@ class CatalogueTests(APITestCase):
         self.assertEqual(course["lessons_count"], 3)
         self.assertEqual(course["duration"], "15m")
         self.assertEqual(course["category"], "programming")
-        self.assertEqual(set(course["instructor"]), {"name", "title"})
+        self.assertEqual(set(course["instructor"]), {"name", "title", "avatar"})  # never the email
 
     def test_detail_outline_never_leaks_lesson_content(self):
         res = self.client.get("/api/v1/courses/paid-java/")

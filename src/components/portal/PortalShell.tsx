@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ArrowSquareOut, SignOut, List, X, type Icon } from "@phosphor-icons/react";
 import Logo from "@/components/Logo";
+import UserAvatar from "@/components/UserAvatar";
 import { useAuth } from "@/context/AuthContext";
 
 export interface PortalNavItem {
@@ -86,15 +87,18 @@ export default function PortalShell({
 
       {user && (
         <div className="relative mt-auto m-3 p-4 rounded-2xl bg-white/5 border border-white/10">
-          <div className="flex items-center gap-3">
-            <span className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm text-ink-strong bg-gold" aria-hidden="true">
-              {user.name.charAt(0).toUpperCase()}
-            </span>
+          <Link
+            href={user.role === "TEACHER" ? "/teach/account" : "/profile"}
+            onClick={close}
+            title="Your account and profile photo"
+            className="flex items-center gap-3 -m-1 p-1 rounded-xl text-white no-underline hover:bg-white/10 transition-colors"
+          >
+            <UserAvatar name={user.name} src={user.avatar} color="#ffb606" textColor="text-ink-strong" className="w-10 h-10 text-sm" />
             <span className="min-w-0">
               <span className="block text-sm font-semibold truncate">{user.name}</span>
               <span className="block text-xs text-white/50 truncate">{user.email}</span>
             </span>
-          </div>
+          </Link>
           <button
             onClick={async () => { await logout(); router.push("/"); }}
             className="mt-4 w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest text-white/80 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 cursor-pointer transition-colors"

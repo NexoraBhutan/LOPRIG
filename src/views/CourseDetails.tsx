@@ -19,6 +19,7 @@ import { useEnrollment } from "@/context/EnrollmentContext";
 import { useCourseDetail } from "@/hooks/useCourseDetail";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
+import UserAvatar from "@/components/UserAvatar";
 import { gsap, useGSAP } from "@/utils/gsap";
 
 function ratingBreakdown(rating: number): number[] {
@@ -415,9 +416,13 @@ export default function CourseDetails() {
         <div className="max-w-[1280px] mx-auto">
           <div className="relative flex flex-col md:flex-row items-start md:items-center gap-6 p-10 md:p-12 bg-ink-strong rounded-3xl overflow-hidden aw-grain">
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_15%_20%,rgba(255,182,6,0.22)_0%,transparent_55%)]" />
-            <span className="relative w-16 h-16 rounded-full bg-gold flex items-center justify-center font-display font-bold text-2xl text-ink-strong flex-shrink-0">
-              {course.instructor.name.charAt(0)}
-            </span>
+            <UserAvatar
+              name={course.instructor.name}
+              src={course.instructor.avatar}
+              color="#ffb606"
+              textColor="text-ink-strong"
+              className="relative w-16 h-16 font-display text-2xl"
+            />
             <div className="relative flex-1">
               <h2 className="font-display text-xl md:text-2xl font-semibold text-white">Learn from {course.instructor.name}</h2>
               <p className="text-sm text-white/60 mt-1">{course.instructor.title} — teaching {course.category.replace("-", " ")} for real outcomes.</p>

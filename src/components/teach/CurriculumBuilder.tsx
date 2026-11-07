@@ -3,8 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import {
   VideoCamera, Article, PuzzlePiece, PencilSimple, Trash, ArrowUp, ArrowDown, Plus,
-  Check, X, LinkSimple, Eye, Warning, CircleNotch,
+  Check, X, LinkSimple, Eye, Warning, CircleNotch, Exam, UploadSimple,
 } from "@phosphor-icons/react";
+import QuizEditor from "@/components/teach/QuizEditor";
 import { useToast } from "@/context/ToastContext";
 import { api, errorMessage } from "@/lib/api";
 import {
@@ -156,6 +157,9 @@ function ModuleCard({
   const [editingTitle, setEditingTitle] = useState(false);
   const [title, setTitle] = useState(module.title);
   const [editingLesson, setEditingLesson] = useState<number | "new" | null>(null);
+  const [editingQuiz, setEditingQuiz] = useState(false);
+  // A video picked while creating a lesson: it uploads once the saved lesson's editor opens.
+  const [pendingVideo, setPendingVideo] = useState<File | null>(null);
 
   const saveTitle = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -197,7 +201,14 @@ function ModuleCard({
         {module.lessons.map((lesson, li) => (
           <li key={lesson.id}>
             {editingLesson === lesson.id ? (
-              <LessonEditor moduleId={module.id} lesson={lesson} run={run} onDone={() => setEditingLesson(null)} />
+              <LessonEditor
+                moduleId={module.id}
+                lesson={lesson}
+                run={run}
+                onDone={() => setEditingLesson(null)}
+                pendingVideo={pendingVideo}
+                onPendingVideoTaken={() => setPendingVideo(null)}
+              />
             ) : (
               <LessonRow
                 lesson={lesson}
@@ -223,7 +234,10 @@ function ModuleCard({
             moduleId={module.id}
             run={run}
             onDone={() => setEditingLesson(null)}
-            onCreatedNeedsVideo={(id) => setEditingLesson(id)}
+            onCreatedNeedsVideo={(id, file) => {
+              setPendingVideo(file ?? null);
+              setEditingLesson(id);
+            }}
           />
         </div>
       ) : (
@@ -234,6 +248,37 @@ function ModuleCard({
           <Plus size={14} weight="bold" /> Add lesson
         </button>
       )}
+
+      {/* Chapter quiz: taken after this chapter's lessons */}
+      <div className="border-t-2 border-dashed border-line">
+        {editingQuiz ? (
+          <QuizEditor moduleId={module.id} run={run} onClose={() => setEditingQuiz(false)} />
+        ) : (
+          <div className="flex flex-wrap items-center gap-3 px-5 py-3.5">
+            <span className="w-8 h-8 rounded-lg bg-gold-soft text-gold-dark flex items-center justify-center flex-shrink-0">
+              <Exam size={16} weight="duotone" />
+            </span>
+            <span className="flex-1 min-w-0 text-sm">
+              {module.quiz ? (
+                <>
+                  <span className="font-semibold text-ink-strong">{module.quiz.title}</span>
+                  <span className="block text-xs text-ink-muted">
+                    {module.quiz.questions_count} {module.quiz.questions_count === 1 ? "question" : "questions"} · pass mark {module.quiz.pass_percent}%
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span className="font-semibold text-ink-strong">No chapter quiz yet</span>
+                  <span className="block text-xs text-ink-muted">Check what students learned with a few questions after this chapter.</span>
+                </>
+              )}
+            </span>
+            <button onClick={() => setEditingQuiz(true)} disabled={busy} className="btn btn-sm btn-outline-neutral">
+              {module.quiz ? "Edit quiz" : "Add quiz"}
+            </button>
+          </div>
+        )}
+      </div>
     </section>
   );
 }
@@ -278,15 +323,18 @@ function LessonRow({
 }
 
 function LessonEditor({
-  moduleId, lesson, run, onDone, onCreatedNeedsVideo,
+  moduleId, lesson, run, onDone, onCreatedNeedsVideo, pendingVideo, onPendingVideoTaken,
 }: {
   moduleId: number;
   lesson?: TeachLesson;
   run: Run;
   onDone: () => void;
-  /** A new video lesson without a link: keep editing it so the teacher can upload the file right away. */
-  onCreatedNeedsVideo?: (id: number) => void;
+  /** A new video lesson without a link: keep editing it so its video uploads (or can be chosen) right away. */
+  onCreatedNeedsVideo?: (id: number, file?: File) => void;
+  pendingVideo?: File | null;
+  onPendingVideoTaken?: () => void;
 }) {
+  const fileInput = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState({
     title: lesson?.title ?? "",
     kind: lesson?.kind ?? ("VIDEO" as LessonKind),
@@ -306,8 +354,22 @@ function LessonEditor({
   const videoLink = uploaded && !linkEdited ? "" : form.video_url;
   const duration = uploaded ? formatClock(lesson.duration_seconds) : form.duration;
 
-  const save = async (e: React.FormEvent) => {
+  const save = (e: React.FormEvent) => {
     e.preventDefault();
+    submit();
+  };
+
+  /** Picking a video on a new lesson saves the lesson first, then its editor starts the upload. */
+  const pickVideo = (file: File) => {
+    if (!form.title.trim()) {
+      setErrors({ title: "Give the lesson a title first, then choose its video." });
+      document.getElementById(`${uid}-title`)?.focus();
+      return;
+    }
+    submit(file);
+  };
+
+  const submit = async (file?: File) => {
     setErrors({});
     const body = {
       title: form.title.trim(),
@@ -318,7 +380,7 @@ function LessonEditor({
       body: form.body,
       is_preview: form.is_preview,
     };
-    const needsUpload = !lesson && body.kind === "VIDEO" && !body.video_url;
+    const needsUpload = !lesson && body.kind === "VIDEO" && (!!file || !body.video_url);
     let createdId: number | null = null;
     const ok = await run(async () => {
       try {
@@ -328,9 +390,9 @@ function LessonEditor({
         setErrors(fieldErrors(err));
         throw err;
       }
-    }, lesson ? "Lesson saved" : needsUpload ? "Lesson added. Now upload its video." : "Lesson added");
+    }, lesson ? "Lesson saved" : file ? "Lesson saved. Uploading its video…" : needsUpload ? "Lesson added. Now upload its video." : "Lesson added");
     if (!ok) return;
-    if (needsUpload && createdId !== null && onCreatedNeedsVideo) onCreatedNeedsVideo(createdId);
+    if (needsUpload && createdId !== null && onCreatedNeedsVideo) onCreatedNeedsVideo(createdId, file);
     else onDone();
   };
 
@@ -398,11 +460,25 @@ function LessonEditor({
         <div className="flex flex-col gap-3">
           <p className="text-xs font-bold text-ink-strong uppercase tracking-wider">Video</p>
           {lesson ? (
-            <VideoUpload lesson={lesson} run={run} />
+            <VideoUpload lesson={lesson} run={run} initialFile={pendingVideo} onInitialFileTaken={onPendingVideoTaken} />
           ) : (
-            <p className="text-sm text-ink-muted">
-              Click <strong className="text-ink-strong">Add lesson</strong> below. The upload button then appears right here, or paste a link instead.
-            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                ref={fileInput}
+                type="file"
+                accept="video/mp4,video/quicktime,video/webm,video/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  e.target.value = "";
+                  if (file) pickVideo(file);
+                }}
+              />
+              <button type="button" onClick={() => fileInput.current?.click()} className="btn btn-md btn-outline inline-flex items-center gap-2">
+                <UploadSimple size={15} /> Upload video
+              </button>
+              <span className="text-xs text-ink-muted">MP4, MOV or WebM, up to 2 GB. The lesson is saved and the upload starts.</span>
+            </div>
           )}
           <Field
             id={`${uid}-video`}

@@ -38,7 +38,7 @@ export default function ProgressRing({
   const percentSize = Math.max(8, Math.round(size * 0.14));
 
   return (
-    <div className={`progress-ring progress-ring-${tone}`} style={{ width: size, height: size }}>
+    <div className={`progress-ring progress-ring-${tone} relative inline-block flex-shrink-0`} style={{ width: size, height: size }}>
       <svg
         viewBox={`0 0 ${size} ${size}`}
         width={size}
@@ -75,9 +75,9 @@ export default function ProgressRing({
         })}
       </svg>
       {showValue && (
-        <div className="progress-ring-center" aria-hidden="true">
-          <strong style={{ fontSize: numberSize }}>{clamped}</strong>
-          <small style={{ fontSize: percentSize }}>%</small>
+        <div className="progress-ring-center absolute inset-0 flex items-center justify-center text-ink-strong tabular-nums leading-none" aria-hidden="true">
+          <strong className="font-bold" style={{ fontSize: numberSize }}>{clamped}</strong>
+          <small className="font-bold text-ink-muted ml-px" style={{ fontSize: percentSize }}>%</small>
         </div>
       )}
     </div>

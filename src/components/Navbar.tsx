@@ -4,11 +4,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { MagnifyingGlass, Bell, List, X, CaretDown, House, GraduationCap, User, SignOut, Fire, Diamond, Chalkboard } from "@phosphor-icons/react";
+import { MagnifyingGlass, Bell, List, X, CaretDown, House, GraduationCap, User, SignOut, Fire, Diamond, Chalkboard, ShieldCheck } from "@phosphor-icons/react";
 import { usesSiteChrome } from "@/utils/routes";
 import { useAuth } from "@/context/AuthContext";
 import { useEnrollment } from "@/context/EnrollmentContext";
 import Logo from "@/components/Logo";
+import UserAvatar from "@/components/UserAvatar";
 import type { NavLinkItem } from "@/types";
 
 const NAV_LINKS: NavLinkItem[] = [
@@ -48,6 +49,19 @@ export default function Navbar() {
   const isActive = useIsActive();
   const isTeacher = user?.role === "TEACHER";
   const isAdmin = user?.role === "ADMIN";
+  const isStudent = user?.role === "STUDENT";
+
+  // The account menu only offers what this role uses: learners get their learning pages,
+  // teachers and admins get their portal instead.
+  const accountLinks = isAdmin
+    ? [{ to: "/admin", label: "Admin dashboard", icon: ShieldCheck, strong: true }]
+    : isTeacher
+      ? [{ to: "/teach", label: "Teacher portal", icon: Chalkboard, strong: true }]
+      : [
+          { to: "/dashboard", label: "Dashboard", icon: House, strong: false },
+          { to: "/my-learning", label: "My Learning", icon: GraduationCap, strong: false },
+        ];
+  const menuLinks = [...accountLinks, { to: "/profile", label: "Profile", icon: User, strong: false }];
 
   useEffect(() => {
     const sentinel = document.createElement("div");
@@ -139,7 +153,7 @@ export default function Navbar() {
 
           {user ? (
             <>
-              {!isTeacher && <div className="hidden sm:flex items-center gap-2" aria-label="Learning streak and XP">
+              {isStudent && <div className="hidden sm:flex items-center gap-2" aria-label="Learning streak and XP">
                 <span className="inline-flex items-center gap-1.5 bg-gold-soft text-gold-dark text-xs font-bold px-3 py-1.5 rounded-full" title={`${streak}-day streak`}>
                   <Fire size={14} weight="fill" /> {streak}
                 </span>
@@ -153,18 +167,17 @@ export default function Navbar() {
               </button>
               <div className="relative" ref={profileRef}>
                 <button className="flex items-center gap-2 bg-transparent border-none cursor-pointer px-2 py-1 rounded-lg hover:bg-bg-soft transition-colors" onClick={() => setProfileOpen((o) => !o)} aria-expanded={profileOpen}>
-                  <span className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-xs" style={{ background: user.avatarColor }}>{user.name.charAt(0).toUpperCase()}</span>
+                  <UserAvatar name={user.name} src={user.avatar} color={user.avatarColor} className="w-8 h-8 text-xs" />
                   <span className="hidden sm:block text-sm font-medium text-ink-strong">{user.name.split(" ")[0]}</span>
                   <CaretDown size={13} className={`text-ink-muted transition-transform ${profileOpen ? "rotate-180" : ""}`} />
                 </button>
                 {profileOpen && (
                   <div className="absolute right-0 top-full mt-2 w-52 bg-white border-2 border-line rounded-xl shadow-elevated overflow-hidden z-50">
-                    {isTeacher && (
-                      <Link href="/teach" onClick={() => setProfileOpen(false)} className="flex items-center gap-3 px-5 py-3 text-sm font-bold text-ink-strong hover:bg-bg-soft transition-colors no-underline"><Chalkboard size={15} weight="duotone" className="text-gold-dark" /> Teacher portal</Link>
-                    )}
-                    <Link href="/dashboard" onClick={() => setProfileOpen(false)} className="flex items-center gap-3 px-5 py-3 text-sm text-ink hover:bg-bg-soft transition-colors no-underline"><House size={15} weight="duotone" className="text-gold-dark" /> Dashboard</Link>
-                    <Link href="/my-learning" onClick={() => setProfileOpen(false)} className="flex items-center gap-3 px-5 py-3 text-sm text-ink hover:bg-bg-soft transition-colors no-underline"><GraduationCap size={15} weight="duotone" className="text-gold-dark" /> My Learning</Link>
-                    <Link href="/profile" onClick={() => setProfileOpen(false)} className="flex items-center gap-3 px-5 py-3 text-sm text-ink hover:bg-bg-soft transition-colors no-underline"><User size={15} weight="duotone" className="text-gold-dark" /> Profile</Link>
+                    {menuLinks.map(({ to, label, icon: Icon, strong }) => (
+                      <Link key={to} href={to} onClick={() => setProfileOpen(false)} className={`flex items-center gap-3 px-5 py-3 text-sm hover:bg-bg-soft transition-colors no-underline ${strong ? "font-bold text-ink-strong" : "text-ink"}`}>
+                        <Icon size={15} weight="duotone" className="text-gold-dark" /> {label}
+                      </Link>
+                    ))}
                     <div className="border-t border-line" />
                     <button className="flex items-center gap-3 w-full px-5 py-3 text-sm text-red hover:bg-red-soft transition-colors bg-transparent border-none cursor-pointer text-left" onClick={() => { logout(); setProfileOpen(false); router.push("/"); }}>
                       <SignOut size={15} weight="duotone" /> Log out
@@ -223,10 +236,9 @@ export default function Navbar() {
               ))}
               {user ? (
                 <>
-                  {isTeacher && <Link href="/teach" onClick={closeMenu} className={mobileNavClass("/teach")}>Teacher portal</Link>}
-                  <Link href="/my-learning" onClick={closeMenu} className={mobileNavClass("/my-learning")}>My Learning</Link>
-                  <Link href="/dashboard" onClick={closeMenu} className={mobileNavClass("/dashboard")}>Dashboard</Link>
-                  <Link href="/profile" onClick={closeMenu} className={mobileNavClass("/profile")}>Profile</Link>
+                  {menuLinks.map(({ to, label }) => (
+                    <Link key={to} href={to} onClick={closeMenu} className={mobileNavClass(to)}>{label}</Link>
+                  ))}
                   <button className="w-full text-left px-5 py-3.5 rounded-xl text-base font-medium text-red hover:bg-red-soft transition-colors bg-transparent border-none cursor-pointer mt-4" onClick={() => { logout(); closeMenu(); router.push("/"); }}>Log out</button>
                 </>
               ) : (

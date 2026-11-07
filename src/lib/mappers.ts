@@ -11,8 +11,11 @@ export interface ApiUser {
   role: string;
   bio: string;
   avatar_color: string;
+  avatar?: string;
   joined: string;
   must_change_password?: boolean;
+  has_password?: boolean;
+  password_changed_at?: string | null;
 }
 
 export interface ApiCategory {
@@ -43,7 +46,7 @@ export interface ApiCourse {
   category: string;
   level: string;
   description: string;
-  instructor: { name: string; title: string };
+  instructor: { name: string; title: string; avatar?: string };
   rating: number;
   students: number;
   duration: string;
@@ -67,8 +70,11 @@ export function toUser(u: ApiUser): User {
     email: u.email,
     bio: u.bio,
     avatarColor: u.avatar_color,
+    avatar: u.avatar ?? "",
     joined: u.joined,
     mustChangePassword: Boolean(u.must_change_password),
+    hasPassword: u.has_password ?? true,
+    passwordChangedAt: u.password_changed_at ?? null,
   };
 }
 

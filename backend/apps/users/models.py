@@ -18,6 +18,14 @@ def generate_temporary_password() -> str:
             return "-".join(chars[i:i + 4] for i in range(0, 16, 4))
 
 
+def avatar_upload_path(instance, filename: str) -> str:
+    """Random name: the uploader's file name isn't kept."""
+    import uuid
+
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else "jpg"
+    return f"avatars/{uuid.uuid4().hex}.{ext}"
+
+
 def pick_avatar_color(seed: str) -> str:
     return AVATAR_COLORS[ord(seed[0]) % len(AVATAR_COLORS)] if seed else AVATAR_COLORS[0]
 
@@ -73,6 +81,10 @@ class User(AbstractUser):
     bio = models.TextField(blank=True, default="Lifelong learner exploring new skills on Lop-rig.")
     headline = models.CharField(max_length=150, blank=True, help_text="Shown under a teacher's name.")
     avatar_color = models.CharField(max_length=7, blank=True)
+    # A photo the user uploaded wins; otherwise the picture from their Google account, if they
+    # signed in with Google; otherwise the frontend shows their initial on avatar_color.
+    avatar = models.FileField(upload_to=avatar_upload_path, blank=True)
+    google_picture = models.URLField(max_length=500, blank=True)
     # True while the account still uses a temporary password an admin generated.
     must_change_password = models.BooleanField(default=False)
     password_changed_at = models.DateTimeField(null=True, blank=True)
@@ -115,6 +127,10 @@ class User(AbstractUser):
 
     def get_short_name(self):
         return (self.name or self.email).split(" ")[0]
+
+    @property
+    def avatar_url(self) -> str:
+        return self.avatar.url if self.avatar else self.google_picture
 
     def save(self, *args, **kwargs):
         if not self.avatar_color:

@@ -36,6 +36,7 @@ class CategorySerializer(serializers.ModelSerializer):
 class InstructorSerializer(serializers.Serializer):
     name = serializers.CharField()
     title = serializers.CharField(source="headline")
+    avatar = serializers.CharField(source="avatar_url")
 
 
 class LessonOutlineSerializer(serializers.ModelSerializer):

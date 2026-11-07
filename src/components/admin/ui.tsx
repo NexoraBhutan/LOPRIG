@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { MagnifyingGlass } from "@phosphor-icons/react";
+import UserAvatar from "@/components/UserAvatar";
 
 /** Small building blocks shared by the admin portal pages. */
 
@@ -155,14 +156,6 @@ export function LoadMore({ shown, total, hasMore, loading, onClick }: {
   );
 }
 
-export function Avatar({ name, color }: { name: string; color?: string }) {
-  return (
-    <span
-      className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-xs flex-shrink-0"
-      style={{ background: color || "#1a1a1a" }}
-      aria-hidden="true"
-    >
-      {name.charAt(0).toUpperCase()}
-    </span>
-  );
+export function Avatar({ name, color, src }: { name: string; color?: string; src?: string }) {
+  return <UserAvatar name={name} color={color} src={src} />;
 }

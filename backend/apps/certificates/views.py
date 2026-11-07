@@ -30,4 +30,4 @@ class CertificateVerifyView(generics.RetrieveAPIView):
     permission_classes = [AllowAny]
     serializer_class = CertificateVerificationSerializer
     lookup_field = "code"
-    queryset = Certificate.objects.select_related("course", "student")
+    queryset = Certificate.objects.select_related("course__teacher", "student")

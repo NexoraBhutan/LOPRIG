@@ -11,6 +11,7 @@ import { API_URL } from "@/lib/api";
 import { useToast } from "@/context/ToastContext";
 import { rememberTemporaryPassword } from "@/lib/password";
 import { homeFor } from "@/utils/routes";
+import GoogleSignInButton from "@/components/GoogleSignInButton";
 
 /** Site administrators sign in to Django Admin on the API server, not here. */
 const SITE_ADMIN_URL = `${API_URL.replace(/\/api\/v1$/, "")}/admin/`;
@@ -51,12 +52,6 @@ export default function Login() {
     submit(form);
   };
 
-  // The demo student is created on the server by `manage.py seed_demo --with-demo-student`.
-  const demoSubmit = (email: string, password: string) => {
-    setForm({ email, password });
-    submit({ email, password });
-  };
-
   return (
     <main className="overflow-x-hidden w-full max-w-full">
       <section className="min-h-[100dvh] grid grid-cols-1 lg:grid-cols-2">
@@ -93,6 +88,14 @@ export default function Login() {
 
             <h1 className="font-display text-3xl md:text-4xl tracking-tight font-semibold text-ink-strong mb-2">Welcome back</h1>
             <p className="text-sm text-ink-muted mb-8">Enter your credentials to continue your learning.</p>
+
+            <GoogleSignInButton
+              from={from}
+              onError={(message, code) => {
+                setSiteAdmin(code === "site_admin_account");
+                setError(message);
+              }}
+            />
 
             <form onSubmit={onSubmit} className="flex flex-col gap-5">
               <div className="flex flex-col gap-2">
@@ -142,13 +145,6 @@ export default function Login() {
                 Log In <ArrowRight size={14} weight="bold" />
               </button>
             </form>
-
-            <button
-              onClick={() => demoSubmit("demo@loprig.app", "password123")}
-              className="w-full border border-line-strong text-ink-strong font-medium py-2.5 mt-4 rounded-[4px] text-sm hover:bg-ink-strong hover:text-white transition-all cursor-pointer bg-transparent"
-            >
-              Use demo account (demo / password123)
-            </button>
 
             <div className="flex items-center justify-between mt-6 text-xs text-ink-muted">
               <Link href="/forgot-password" className="font-bold text-gold-dark hover:text-gold no-underline">Forgot password?</Link>

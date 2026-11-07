@@ -19,10 +19,11 @@ class AdminUserSerializer(serializers.ModelSerializer):
     enrollments = serializers.IntegerField(source="enrollment_count", read_only=True, default=0)
     courses = serializers.IntegerField(source="course_count", read_only=True, default=0)
     role = serializers.ChoiceField(choices=PORTAL_ROLES, required=False)
+    avatar = serializers.CharField(source="avatar_url", read_only=True)
 
     class Meta:
         model = User
-        fields = ["id", "name", "email", "role", "headline", "is_active", "avatar_color",
+        fields = ["id", "name", "email", "role", "headline", "is_active", "avatar_color", "avatar",
                   "date_joined", "last_login", "enrollments", "courses",
                   "must_change_password", "password_changed_at"]
         read_only_fields = ["id", "email", "avatar_color", "date_joined", "last_login",

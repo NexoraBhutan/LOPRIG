@@ -48,7 +48,8 @@ class ProgressTests(APITestCase):
         self.assertEqual(res.status_code, 200)
         lesson = res.data["modules"][0]["lessons"][1]
         self.assertEqual(lesson["body"], "Secret lesson notes")
-        self.assertEqual(res.data["progress"], {"completed_lessons": 0, "total_lessons": 3, "percent": 0})
+        self.assertEqual(res.data["progress"], {"completed_lessons": 0, "total_lessons": 3, "passed_quizzes": 0,
+                                                "total_quizzes": 0, "percent": 0})
 
     def test_resume_position_is_saved_and_capped(self):
         res = self.progress(self.lessons[1], position_seconds=9999)

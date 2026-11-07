@@ -39,6 +39,8 @@ export interface CurriculumSection {
 export interface Instructor {
   name: string;
   title: string;
+  /** The teacher's photo; empty = show their initial. */
+  avatar?: string;
 }
 
 export type CourseLevel = "Beginner" | "Intermediate" | "All Levels";
@@ -113,9 +115,14 @@ export interface User {
   email: string;
   bio: string;
   avatarColor: string;
+  /** Uploaded photo or Google profile picture; empty = show the initial. */
+  avatar: string;
   joined: string;
   /** Still using a temporary password an admin gave them. */
   mustChangePassword: boolean;
+  /** False for "Continue with Google" accounts that never set a password. */
+  hasPassword: boolean;
+  passwordChangedAt: string | null;
 }
 
 /** A course the student is enrolled in and/or has saved. `enrolledAt` is null for saved-only courses. */

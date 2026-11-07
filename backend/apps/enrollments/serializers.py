@@ -24,7 +24,9 @@ class EnrollmentSerializer(serializers.ModelSerializer):
 
     def get_progress(self, obj) -> int:
         total = getattr(obj, "total_lessons", 0)
-        return round(100 * obj.completed_lessons / total) if total else 0
+        percent = round(100 * obj.completed_lessons / total) if total else 0
+        # All lessons watched but a chapter quiz still to pass: not finished yet.
+        return 99 if percent == 100 and obj.status != Enrollment.Status.COMPLETED else percent
 
 
 class EnrollmentStatusSerializer(serializers.ModelSerializer):

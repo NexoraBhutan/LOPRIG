@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
-  Users, BookOpen, Hourglass, Coins, Plus, CaretRight, WarningCircle, ArrowRight,
+  Users, BookOpen, Hourglass, Coins, Plus, CaretRight, WarningCircle, ArrowRight, Exam,
 } from "@phosphor-icons/react";
 import { useAuth } from "@/context/AuthContext";
 import { CoverArt } from "@/components/CourseThumb";
@@ -62,6 +62,24 @@ export default function TeachDashboard() {
           <Plus size={16} weight="bold" /> New course
         </Link>
       </motion.section>
+
+      {summary.pending_reviews > 0 && (
+        <motion.div variants={fadeUp}>
+          <Link
+            href="/teach/reviews"
+            className="flex items-center gap-4 p-5 rounded-2xl border-2 border-gold bg-gold-soft text-ink-strong no-underline hover:border-gold-dark transition-colors"
+          >
+            <Exam size={24} weight="duotone" className="text-gold-dark flex-shrink-0" />
+            <span className="flex-1 text-sm">
+              <strong className="font-semibold">
+                {summary.pending_reviews === 1 ? "1 student is" : `${summary.pending_reviews} students are`} waiting for you to mark their answers
+              </strong>
+              <span className="block text-ink-muted">They can&apos;t finish the chapter until you review their written answers.</span>
+            </span>
+            <ArrowRight size={16} weight="bold" className="text-gold-dark" />
+          </Link>
+        </motion.div>
+      )}
 
       {needsChanges.length > 0 && (
         <motion.div variants={fadeUp}>

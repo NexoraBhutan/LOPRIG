@@ -5,6 +5,8 @@ import { api } from "@/lib/api";
 
 interface SiteConfig {
   payments_enabled: boolean;
+  /** Empty when "Continue with Google" isn't set up. */
+  google_client_id?: string;
 }
 
 let request: Promise<SiteConfig> | null = null;

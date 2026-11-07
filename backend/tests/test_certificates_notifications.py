@@ -26,6 +26,9 @@ class CertificateTests(APITestCase):
         self.assertTrue(res.data["valid"])
         self.assertEqual(res.data["student_name"], "Sonam Dema")
         self.assertNotIn("email", res.data)
+        self.assertNotIn("student_email", res.data)
+        self.assertTrue(res.data["instructor_name"])
+        self.assertGreater(res.data["lessons_count"], 0)
         self.assertEqual(self.client.get("/api/v1/certificates/verify/LR-0000-0000/").status_code, 404)
 
     def test_other_students_cannot_open_my_certificate(self):

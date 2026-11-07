@@ -1,5 +1,5 @@
 from drf_spectacular.utils import extend_schema
-from rest_framework import status
+from rest_framework import serializers, status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
@@ -35,6 +35,26 @@ class RegisterView(APIView):
         return Response(body, status=status.HTTP_201_CREATED)
 
 
+class GoogleCredentialSerializer(serializers.Serializer):
+    credential = serializers.CharField(max_length=4096)
+
+
+class GoogleSignInView(APIView):
+    """Continue with Google: the ID token from Google's button -> our tokens + user."""
+
+    permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "auth"
+
+    @extend_schema(request=GoogleCredentialSerializer, responses={200: AuthResponseSerializer, 201: AuthResponseSerializer})
+    def post(self, request):
+        serializer = GoogleCredentialSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user, created = services.google_sign_in(serializer.validated_data["credential"])
+        body = {**services.issue_tokens(user), "user": UserSerializer(user).data}
+        return Response(body, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
+
+
 class LoginView(TokenObtainPairView):
     serializer_class = LoginSerializer
     throttle_classes = [ScopedRateThrottle]
@@ -59,6 +79,15 @@ class LogoutView(APIView):
         if str(token.get("user_id")) != str(request.user.pk):
             return Response({"detail": "Token does not belong to this user."}, status=status.HTTP_400_BAD_REQUEST)
         token.blacklist()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class LogoutEverywhereView(APIView):
+    """Ends every session of the signed-in user, on all devices (this one included)."""
+
+    @extend_schema(request=None, responses={204: None})
+    def post(self, request):
+        services.sign_out_everywhere(request.user)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

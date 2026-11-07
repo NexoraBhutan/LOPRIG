@@ -61,6 +61,7 @@ export interface AdminUser {
   headline: string;
   is_active: boolean;
   avatar_color: string;
+  avatar: string;
   date_joined: string;
   last_login: string | null;
   enrollments: number;

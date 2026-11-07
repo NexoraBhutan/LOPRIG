@@ -25,9 +25,18 @@ const mb = (bytes: number) => `${(bytes / 1024 / 1024).toFixed(bytes > 100 * 102
  * Upload a lesson video straight from the browser to Bunny Stream (resumable, so a flaky
  * connection retries instead of starting over). The file never passes through our server.
  */
-export default function VideoUpload({ lesson, run }: { lesson: TeachLesson; run: Run }) {
+export default function VideoUpload({
+  lesson, run, initialFile, onInitialFileTaken,
+}: {
+  lesson: TeachLesson;
+  run: Run;
+  /** A file the teacher picked before the lesson existed: upload it as soon as this mounts. */
+  initialFile?: File | null;
+  onInitialFileTaken?: () => void;
+}) {
   const fileInput = useRef<HTMLInputElement>(null);
   const uploadRef = useRef<tus.Upload | null>(null);
+  const initialStarted = useRef(false);
   const [progress, setProgress] = useState<{ sent: number; total: number } | null>(null);
   const [error, setError] = useState("");
   const uploading = progress !== null;
@@ -86,6 +95,14 @@ export default function VideoUpload({ lesson, run }: { lesson: TeachLesson; run:
     uploadRef.current = upload;
     upload.start();
   };
+
+  useEffect(() => {
+    if (!initialFile || initialStarted.current) return;
+    initialStarted.current = true;
+    onInitialFileTaken?.();
+    start(initialFile);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- start once, for the file picked before saving
+  }, [initialFile]);
 
   const cancel = async () => {
     await uploadRef.current?.abort(true).catch(() => undefined);

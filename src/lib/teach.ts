@@ -33,6 +33,8 @@ export interface TeachModule {
   title: string;
   order: number;
   lessons: TeachLesson[];
+  /** The chapter quiz, if the teacher has made one. */
+  quiz: { id: number; title: string; pass_percent: number; questions_count: number } | null;
 }
 
 export interface TeachCourse {
@@ -75,6 +77,41 @@ export interface TeachSummary {
   completions: number;
   revenue: number;
   recent_enrollments: { student: string; course: string; course_id: string; enrolled_at: string | null }[];
+  /** Chapter quiz attempts with written answers waiting for this teacher. */
+  pending_reviews: number;
+}
+
+export interface ReviewSummary {
+  id: number;
+  status: "PENDING" | "REVIEWED";
+  student: { name: string; email: string; avatar: string };
+  course: { id: string; title: string };
+  chapter: string;
+  quiz: string;
+  written_count: number;
+  score: number | null;
+  passed: boolean;
+  submitted_at: string;
+  reviewed_at: string | null;
+}
+
+export interface ReviewQuestion {
+  id: number;
+  kind: "CHOICE" | "WRITTEN";
+  prompt: string;
+  options: string[];
+  correct: number | null;
+  model_answer: string;
+  explanation: string;
+  /** The option index (multiple choice) or the text (written) the student gave. */
+  answer: number | string | null;
+  mark: { correct: boolean; feedback: string } | null;
+}
+
+export interface ReviewDetail extends ReviewSummary {
+  pass_percent: number;
+  feedback: string;
+  questions: ReviewQuestion[];
 }
 
 export interface TeachStudent {
@@ -82,6 +119,7 @@ export interface TeachStudent {
   name: string;
   email: string;
   avatar_color: string;
+  avatar: string;
   status: "ACTIVE" | "COMPLETED";
   progress: number;
   completed_lessons: number;

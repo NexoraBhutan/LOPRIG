@@ -13,6 +13,7 @@ import { api, errorMessage } from "@/lib/api";
 import { forgetTemporaryPassword, isAcceptable, peekTemporaryPassword } from "@/lib/password";
 import { fieldErrors } from "@/lib/teach";
 import { homeFor } from "@/utils/routes";
+import UserAvatar from "@/components/UserAvatar";
 
 const inputClass =
   "w-full pl-11 pr-12 py-3.5 bg-white border-2 border-line rounded-xl text-sm text-ink-strong placeholder:text-ink-muted focus:border-gold focus:outline-none transition-colors";
@@ -136,9 +137,7 @@ export default function SetPassword() {
                 </p>
 
                 <div className="flex items-center gap-3 p-3 mb-7 rounded-xl bg-white border-2 border-line">
-                  <span className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm text-ink-strong bg-gold shrink-0" aria-hidden="true">
-                    {user.name.charAt(0).toUpperCase()}
-                  </span>
+                  <UserAvatar name={user.name} src={user.avatar} color="#ffb606" textColor="text-ink-strong" className="w-9 h-9 text-sm" />
                   <span className="min-w-0 flex-1">
                     <span className="block text-sm font-semibold text-ink-strong truncate">{user.name}</span>
                     <span className="block text-xs text-ink-muted truncate">{user.email}</span>

@@ -81,7 +81,7 @@ export function refreshSession(): Promise<boolean> {
 }
 
 interface RequestOptions {
-  method?: "GET" | "POST" | "PATCH" | "DELETE";
+  method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   /** JSON-serialisable data, or FormData for file uploads (the browser sets its content type). */
   body?: unknown;
 }

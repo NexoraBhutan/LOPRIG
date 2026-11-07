@@ -106,6 +106,10 @@ class SiteConfigView(APIView):
 
     permission_classes = [AllowAny]
 
-    @extend_schema(responses=inline_serializer("SiteConfig", {"payments_enabled": serializers.BooleanField()}))
+    @extend_schema(responses=inline_serializer("SiteConfig", {
+        "payments_enabled": serializers.BooleanField(),
+        "google_client_id": serializers.CharField(),
+    }))
     def get(self, request):
-        return Response({"payments_enabled": settings.PAYMENTS_ENABLED})
+        # The Google client ID is public by design (it's in every page that shows the Google button).
+        return Response({"payments_enabled": settings.PAYMENTS_ENABLED, "google_client_id": settings.GOOGLE_CLIENT_ID})

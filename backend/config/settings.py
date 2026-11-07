@@ -121,6 +121,7 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
         "auth": "10/min",
         "password_reset": "5/hour",
+        "comments": "30/hour",
     },
 }
 
@@ -161,6 +162,10 @@ EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
 EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
 EMAIL_TIMEOUT = 15
 FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:3000")
+
+# "Continue with Google" (also brings in the user's Google profile picture). Empty = button hidden.
+# Create a Web OAuth client ID in Google Cloud Console; only the client ID is needed, no secret.
+GOOGLE_CLIENT_ID = env("GOOGLE_CLIENT_ID", default="")
 
 # Off: every published course is free to enroll (prices stay saved for later).
 PAYMENTS_ENABLED = env.bool("PAYMENTS_ENABLED", default=True)

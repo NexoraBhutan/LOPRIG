@@ -5,7 +5,7 @@ from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from apps.courses import video
-from apps.courses.models import Category, Course, CourseModule, Lesson, LessonResource
+from apps.courses.models import Category, Course, CourseModule, Lesson, LessonResource, QuizQuestion
 from apps.courses.serializers import cover_url, format_duration
 from apps.courses.services import review_problems
 from apps.enrollments.models import Enrollment
@@ -72,11 +72,53 @@ class TeacherLessonSerializer(serializers.ModelSerializer):
 
 class TeacherModuleSerializer(serializers.ModelSerializer):
     lessons = TeacherLessonSerializer(many=True, read_only=True)
+    quiz = serializers.SerializerMethodField()
 
     class Meta:
         model = CourseModule
-        fields = ["id", "title", "order", "lessons"]
+        fields = ["id", "title", "order", "lessons", "quiz"]
         read_only_fields = ["id"]
+
+    def get_quiz(self, obj) -> dict | None:
+        quiz = getattr(obj, "quiz", None)
+        if quiz is None:
+            return None
+        return {"id": quiz.id, "title": quiz.title, "pass_percent": quiz.pass_percent,
+                "questions_count": quiz.questions.count()}
+
+
+class QuizQuestionInputSerializer(serializers.Serializer):
+    """Multiple choice (options + the correct one) or written (the student types; the teacher marks)."""
+
+    kind = serializers.ChoiceField(choices=QuizQuestion.Kind.choices, default=QuizQuestion.Kind.CHOICE)
+    prompt = serializers.CharField(max_length=1000, trim_whitespace=True)
+    options = serializers.ListField(
+        child=serializers.CharField(max_length=300, trim_whitespace=True), required=False, default=list, max_length=6,
+        error_messages={"max_length": "Use at most 6 options."},
+    )
+    correct = serializers.IntegerField(min_value=0, required=False, allow_null=True, default=None)
+    model_answer = serializers.CharField(max_length=2000, required=False, allow_blank=True, trim_whitespace=True)
+    explanation = serializers.CharField(max_length=1000, required=False, allow_blank=True, trim_whitespace=True)
+
+    def validate(self, attrs):
+        if attrs["kind"] == QuizQuestion.Kind.WRITTEN:
+            attrs["options"], attrs["correct"] = [], None
+            return attrs
+        attrs["model_answer"] = ""
+        if len(attrs["options"]) < 2:
+            raise serializers.ValidationError({"options": "Give at least 2 answer options."})
+        if attrs["correct"] is None or attrs["correct"] >= len(attrs["options"]):
+            raise serializers.ValidationError({"correct": "Choose which option is the right answer."})
+        return attrs
+
+
+class QuizInputSerializer(serializers.Serializer):
+    """The whole chapter quiz, saved in one go (questions are replaced)."""
+
+    title = serializers.CharField(max_length=200, trim_whitespace=True)
+    pass_percent = serializers.IntegerField(min_value=1, max_value=100)
+    questions = QuizQuestionInputSerializer(many=True, allow_empty=False, max_length=50,
+                                            error_messages={"empty": "Add at least one question."})
 
 
 class TeacherCourseSerializer(serializers.ModelSerializer):
@@ -159,13 +201,14 @@ class StudentProgressSerializer(serializers.ModelSerializer):
     name = serializers.CharField(source="student.name")
     email = serializers.EmailField(source="student.email")
     avatar_color = serializers.CharField(source="student.avatar_color")
+    avatar = serializers.CharField(source="student.avatar_url")
     completed_lessons = serializers.IntegerField()
     progress = serializers.SerializerMethodField()
     last_activity = serializers.DateTimeField(source="updated_at")
 
     class Meta:
         model = Enrollment
-        fields = ["id", "name", "email", "avatar_color", "status", "progress", "completed_lessons",
+        fields = ["id", "name", "email", "avatar_color", "avatar", "status", "progress", "completed_lessons",
                   "activated_at", "last_activity"]
 
     def get_progress(self, obj) -> int:
