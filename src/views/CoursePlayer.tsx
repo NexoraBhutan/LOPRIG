@@ -107,10 +107,13 @@ export default function CoursePlayer() {
         if (cancelled) return;
         const first = res.modules.flatMap((m) => m.lessons)[0]?.id;
         setData(res);
-        setActiveLessonId(res.last_lesson ?? first);
+        // Notification links can point at a lesson (?lesson=) or a chapter quiz (?quiz=).
+        const params = new URLSearchParams(window.location.search);
+        const lessonParam = Number(params.get("lesson"));
+        const linked = res.modules.some((m) => m.lessons.some((l) => l.id === lessonParam)) ? lessonParam : undefined;
+        setActiveLessonId(linked ?? res.last_lesson ?? first);
         openedLesson.current = res.last_lesson ?? first;
-        // Links from "your answers were reviewed" emails open that chapter quiz.
-        const quizParam = Number(new URLSearchParams(window.location.search).get("quiz"));
+        const quizParam = Number(params.get("quiz"));
         if (quizParam && res.modules.some((m) => m.quiz?.id === quizParam)) setActiveQuizId(quizParam);
         setLoadState("ready");
         if (res.status !== "OPEN") refresh(); // a free course may have just been added to My Learning

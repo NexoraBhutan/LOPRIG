@@ -3,6 +3,7 @@ from django.contrib import admin, messages
 from django.core.exceptions import PermissionDenied
 from django.db.models import Count, Prefetch, Q
 from django.shortcuts import get_object_or_404, redirect
+from django.utils.html import format_html
 from django.urls import path, reverse
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
@@ -12,7 +13,7 @@ from unfold.decorators import action, display
 from apps.users.models import User
 
 from . import services
-from .models import Category, Course, CourseModule, Lesson, LessonResource
+from .models import Category, Course, CourseModule, Lesson, LessonResource, Quiz, QuizQuestion
 from .serializers import format_duration
 
 STATUS_COLORS = {
@@ -39,14 +40,16 @@ class CourseModuleInline(TabularInline):
 
 @admin.register(Course)
 class CourseAdmin(ModelAdmin):
-    list_display = ["title", "show_teacher", "category", "show_status", "show_price", "students_count", "published_at"]
+    list_display = ["show_cover", "title", "show_teacher", "category", "show_status", "show_price", "students_count",
+                    "published_at"]
+    list_display_links = ["show_cover", "title"]
     list_filter = ["status", "category", "level"]
     list_filter_submit = True
     list_select_related = ["teacher", "category"]
     search_fields = ["title", "teacher__name", "teacher__email"]
     prepopulated_fields = {"slug": ["title"]}
     autocomplete_fields = ["teacher"]
-    readonly_fields = ["status", "students_count", "published_at", "created_at", "updated_at"]
+    readonly_fields = ["status", "students_count", "published_at", "created_at", "updated_at", "cover_preview"]
     inlines = [CourseModuleInline]
     actions = ["approve_courses", "reject_courses"]
     actions_detail = ["approve_detail", "reject_detail"]
@@ -54,7 +57,8 @@ class CourseAdmin(ModelAdmin):
         ("Course", {"fields": ("title", "slug", "teacher", "category", "level", "language", "description")}),
         ("Pricing (Nu.)", {"fields": ("price", "discount_price")}),
         ("Outcomes", {"fields": ("what_you_learn", "requirements")}),
-        ("Appearance", {"fields": ("thumbnail_url", "gradient_start", "gradient_end", "bestseller")}),
+        ("Appearance", {"fields": ("cover_image", "cover_preview", "thumbnail_url", "gradient_start", "gradient_end",
+                                   "bestseller")}),
         ("Review", {"fields": ("status", "review_note", "published_at")}),
         ("Stats", {"fields": ("rating", "students_count", "created_at", "updated_at")}),
     )
@@ -62,6 +66,20 @@ class CourseAdmin(ModelAdmin):
     @display(description="Teacher", ordering="teacher__name")
     def show_teacher(self, obj):
         return obj.teacher.name
+
+    @display(description="Cover")
+    def show_cover(self, obj):
+        url = obj.cover_image.url if obj.cover_image else obj.thumbnail_url
+        if url:
+            return format_html('<img src="{}" alt="" style="width:64px;height:40px;object-fit:cover;border-radius:6px">', url)
+        return format_html('<span style="display:block;width:64px;height:40px;border-radius:6px;'
+                           'background:linear-gradient(135deg,{},{})"></span>', obj.gradient_start, obj.gradient_end)
+
+    @display(description="Cover preview")
+    def cover_preview(self, obj):
+        if not obj.cover_image:
+            return "No uploaded cover. The card uses the image link or the colour gradient."
+        return format_html('<img src="{}" alt="" style="max-width:360px;border-radius:10px">', obj.cover_image.url)
 
     @display(description="Status", label=STATUS_COLORS)
     def show_status(self, obj):
@@ -258,3 +276,40 @@ class LessonAdmin(ModelAdmin):
         else:
             raise PermissionDenied
         return redirect(back)
+
+
+class QuizQuestionInline(TabularInline):
+    model = QuizQuestion
+    extra = 0
+    fields = ["order", "kind", "prompt", "options", "correct", "model_answer"]
+    ordering = ["order", "id"]
+
+
+@admin.register(Quiz)
+class QuizAdmin(ModelAdmin):
+    """Chapter quizzes. Teachers build them in the teacher portal; this is for checking and fixing."""
+
+    list_display = ["title", "module", "show_course", "pass_percent", "show_questions", "show_written", "updated_at"]
+    list_filter = [("module__course", admin.RelatedOnlyFieldListFilter)]
+    list_select_related = ["module__course"]
+    search_fields = ["title", "module__title", "module__course__title"]
+    raw_id_fields = ["module"]
+    inlines = [QuizQuestionInline]
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).annotate(
+            n_questions=Count("questions", distinct=True),
+            n_written=Count("questions", distinct=True, filter=Q(questions__kind=QuizQuestion.Kind.WRITTEN)),
+        )
+
+    @display(description="Course", ordering="module__course__title")
+    def show_course(self, obj):
+        return obj.module.course.title
+
+    @display(description="Questions", ordering="n_questions")
+    def show_questions(self, obj):
+        return obj.n_questions
+
+    @display(description="Written", ordering="n_written")
+    def show_written(self, obj):
+        return obj.n_written

@@ -80,4 +80,12 @@ def activate(enrollment: Enrollment) -> Enrollment:
         ],
         email_button=("Start learning", f"{settings.FRONTEND_URL.rstrip('/')}/learn/{course.slug}"),
     )
+    # The teacher hears about each new student in the app (no email, so busy courses don't flood their inbox).
+    notify(
+        course.teacher,
+        Notification.Kind.ENROLLMENT,
+        f"New student in {course.title}",
+        f"{enrollment.student.name} just enrolled.",
+        data={"course": course.slug},
+    )
     return enrollment

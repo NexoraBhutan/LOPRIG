@@ -1,0 +1,96 @@
+# Render Blueprint for the Lop-rig backend: the Django API (with a disk for uploads),
+# its PostgreSQL database, and the daily reminder emails. The Next.js frontend runs on Vercel.
+#
+# Secrets are marked `sync: false`: they are never stored here, and Render asks for them
+# when the Blueprint is created (or set them later under the service's Environment tab).
+services:
+  - type: web
+    name: loprig-api
+    runtime: python
+    rootDir: backend
+    plan: starter
+    region: singapore
+    buildCommand: ./build.sh
+    preDeployCommand: python manage.py migrate --noinput
+    startCommand: gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 120
+    healthCheckPath: /api/v1/config/
+    disk:
+      name: loprig-media
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - fromGroup: loprig-shared
+      - key: DATABASE_URL
+        fromDatabase:
+          name: loprig-db
+          property: connectionString
+      - key: MEDIA_ROOT
+        value: /var/data/media
+      - key: SERVE_MEDIA
+        value: "True"
+      - key: ALLOWED_HOSTS
+        sync: false # the API's address without https, e.g. loprig-api.onrender.com
+      - key: CSRF_TRUSTED_ORIGINS
+        sync: false # the API's address with https, e.g. https://loprig-api.onrender.com
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false # the Vercel site, e.g. https://loprig.vercel.app
+
+  - type: cron
+    name: loprig-reminders
+    runtime: python
+    rootDir: backend
+    plan: starter
+    region: singapore
+    schedule: "0 3 * * *" # every day at 09:00 Bhutan time (03:00 UTC)
+    buildCommand: pip install -r requirements.txt
+    startCommand: python manage.py send_reminders
+    envVars:
+      - fromGroup: loprig-shared
+      - key: DATABASE_URL
+        fromDatabase:
+          name: loprig-db
+          property: connectionString
+
+databases:
+  - name: loprig-db
+    databaseName: loprig
+    user: loprig
+    plan: basic-256mb
+    region: singapore
+
+envVarGroups:
+  # Settings both the API and the reminder job need.
+  - name: loprig-shared
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.13.1"
+      - key: DEBUG
+        value: "False"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: FRONTEND_URL
+        sync: false # the Vercel site, e.g. https://loprig.vercel.app
+      - key: EMAIL_BACKEND
+        value: django.core.mail.backends.smtp.EmailBackend
+      - key: DEFAULT_FROM_EMAIL
+        sync: false # e.g. Lop-rig <loprig26@gmail.com>
+      - key: EMAIL_HOST_USER
+        sync: false # loprig26@gmail.com
+      - key: EMAIL_HOST_PASSWORD
+        sync: false # the Gmail App Password
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: BUNNY_STREAM_LIBRARY_ID
+        sync: false
+      - key: BUNNY_STREAM_API_KEY
+        sync: false
+      - key: BUNNY_STREAM_TOKEN_KEY
+        sync: false
+      - key: BUNNY_STREAM_READONLY_API_KEY
+        sync: false
+      - key: PAYMENTS_ENABLED
+        sync: false
+      - key: PAYMENT_PROVIDER
+        sync: false
+      - key: PAYMENT_WEBHOOK_SECRET
+        generateValue: true

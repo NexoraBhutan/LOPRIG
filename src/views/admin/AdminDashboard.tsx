@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
@@ -52,7 +53,18 @@ export default function AdminDashboard() {
   return (
     <motion.div initial="hidden" animate="visible" variants={stagger} className="flex flex-col gap-8">
       <motion.section variants={fadeUp} className="relative overflow-hidden rounded-2xl bg-ink-strong text-white px-7 py-9 md:px-10 md:py-11 flex flex-col md:flex-row md:items-end md:justify-between gap-6">
-        <div aria-hidden="true" className="absolute inset-0 bg-[radial-gradient(ellipse_at_100%_0%,rgba(255,182,6,0.28)_0%,transparent_55%)]" />
+        {/* Punakha Dzong behind a dark wash from the left, so the greeting stays easy to read. */}
+        <Image
+          src="/admin-hero-punakha.png"
+          alt=""
+          fill
+          priority
+          sizes="(min-width: 1024px) 1180px, 100vw"
+          className="object-cover object-[center_40%]"
+        />
+        {/* Phones stack the text over the whole photo, so they get an even wash; wider screens fade left to right. */}
+        <div aria-hidden="true" className="absolute inset-0 bg-ink-strong/65 md:bg-transparent md:bg-gradient-to-r md:from-ink-strong/90 md:via-ink-strong/55 md:to-transparent" />
+        <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-ink-strong/45 to-transparent" />
         <div className="relative">
           <p className="text-[0.7rem] font-bold uppercase tracking-[0.18em] text-gold mb-3">Admin portal · Platform overview</p>
           <h1 className="font-display text-3xl md:text-5xl tracking-tighter font-semibold leading-tight text-white">
@@ -88,14 +100,14 @@ export default function AdminDashboard() {
         </motion.div>
       )}
 
-      <motion.div variants={stagger} className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <motion.div variants={stagger} className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {kpis.map(({ label, value, hint, icon: Icon, accent }) => (
-          <motion.div key={label} variants={fadeUp} className={`border-2 rounded-2xl p-5 transition-colors hover:border-gold ${accent ? "border-gold bg-gold-soft" : "border-line bg-white"}`}>
+          <motion.div key={label} variants={fadeUp} className={`border-2 rounded-2xl p-4 sm:p-5 min-w-0 transition-colors hover:border-gold ${accent ? "border-gold bg-gold-soft" : "border-line bg-white"}`}>
             <span className={`w-10 h-10 rounded-xl flex items-center justify-center mb-4 ${accent ? "bg-gold text-ink-strong" : "bg-gold-soft text-gold-dark"}`}>
               <Icon size={20} weight="duotone" />
             </span>
-            <strong className="block font-display text-2xl md:text-3xl font-semibold text-ink-strong tracking-tight">{value}</strong>
-            <span className="block text-xs font-bold uppercase tracking-wider text-ink-muted">{label}</span>
+            <strong className="block font-display text-xl sm:text-2xl md:text-3xl font-semibold text-ink-strong tracking-tight [overflow-wrap:anywhere]">{value}</strong>
+            <span className="block text-xs font-bold uppercase tracking-wider text-ink-muted [overflow-wrap:anywhere]">{label}</span>
             <span className="block text-xs text-ink-muted mt-1">{hint}</span>
           </motion.div>
         ))}

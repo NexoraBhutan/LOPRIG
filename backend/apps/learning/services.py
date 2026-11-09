@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 
 from django.conf import settings
+from django.core.cache import cache
 from django.db import transaction
 from django.utils import timezone
 from rest_framework.exceptions import NotAuthenticated, PermissionDenied
@@ -182,7 +183,7 @@ def _tell_teacher_to_review(attempt: QuizAttempt):
     name = student.get_full_name() or student.email
     notify(
         course.teacher,
-        Notification.Kind.SYSTEM,
+        Notification.Kind.QUIZ_REVIEW,
         f"New answers to review: {attempt.quiz.title}",
         f"{name} sent written answers in {course.title}.",
         data={"review": attempt.id, "course": course.slug},
@@ -236,7 +237,7 @@ def review_attempt(reviewer, attempt: QuizAttempt, marks: dict, feedback: str = 
                     "Read the feedback and give it another go.")
     notify(
         enrollment.student,
-        Notification.Kind.SYSTEM,
+        Notification.Kind.QUIZ_REVIEW,
         f"Your answers were reviewed: {attempt.quiz.title}",
         outcome,
         data={"course": course.slug, "quiz": attempt.quiz_id},
@@ -361,3 +362,18 @@ def learning_summary(student) -> dict:
         "streak": day_streak(student),
         "xp": completed_lessons * XP_PER_LESSON + completed_courses * XP_PER_COURSE,
     }
+
+
+REMINDER_CHECK_SECONDS = 60 * 60  # look for a due reminder at most hourly per student
+
+
+def remind_to_continue(student) -> Notification | None:
+    """The in-app "continue your course" reminder, checked when the student's bell refreshes.
+
+    At most hourly per student. The daily `send_reminders` job sends the same reminder by email
+    to students who aren't on the site (see reminders.py); neither repeats the other.
+    """
+    if not cache.add(f"remind-check:{student.pk}", True, REMINDER_CHECK_SECONDS):
+        return None
+    from .reminders import remind_student  # reminders uses course_progress from this module
+    return remind_student(student, email=False)

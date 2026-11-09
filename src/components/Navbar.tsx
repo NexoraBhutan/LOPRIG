@@ -4,12 +4,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { MagnifyingGlass, Bell, List, X, CaretDown, House, GraduationCap, User, SignOut, Fire, Diamond, Chalkboard, ShieldCheck } from "@phosphor-icons/react";
+import { MagnifyingGlass, List, X, CaretDown, House, GraduationCap, User, SignOut, Fire, Diamond, Chalkboard, ShieldCheck } from "@phosphor-icons/react";
 import { usesSiteChrome } from "@/utils/routes";
 import { useAuth } from "@/context/AuthContext";
 import { useEnrollment } from "@/context/EnrollmentContext";
 import Logo from "@/components/Logo";
 import UserAvatar from "@/components/UserAvatar";
+import NotificationBell from "@/components/NotificationBell";
+import SiteSearch from "@/components/SiteSearch";
 import type { NavLinkItem } from "@/types";
 
 const NAV_LINKS: NavLinkItem[] = [
@@ -41,7 +43,6 @@ export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [query, setQuery] = useState("");
   const profileRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -101,13 +102,7 @@ export default function Navbar() {
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [menuOpen]);
 
-  const submitSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!query.trim()) return;
-    router.push(`/search?q=${encodeURIComponent(query.trim())}`);
-    setSearchOpen(false);
-    setQuery("");
-  };
+  const closeSearch = useCallback(() => setSearchOpen(false), []);
 
   const closeMenu = useCallback(() => setMenuOpen(false), []);
   const navClass = (to: string, end = false) =>
@@ -147,7 +142,7 @@ export default function Navbar() {
         </nav>
 
         <div className="flex items-center gap-2">
-          <button className="w-10 h-10 rounded-full flex items-center justify-center text-ink-muted hover:bg-bg-soft hover:text-ink-strong transition-colors bg-transparent border-none cursor-pointer" aria-label="Search courses" onClick={() => setSearchOpen((s) => !s)}>
+          <button className="w-10 h-10 rounded-full flex items-center justify-center text-ink-muted hover:bg-bg-soft hover:text-ink-strong transition-colors bg-transparent border-none cursor-pointer" aria-label="Search courses" aria-expanded={searchOpen} onClick={() => { setSearchOpen((s) => !s); setMenuOpen(false); }}>
             <MagnifyingGlass size={16} weight="bold" />
           </button>
 
@@ -161,10 +156,7 @@ export default function Navbar() {
                   <Diamond size={13} weight="fill" /> {xp}
                 </span>
               </div>}
-              <button className="w-9 h-9 rounded-lg flex items-center justify-center text-ink-muted hover:bg-bg-soft hover:text-ink-strong transition-colors bg-transparent border-none cursor-pointer relative" aria-label="Notifications">
-                <Bell size={16} weight="bold" />
-                <span className="absolute top-2 right-2 w-2 h-2 bg-red rounded-full" />
-              </button>
+              <NotificationBell />
               <div className="relative" ref={profileRef}>
                 <button className="flex items-center gap-2 bg-transparent border-none cursor-pointer px-2 py-1 rounded-lg hover:bg-bg-soft transition-colors" onClick={() => setProfileOpen((o) => !o)} aria-expanded={profileOpen}>
                   <UserAvatar name={user.name} src={user.avatar} color={user.avatarColor} className="w-8 h-8 text-xs" />
@@ -193,7 +185,7 @@ export default function Navbar() {
             </div>
           )}
 
-          <button className="lg:hidden w-10 h-10 rounded-full flex items-center justify-center text-ink-muted hover:bg-bg-soft hover:text-ink-strong transition-colors bg-transparent border-none cursor-pointer" aria-label="Toggle menu" onClick={() => setMenuOpen((m) => !m)}>
+          <button className="lg:hidden w-10 h-10 rounded-full flex items-center justify-center text-ink-muted hover:bg-bg-soft hover:text-ink-strong transition-colors bg-transparent border-none cursor-pointer" aria-label="Toggle menu" onClick={() => { setMenuOpen((m) => !m); setSearchOpen(false); }}>
             {menuOpen ? <X size={18} weight="bold" /> : <List size={18} weight="bold" />}
           </button>
         </div>
@@ -206,13 +198,10 @@ export default function Navbar() {
             initial={{ opacity: 0, y: -10, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -10, scale: 0.98 }}
-            className="absolute top-[76px] left-4 right-4 mx-auto max-w-[1280px] bg-white/95 backdrop-blur-xl border border-line rounded-2xl shadow-elevated z-40 overflow-hidden pointer-events-auto"
+            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            className="absolute top-[76px] left-4 right-4 mx-auto max-w-[760px] bg-white/97 backdrop-blur-xl border border-line rounded-3xl shadow-elevated z-40 overflow-y-auto max-h-[75dvh] pointer-events-auto"
           >
-            <form onSubmit={submitSearch} className="max-w-[1280px] mx-auto px-6 py-4 flex items-center gap-3">
-              <MagnifyingGlass size={16} className="text-ink-muted flex-shrink-0" />
-              <input autoFocus type="text" placeholder="Search for courses, skills, or topics..." value={query} onChange={(e) => setQuery(e.target.value)} className="flex-1 bg-transparent border-none outline-none text-sm text-ink-strong placeholder:text-ink-muted" />
-              <button type="submit" className="bg-gold text-ink-strong font-bold text-xs tracking-widest uppercase px-5 py-2 rounded-[4px] border-2 border-gold hover:bg-gold-dark hover:border-gold-dark transition-all cursor-pointer">Search</button>
-            </form>
+            <SiteSearch onClose={closeSearch} />
           </motion.div>
         )}
       </AnimatePresence>

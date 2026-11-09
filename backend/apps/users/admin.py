@@ -5,6 +5,7 @@ from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import Group
 from django.db.models import Q
 from django.shortcuts import redirect
+from django.utils.html import format_html
 from django.urls import reverse
 from unfold.admin import ModelAdmin
 from unfold.decorators import action, display
@@ -60,6 +61,15 @@ class GroupAdmin(BaseGroupAdmin, ModelAdmin):
     pass
 
 
+def _avatar(user, size: int):
+    """The user's photo as a circle, or their initial on their colour (as on the website)."""
+    style = f"width:{size}px;height:{size}px;border-radius:9999px;object-fit:cover;display:inline-flex;"             f"align-items:center;justify-content:center;font-weight:700;color:#fff;font-size:{size * 0.42:.0f}px"
+    if user.avatar_url:
+        return format_html('<img src="{}" alt="" referrerpolicy="no-referrer" style="{}">', user.avatar_url, style)
+    return format_html('<span style="{};background:{}">{}</span>', style, user.avatar_color or "#1a1a1a",
+                       (user.name or user.email)[:1].upper())
+
+
 @admin.register(User)
 class UserAdmin(BaseUserAdmin, ModelAdmin):
     form = UserChangeForm
@@ -67,14 +77,16 @@ class UserAdmin(BaseUserAdmin, ModelAdmin):
     change_password_form = AdminPasswordChangeForm
 
     ordering = ["-date_joined"]
-    list_display = ["email", "name", "show_role", "show_password", "is_active", "date_joined"]
+    list_display = ["show_photo", "email", "name", "show_role", "show_password", "is_active", "date_joined"]
+    list_display_links = ["show_photo", "email"]
     list_filter = ["role", "is_active", "must_change_password", "is_staff"]
     list_filter_submit = True
     search_fields = ["email", "name"]
     actions = ["email_new_login"]
     fieldsets = (
         (None, {"fields": ("email", "must_change_password", "password_changed_at")}),
-        ("Profile", {"fields": ("name", "role", "headline", "bio", "avatar_color")}),
+        ("Profile", {"fields": ("name", "role", "headline", "bio", "photo_preview", "avatar", "google_picture",
+                                "avatar_color")}),
         ("Permissions", {"fields": ("is_active", "is_staff", "is_superuser", "groups", "user_permissions")}),
         ("Dates", {"fields": ("last_login", "date_joined")}),
     )
@@ -83,7 +95,16 @@ class UserAdmin(BaseUserAdmin, ModelAdmin):
     )
 
     def get_readonly_fields(self, request, obj=None):
-        return ["must_change_password", "password_changed_at"] if obj else []
+        return ["must_change_password", "password_changed_at", "photo_preview", "google_picture"] if obj else []
+
+    @display(description="Photo")
+    def show_photo(self, obj):
+        return _avatar(obj, 36)
+
+    @display(description="Photo preview")
+    def photo_preview(self, obj):
+        hint = "Uploaded photo." if obj.avatar else "From their Google account." if obj.google_picture             else "No photo: their initial on their colour is shown."
+        return format_html("{}<p style=\"margin-top:.5em;color:#6b7280\">{}</p>", _avatar(obj, 120), hint)
 
     @display(description="Role", label={"Site administrator": "danger", "Admin": "primary",
                                         "Teacher": "warning", "Student": "info"})

@@ -99,14 +99,14 @@ export default function TeachDashboard() {
         </motion.div>
       )}
 
-      <motion.div variants={stagger} className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <motion.div variants={stagger} className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {stats.map(({ label, value, icon: Icon }) => (
-          <motion.div key={label} variants={fadeUp} className="bg-white border-2 border-line rounded-2xl p-5 hover:border-gold transition-colors">
+          <motion.div key={label} variants={fadeUp} className="bg-white border-2 border-line rounded-2xl p-4 sm:p-5 min-w-0 hover:border-gold transition-colors">
             <span className="w-10 h-10 rounded-xl bg-gold-soft text-gold-dark flex items-center justify-center mb-4">
               <Icon size={20} weight="duotone" />
             </span>
-            <strong className="block font-display text-2xl md:text-3xl font-semibold text-ink-strong tracking-tight">{value}</strong>
-            <span className="text-xs font-bold uppercase tracking-wider text-ink-muted">{label}</span>
+            <strong className="block font-display text-xl sm:text-2xl md:text-3xl font-semibold text-ink-strong tracking-tight [overflow-wrap:anywhere]">{value}</strong>
+            <span className="block text-xs font-bold uppercase tracking-wider text-ink-muted [overflow-wrap:anywhere]">{label}</span>
           </motion.div>
         ))}
       </motion.div>

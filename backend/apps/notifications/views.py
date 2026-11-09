@@ -27,6 +27,9 @@ class NotificationListView(generics.ListAPIView):
 class UnreadCountView(APIView):
     @extend_schema(responses=inline_serializer("UnreadCount", {"unread": serializers.IntegerField()}))
     def get(self, request):
+        if request.user.is_student:
+            from apps.learning.services import remind_to_continue  # learning depends on notifications
+            remind_to_continue(request.user)
         count = Notification.objects.filter(user=request.user, read_at__isnull=True).count()
         return Response({"unread": count})
 

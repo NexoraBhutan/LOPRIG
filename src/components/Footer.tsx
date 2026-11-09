@@ -6,6 +6,7 @@ import { ArrowUpRight } from "@phosphor-icons/react";
 import { usesSiteChrome } from "@/utils/routes";
 import { FacebookGlyph, InstagramGlyph, LinkedinGlyph, YoutubeGlyph } from "@/components/SocialGlyphs";
 import Logo from "@/components/Logo";
+import FooterPhoto from "@/components/FooterPhoto";
 
 const SOCIALS = [FacebookGlyph, InstagramGlyph, LinkedinGlyph, YoutubeGlyph];
 const SOCIAL_LABELS = ["Facebook", "Instagram", "LinkedIn", "YouTube"];
@@ -15,6 +16,7 @@ export default function Footer() {
   if (!usesSiteChrome(pathname)) return null;
   return (
     <footer className="bg-ink-strong text-white relative overflow-hidden aw-grain">
+      <FooterPhoto />
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,rgba(255,182,6,0.12)_0%,transparent_55%)] pointer-events-none" />
       <div className="max-w-[1280px] mx-auto px-8 lg:px-16 pt-24 pb-10 relative">
         <Link href="/courses" className="block group">

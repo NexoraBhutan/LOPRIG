@@ -51,6 +51,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",  # serves the admin's CSS/JS in production
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -103,7 +104,15 @@ STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 MEDIA_URL = "media/"
-MEDIA_ROOT = BASE_DIR / "media"
+# Uploaded files. In production this points at a persistent disk (e.g. Render: /var/data/media).
+MEDIA_ROOT = Path(env("MEDIA_ROOT", default=str(BASE_DIR / "media")))
+# Serve uploads from Django itself when there's no separate file server (small deployments).
+# Payment screenshots are never served this way: admins open them through the API.
+SERVE_MEDIA = env.bool("SERVE_MEDIA", default=False)
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "whitenoise.storage.CompressedStaticFilesStorage"},
+}
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
@@ -149,6 +158,8 @@ SPECTACULAR_SETTINGS = {
 }
 
 CORS_ALLOWED_ORIGINS = env("CORS_ALLOWED_ORIGINS")
+# The Django admin's login form posts from the API's own https address.
+CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[])
 
 # --- Email, frontend, payments --------------------------------------------
 
@@ -245,6 +256,7 @@ UNFOLD = {
                     _nav("Categories", "category", "courses_category"),
                     _nav("Modules", "view_list", "courses_coursemodule"),
                     _nav("Lessons", "play_lesson", "courses_lesson"),
+                    _nav("Chapter quizzes", "quiz", "courses_quiz"),
                 ],
             },
             {
@@ -256,6 +268,10 @@ UNFOLD = {
                 "items": [
                     _nav("Enrollments", "how_to_reg", "enrollments_enrollment"),
                     _nav("Lesson progress", "trending_up", "learning_lessonprogress"),
+                    _nav("Quiz answers", "rate_review", "learning_quizattempt",
+                         badge="apps.users.dashboard.pending_reviews_badge"),
+                    _nav("Lesson comments", "forum", "learning_lessoncomment"),
+                    _nav("Lesson views", "visibility", "learning_lessonview"),
                     _nav("Certificates", "workspace_premium", "certificates_certificate"),
                 ],
             },

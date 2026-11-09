@@ -220,3 +220,22 @@ class WrittenAnswerTests(APITestCase):
         self.client.force_authenticate(self.teacher)
         bad = self.client.post(f"/api/v1/teach/reviews/{res.data['id']}/", {"marks": []}, format="json")
         self.assertEqual(bad.status_code, 400)
+
+
+class AdminQuizPagesTests(WrittenAnswerTests):
+    """The Django admin shows quizzes and students' answers (read only)."""
+
+    def test_admin_pages_render(self):
+        attempt_id = self.attempt([1, "It repeats code."]).data["id"]
+        admin_user = make_user(email="root@example.com")
+        admin_user.is_staff = admin_user.is_superuser = True
+        admin_user.save()
+        self.client.force_login(admin_user)
+        for url in ["/admin/courses/quiz/", f"/admin/courses/quiz/{self.quiz_id}/change/",
+                    "/admin/learning/quizattempt/", f"/admin/learning/quizattempt/{attempt_id}/change/",
+                    "/admin/learning/lessoncomment/", "/admin/learning/lessonview/"]:
+            res = self.client.get(url)
+            self.assertEqual(res.status_code, 200, url)
+        detail = self.client.get(f"/admin/learning/quizattempt/{attempt_id}/change/").content.decode()
+        self.assertIn("It repeats code.", detail)
+        self.assertIn("waiting for the teacher", detail)

@@ -16,11 +16,29 @@ from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from apps.courses.models import Lesson
+from apps.notifications.models import Notification
+from apps.notifications.services import notify
 
 from . import services
 from .models import LessonComment, LessonView
 
 MAX_THREADS = 100  # newest top-level comments returned per lesson
+PREVIEW_CHARS = 120
+
+
+def _notify_about(comment: LessonComment) -> None:
+    """A reply tells the person replied to; a new comment tells the course's teacher. Never yourself."""
+    lesson = comment.lesson
+    course = lesson.module.course
+    body = comment.body if len(comment.body) <= PREVIEW_CHARS else f"{comment.body[:PREVIEW_CHARS]}…"
+    data = {"course": course.slug, "lesson": lesson.id}
+    who = comment.author.name
+    if comment.parent and comment.parent.author_id != comment.author_id:
+        notify(comment.parent.author, Notification.Kind.COMMENT, f"{who} replied to your comment",
+               f"On “{lesson.title}”: {body}", data=data)
+    elif not comment.parent and course.teacher_id != comment.author_id:
+        notify(course.teacher, Notification.Kind.COMMENT, f"New question on “{lesson.title}”",
+               f"{who}: {body}", data=data)
 
 
 def _lesson(pk) -> Lesson:
@@ -129,6 +147,7 @@ class LessonCommentsView(APIView):
         comment = LessonComment.objects.create(
             lesson=lesson, author=request.user, parent=parent, body=data.validated_data["body"],
         )
+        _notify_about(comment)
         return Response(LessonCommentSerializer(comment, context=_context(request, lesson)).data,
                         status=status.HTTP_201_CREATED)
 

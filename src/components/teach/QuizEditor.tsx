@@ -249,7 +249,7 @@ export default function QuizEditor({
                       type="button"
                       onClick={() => setQ(i, {
                         options: q.options.filter((_, k) => k !== oi),
-                        correct: q.correct === oi ? 0 : q.correct > oi ? q.correct - 1 : q.correct,
+                        correct: q.correct === null || q.correct === oi ? 0 : q.correct > oi ? q.correct - 1 : q.correct,
                       })}
                       disabled={q.options.length <= 2}
                       className="w-8 h-8 rounded-lg flex items-center justify-center text-ink-muted hover:text-red-dark hover:bg-red-soft bg-transparent border-none cursor-pointer disabled:opacity-30"

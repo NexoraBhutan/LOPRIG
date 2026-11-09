@@ -7,6 +7,9 @@ class Notification(models.Model):
         ENROLLMENT = "ENROLLMENT", "Enrollment"
         PAYMENT = "PAYMENT", "Payment"
         COURSE_COMPLETED = "COURSE_COMPLETED", "Course completed"
+        QUIZ_REVIEW = "QUIZ_REVIEW", "Quiz review"
+        COMMENT = "COMMENT", "Comment"
+        REMINDER = "REMINDER", "Reminder"
         SYSTEM = "SYSTEM", "System"
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="notifications")
