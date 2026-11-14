@@ -30,6 +30,8 @@ export default function PaymentReview({ payment, onClose, onDone }: {
   const [rejecting, setRejecting] = useState(false);
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
+  // Approving unlocks a paid course, so the admin confirms they checked the bank statement first.
+  const [checked, setChecked] = useState(false);
   const pending = payment.status === "PENDING";
 
   useEffect(() => {
@@ -120,17 +122,22 @@ export default function PaymentReview({ payment, onClose, onDone }: {
             {payment.failure_reason && (<><dt className="text-ink-muted">Reason</dt><dd className="text-red-dark">{payment.failure_reason}</dd></>)}
           </dl>
 
-          {pending && (
-            <p className="text-xs text-ink-muted bg-gold-soft/50 rounded-xl px-4 py-3">
-              Find this journal number in the bank statement and check the amount is <strong>{formatMoney(payment.amount)}</strong> before approving.
-            </p>
+          {pending && !rejecting && (
+            <label className="flex items-start gap-3 text-sm text-ink bg-gold-soft/50 rounded-xl px-4 py-3 cursor-pointer">
+              <input type="checkbox" checked={checked} onChange={(e) => setChecked(e.target.checked)} className="w-4 h-4 mt-0.5 accent-gold cursor-pointer flex-shrink-0" />
+              <span>
+                I found journal no. <strong className="font-mono">{payment.journal_number || "—"}</strong> in the bank statement,
+                and the amount received is <strong>{formatMoney(payment.amount)}</strong>.
+              </span>
+            </label>
           )}
 
           {pending && !rejecting && (
             <div className="flex flex-col gap-2">
-              <button type="button" disabled={busy} onClick={() => act("approve")} className="btn btn-md btn-primary inline-flex items-center justify-center gap-2 disabled:opacity-70">
-                <CheckCircle size={17} weight="fill" /> Approve and unlock course
+              <button type="button" disabled={busy || !checked} onClick={() => act("approve")} className="btn btn-md btn-primary inline-flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                <CheckCircle size={17} weight="fill" /> {busy ? "Approving…" : "Approve and unlock course"}
               </button>
+              {!checked && <p className="text-xs text-ink-muted text-center">Tick the box above once you've checked the bank statement.</p>}
               <button type="button" disabled={busy} onClick={() => setRejecting(true)} className="btn btn-md btn-outline-neutral inline-flex items-center justify-center gap-2">
                 <XCircle size={17} /> Reject
               </button>

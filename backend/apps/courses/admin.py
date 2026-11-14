@@ -284,6 +284,9 @@ class QuizQuestionInline(TabularInline):
     fields = ["order", "kind", "prompt", "options", "correct", "model_answer"]
     ordering = ["order", "id"]
 
+    def has_add_permission(self, request, obj=None):
+        return request.user.is_superuser  # teachers write questions; website admins only check and fix
+
 
 @admin.register(Quiz)
 class QuizAdmin(ModelAdmin):
@@ -294,6 +297,11 @@ class QuizAdmin(ModelAdmin):
     list_select_related = ["module__course"]
     search_fields = ["title", "module__title", "module__course__title"]
     raw_id_fields = ["module"]
+
+    def has_add_permission(self, request):
+        # Teachers create quizzes in their course editor. Website admins can check, fix or delete them,
+        # but not add new ones; only the site administrator can.
+        return request.user.is_superuser
     inlines = [QuizQuestionInline]
 
     def get_queryset(self, request):

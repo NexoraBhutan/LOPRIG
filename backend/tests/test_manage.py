@@ -173,7 +173,7 @@ class AdminPortalTests(APITestCase):
 
 
 class SeparateAdminAccountsTests(APITestCase):
-    """Website admins and Django site administrators are different accounts with different logins."""
+    """Site administrators are Django-Admin-only accounts; website admins can use both."""
 
     def setUp(self):
         from django.core.cache import cache
@@ -198,9 +198,10 @@ class SeparateAdminAccountsTests(APITestCase):
         self.client.post("/api/v1/auth/password-reset/", {"email": "root@example.com"})
         self.assertEqual(len(mail.outbox), 0)
 
-    def test_website_admin_cannot_open_django_admin(self):
+    def test_website_admin_can_also_open_django_admin(self):
+        # Website admins may do everything the site administrator can, with the same login.
         self.assertTrue(self.client.login(email="boss@example.com", password=PASSWORD))
-        self.assertEqual(self.client.get("/admin/").status_code, 302)  # bounced to Django's login
+        self.assertEqual(self.client.get("/admin/").status_code, 200)
         self.client.logout()
         self.client.login(email="root@example.com", password=PASSWORD)
         self.assertEqual(self.client.get("/admin/").status_code, 200)

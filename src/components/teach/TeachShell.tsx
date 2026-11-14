@@ -33,7 +33,7 @@ export default function TeachShell({ children }: { children: React.ReactNode }) 
 
   const nav = NAV.map((item) => (item.href === "/teach/reviews" ? { ...item, badge: pending } : item));
   return (
-    <PortalShell label="Teacher portal" home="/teach" nav={nav}>
+    <PortalShell label="Teacher portal" home="/teach" nav={nav} theme="warm">
       {children}
     </PortalShell>
   );

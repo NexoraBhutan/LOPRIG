@@ -151,8 +151,25 @@ class User(AbstractUser):
 
     @property
     def is_site_admin(self):
-        """Django Admin accounts. Kept apart from website accounts so one login can't open both."""
+        """Django Admin-only accounts, which the website refuses (the website's own admins are ADMIN)."""
         return self.role == self.Role.SITE_ADMIN or self.is_staff or self.is_superuser
+
+    @property
+    def can_use_django_admin(self) -> bool:
+        """Site administrators, and the website's admins too: they can do everything in Django Admin."""
+        return self.is_active and (self.is_staff or self.is_platform_admin)
+
+    def has_perm(self, perm, obj=None):
+        # Website admins get every Django Admin permission, like a superuser, without becoming
+        # staff/superuser (which would make them site-admin-only and lock them out of the website).
+        if self.is_active and self.is_platform_admin:
+            return True
+        return super().has_perm(perm, obj)
+
+    def has_module_perms(self, app_label):
+        if self.is_active and self.is_platform_admin:
+            return True
+        return super().has_module_perms(app_label)
 
 
 class PasswordResetCode(models.Model):

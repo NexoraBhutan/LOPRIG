@@ -9,7 +9,6 @@ from django.utils import timezone
 from apps.certificates.models import Certificate
 from apps.courses.models import Course
 from apps.enrollments.models import Enrollment
-from apps.learning.models import QuizAttempt
 from apps.payments.models import Payment
 
 from .models import User
@@ -18,12 +17,6 @@ from .models import User
 def pending_courses_badge(request) -> str:
     """Sidebar badge on "Courses": how many are waiting for review."""
     count = Course.objects.filter(status=Course.Status.PENDING_REVIEW).count()
-    return str(count) if count else ""
-
-
-def pending_reviews_badge(request) -> str:
-    """Sidebar badge on "Quiz answers": written answers still waiting for their teacher."""
-    count = QuizAttempt.objects.filter(status=QuizAttempt.Status.PENDING).count()
     return str(count) if count else ""
 
 
@@ -44,7 +37,6 @@ def dashboard_callback(request, context):
         .order_by("updated_at")
     )
 
-    waiting = QuizAttempt.objects.filter(status=QuizAttempt.Status.PENDING).count()
     kpis = [
         {"label": "Students", "icon": "school", "value": f"{students.count():,}",
          "hint": f"+{students.filter(date_joined__gte=month_ago).count()} in the last 30 days"},
@@ -58,8 +50,7 @@ def dashboard_callback(request, context):
         {"label": "Revenue", "icon": "payments", "value": _money(paid.aggregate(s=Sum("amount"))["s"]),
          "hint": f"{_money(paid.filter(paid_at__gte=month_ago).aggregate(s=Sum('amount'))['s'])} in the last 30 days"},
         {"label": "Certificates", "icon": "workspace_premium", "value": f"{Certificate.objects.count():,}",
-         "hint": f"Issued on course completion · {waiting} quiz {'answer' if waiting == 1 else 'answers'} "
-                 "waiting for teachers"},
+         "hint": "Issued on course completion"},
     ]
 
     # Sign-ups per day for the last 14 days, as bar heights (0-100).

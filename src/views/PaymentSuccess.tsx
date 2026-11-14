@@ -38,7 +38,7 @@ export default function PaymentSuccess() {
   };
 
   return (
-    <main className="overflow-x-hidden w-full max-w-full px-8 lg:px-16 pt-36 pb-32 md:pb-48 aw-gold-wash min-h-[100dvh] flex items-center">
+    <main className="overflow-x-hidden w-full max-w-full px-5 sm:px-8 lg:px-16 pt-36 pb-32 md:pb-48 aw-gold-wash min-h-[100dvh] flex items-center">
       <div className="max-w-[1280px] mx-auto w-full">
 
         <motion.div

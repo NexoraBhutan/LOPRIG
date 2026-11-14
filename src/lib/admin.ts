@@ -17,6 +17,8 @@ export interface AdminSummary {
     revenue: number;
     revenue_30d: number;
     failed_payments_30d: number;
+    /** Bank QR payments waiting for an admin to check them. */
+    payments_to_verify: number;
   };
   series: { date: string; signups: number; enrollments: number; revenue: number }[];
   top_courses: { id: string; title: string; teacher: string; enrolled: number; completion_rate: number }[];

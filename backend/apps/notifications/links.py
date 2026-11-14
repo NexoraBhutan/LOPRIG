@@ -27,7 +27,7 @@ def link_for(n: Notification) -> str:
 
     if role == "ADMIN":
         if n.kind == Kind.PAYMENT:
-            return "/admin/payments"
+            return f"/admin/payments?review={data['payment']}" if data.get("payment") else "/admin/payments"
         return f"/admin/courses/{course}" if course else "/admin"
     if role == "TEACHER":
         if n.kind == Kind.ENROLLMENT and course:

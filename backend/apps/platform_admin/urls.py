@@ -1,5 +1,7 @@
 from django.urls import path
 
+from .data import DataBulkDeleteView, DataDetailView, DataListView, DataOptionsView, DataTablesView
+
 from .views import (
     AdminCourseDetailView,
     AdminCourseListView,
@@ -10,6 +12,7 @@ from .views import (
     AdminUserListView,
     ApproveCourseView,
     ApprovePaymentView,
+    LessonOverviewView,
     PaymentProofView,
     QrSettingsAdminView,
     RejectPaymentView,
@@ -19,6 +22,12 @@ from .views import (
 
 urlpatterns = [
     path("summary/", SummaryView.as_view(), name="manage-summary"),
+    path("data/", DataTablesView.as_view(), name="manage-data"),
+    path("data/<slug:table>/", DataListView.as_view(), name="manage-data-list"),
+    path("data/<slug:table>/options/", DataOptionsView.as_view(), name="manage-data-options"),
+    path("data/<slug:table>/bulk-delete/", DataBulkDeleteView.as_view(), name="manage-data-bulk-delete"),
+    path("data/<slug:table>/<int:pk>/", DataDetailView.as_view(), name="manage-data-detail"),
+    path("lessons/overview/", LessonOverviewView.as_view(), name="manage-lesson-overview"),
     path("courses/", AdminCourseListView.as_view(), name="manage-course-list"),
     path("courses/<slug:slug>/", AdminCourseDetailView.as_view(), name="manage-course-detail"),
     path("courses/<slug:slug>/approve/", ApproveCourseView.as_view(), name="manage-course-approve"),

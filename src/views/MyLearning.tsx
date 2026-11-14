@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { PlayCircle, Bookmark, Fire, Diamond, Certificate } from "@phosphor-icons/react";
+import { PlayCircle, Bookmark, Fire, Diamond, Certificate, Hourglass, WarningCircle, ArrowRight } from "@phosphor-icons/react";
 import { apiAll } from "@/lib/api";
 import { useEnrollment } from "@/context/EnrollmentContext";
 import CourseThumb from "@/components/CourseThumb";
@@ -15,6 +15,16 @@ import { gsap, useGSAP } from "@/utils/gsap";
 const TABS = ["All", "In Progress", "Completed", "Saved"] as const;
 type Tab = (typeof TABS)[number];
 
+interface MyPayment {
+  reference: string;
+  course: string;
+  course_title: string;
+  provider: string;
+  status: "PENDING" | "SUCCEEDED" | "FAILED" | "CANCELLED";
+  failure_reason: string;
+  created_at: string;
+}
+
 const fadeUp = { hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0 } };
 const stagger = { visible: { transition: { staggerChildren: 0.06 } } };
 
@@ -23,12 +33,25 @@ export default function MyLearning() {
   const [tab, setTab] = useState<Tab>("All");
   // course slug -> certificate code, for "View certificate" on finished courses.
   const [certificates, setCertificates] = useState<Record<string, string>>({});
+  // Each course's latest payment, to show QR payments being checked or sent back.
+  const [payments, setPayments] = useState<MyPayment[]>([]);
 
   useEffect(() => {
     let alive = true;
     apiAll<{ code: string; course: string }>("/certificates/")
       .then((list) => alive && setCertificates(Object.fromEntries(list.map((c) => [c.course, c.code]))))
       .catch(() => undefined); // the cards still work without it
+    apiAll<MyPayment>("/payments/")
+      .then((list) => {
+        if (!alive) return;
+        const latest = new Map<string, MyPayment>();
+        for (const p of list) {
+          const seen = latest.get(p.course);
+          if (!seen || p.created_at > seen.created_at) latest.set(p.course, p);
+        }
+        setPayments([...latest.values()]);
+      })
+      .catch(() => undefined);
     return () => {
       alive = false;
     };
@@ -43,12 +66,14 @@ export default function MyLearning() {
     return withProgress;
   }, [tab, enrolledCourses, savedCourses, getProgress]);
 
+  // Enrollments come most recently studied first, so this is the course they were last on.
   const continueCourse = useMemo(() => {
-    const sorted = enrolledCourses
-      .map((c) => ({ course: c, progress: getProgress(c.id) }))
-      .sort((a, b) => a.progress - b.progress);
-    return sorted.find((c) => c.progress < 100) || sorted[0];
+    const list = enrolledCourses.map((c) => ({ course: c, progress: getProgress(c.id) }));
+    return list.find((c) => c.progress < 100) || list[0];
   }, [enrolledCourses, getProgress]);
+
+  const paymentNotices = payments.filter((p) =>
+    !isEnrolled(p.course) && ((p.status === "PENDING" && p.provider === "QR") || p.status === "FAILED"));
 
   useGSAP(() => {
     const ctx = gsap.context(() => {
@@ -63,7 +88,7 @@ export default function MyLearning() {
   }, { scope: rootRef, dependencies: [items.length, tab] });
 
   return (
-    <main ref={rootRef} className="overflow-x-hidden w-full max-w-full px-8 lg:px-16 pt-36 pb-32 md:pb-48 aw-gold-wash">
+    <main ref={rootRef} className="overflow-x-hidden w-full max-w-full px-5 sm:px-8 lg:px-16 pt-36 pb-32 md:pb-48 aw-gold-wash">
       <div className="max-w-[1280px] mx-auto">
 
         {/* Header */}
@@ -86,6 +111,36 @@ export default function MyLearning() {
             </span>
           </div>
         </motion.div>
+
+        {/* QR payments waiting for an admin, or sent back */}
+        {paymentNotices.length > 0 && (
+          <ul className="flex flex-col gap-3 mb-10 list-none p-0">
+            {paymentNotices.map((p) => (
+              <li key={p.reference}>
+                {p.status === "PENDING" ? (
+                  <div role="status" className="flex items-start gap-4 p-5 rounded-2xl border-2 border-gold/40 bg-gold-soft">
+                    <Hourglass size={24} weight="fill" className="text-gold-dark flex-shrink-0" />
+                    <p className="text-sm text-ink">
+                      <strong className="text-ink-strong">We&apos;re checking your payment for “{p.course_title}”.</strong>{" "}
+                      An admin is matching it with the bank statement. The course unlocks here as soon as it&apos;s approved, and we&apos;ll email you.
+                    </p>
+                  </div>
+                ) : (
+                  <Link href={`/checkout/${p.course}`} className="group flex items-start gap-4 p-5 rounded-2xl border-2 border-red/30 bg-red-soft no-underline hover:border-red transition-colors">
+                    <WarningCircle size={24} weight="fill" className="text-red-dark flex-shrink-0" />
+                    <span className="flex-1 text-sm text-ink">
+                      <strong className="block text-ink-strong">Your payment for “{p.course_title}” wasn&apos;t accepted</strong>
+                      {p.failure_reason || "Please check the details and send it again."}
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-red-dark whitespace-nowrap">
+                      Try again <ArrowRight size={13} weight="bold" />
+                    </span>
+                  </Link>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
 
         {/* Continue hero */}
         {continueCourse && (
@@ -113,14 +168,14 @@ export default function MyLearning() {
         )}
 
         {/* Tabs */}
-        <div className="flex gap-2 mb-10 border-b border-line" role="tablist" aria-label="Course filters">
+        <div className="flex gap-2 mb-10 border-b border-line overflow-x-auto" role="tablist" aria-label="Course filters">
           {TABS.map((t) => (
             <button
               key={t}
               role="tab"
               aria-selected={tab === t}
               onClick={() => setTab(t)}
-              className={`px-5 py-3.5 text-sm font-bold border-b-2 transition-colors bg-transparent cursor-pointer -mb-px ${
+              className={`px-5 py-3.5 text-sm font-bold whitespace-nowrap border-b-2 transition-colors bg-transparent cursor-pointer -mb-px ${
                 tab === t ? "border-gold text-gold-dark" : "border-transparent text-ink-muted hover:text-ink"
               }`}
             >

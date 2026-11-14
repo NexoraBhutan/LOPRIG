@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
-  Student, Chalkboard, BookOpen, GraduationCap, Trophy, Certificate, Coins, WarningCircle, ArrowRight,
+  Student, Chalkboard, BookOpen, GraduationCap, Trophy, Certificate, Coins, WarningCircle, ArrowRight, Receipt,
 } from "@phosphor-icons/react";
 import { useAuth } from "@/context/AuthContext";
 import PageLoader from "@/components/PageLoader";
@@ -78,6 +78,26 @@ export default function AdminDashboard() {
           Review courses{t.courses.PENDING_REVIEW ? ` (${t.courses.PENDING_REVIEW})` : ""}
         </Link>
       </motion.section>
+
+      {t.payments_to_verify > 0 && (
+        <motion.div variants={fadeUp}>
+          <Link
+            href="/admin/payments"
+            className="flex flex-wrap items-center gap-4 p-5 rounded-2xl border-2 border-gold bg-gold-soft text-ink-strong no-underline hover:border-gold-dark transition-colors"
+          >
+            <span className="w-11 h-11 rounded-xl bg-gold text-ink-strong flex items-center justify-center flex-shrink-0">
+              <Receipt size={22} weight="duotone" />
+            </span>
+            <span className="flex-1 min-w-[200px] text-sm">
+              <strong className="block text-base font-semibold">
+                {t.payments_to_verify === 1 ? "1 payment" : `${t.payments_to_verify} payments`} waiting for verification
+              </strong>
+              <span className="text-ink-muted">Students have paid and are waiting for their course to unlock. Check each one against the bank statement.</span>
+            </span>
+            <span className="btn btn-md btn-primary pointer-events-none">Verify payments <ArrowRight size={14} weight="bold" /></span>
+          </Link>
+        </motion.div>
+      )}
 
       {data.pending_review.length > 0 && (
         <motion.div variants={fadeUp}>

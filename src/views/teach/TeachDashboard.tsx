@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
-  Users, BookOpen, Hourglass, Coins, Plus, CaretRight, WarningCircle, ArrowRight, Exam,
+  Users, BookOpen, Hourglass, Coins, Plus, CaretRight, WarningCircle, ArrowRight, Exam, GraduationCap,
 } from "@phosphor-icons/react";
 import { useAuth } from "@/context/AuthContext";
 import { CoverArt } from "@/components/CourseThumb";
@@ -44,21 +45,35 @@ export default function TeachDashboard() {
     <motion.div initial="hidden" animate="visible" variants={stagger} className="flex flex-col gap-8">
       <motion.section
         variants={fadeUp}
-        className="relative overflow-hidden rounded-2xl bg-ink-strong text-white px-7 py-9 md:px-10 md:py-11 flex flex-col md:flex-row md:items-end md:justify-between gap-6"
+        className="relative overflow-hidden rounded-3xl bg-ink-strong text-white px-7 py-9 md:px-10 md:py-12 flex flex-col md:flex-row md:items-end md:justify-between gap-6 shadow-[0_18px_40px_rgba(200,142,0,0.18)]"
       >
-        <div aria-hidden="true" className="absolute inset-0 bg-[radial-gradient(ellipse_at_100%_0%,rgba(255,182,6,0.28)_0%,transparent_55%)]" />
+        {/* A Bhutanese valley behind a dark wash from the left, so the greeting stays easy to read. */}
+        <Image
+          src="/teacher-hero-valley.png"
+          alt=""
+          fill
+          priority
+          sizes="(min-width: 1024px) 1180px, 100vw"
+          className="object-cover object-[center_45%]"
+        />
+        {/* Phones stack the text over the whole photo, so they get an even wash; wider screens fade left to right. */}
+        <div aria-hidden="true" className="absolute inset-0 bg-ink-strong/60 md:bg-transparent md:bg-gradient-to-r md:from-ink-strong/85 md:via-ink-strong/45 md:to-transparent" />
+        <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-ink-strong/40 to-transparent" />
         <div className="relative">
-          <p className="text-[0.7rem] font-bold uppercase tracking-[0.18em] text-gold mb-3">Teacher portal</p>
+          <p className="inline-block text-[0.7rem] font-bold uppercase tracking-[0.18em] text-gold pb-1 mb-3 border-b-2 border-gold/70">Teacher portal</p>
           <h1 className="font-display text-3xl md:text-5xl tracking-tighter font-semibold leading-tight text-white">
             Welcome back, {user?.name.split(" ")[0]}
           </h1>
-          <p className="text-white/65 mt-3 max-w-[520px]">
+          <p className="text-white/80 mt-3 max-w-[520px]">
             {summary.students
               ? `${summary.students.toLocaleString()} student${summary.students === 1 ? " is" : "s are"} learning from you on Lop-rig.`
               : "Build your first lessons and share what you know with learners across Bhutan."}
           </p>
         </div>
-        <Link href="/teach/courses/new" className="relative btn btn-primary btn-lg self-start md:self-auto">
+        <Link
+          href="/teach/courses/new"
+          className="relative inline-flex items-center justify-center gap-2 self-start md:self-auto px-7 py-3.5 rounded-xl bg-gradient-to-r from-[#ff9a1f] to-[#ff7a00] text-white text-sm font-bold uppercase tracking-wider no-underline shadow-[0_10px_24px_rgba(255,122,0,0.35)] hover:shadow-[0_14px_30px_rgba(255,122,0,0.45)] hover:-translate-y-0.5 transition-all"
+        >
           <Plus size={16} weight="bold" /> New course
         </Link>
       </motion.section>
@@ -101,10 +116,11 @@ export default function TeachDashboard() {
 
       <motion.div variants={stagger} className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {stats.map(({ label, value, icon: Icon }) => (
-          <motion.div key={label} variants={fadeUp} className="bg-white border-2 border-line rounded-2xl p-4 sm:p-5 min-w-0 hover:border-gold transition-colors">
-            <span className="w-10 h-10 rounded-xl bg-gold-soft text-gold-dark flex items-center justify-center mb-4">
-              <Icon size={20} weight="duotone" />
+          <motion.div key={label} variants={fadeUp} className="relative overflow-hidden bg-white border border-gold/15 rounded-2xl p-4 sm:p-5 min-w-0 shadow-[0_8px_24px_rgba(200,142,0,0.08)] hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(200,142,0,0.16)] transition-all">
+            <span className="w-12 h-12 rounded-xl bg-gold-soft text-[#f59e0b] flex items-center justify-center mb-4">
+              <Icon size={24} weight="duotone" />
             </span>
+            <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-gold to-[#ff7a00]" />
             <strong className="block font-display text-xl sm:text-2xl md:text-3xl font-semibold text-ink-strong tracking-tight [overflow-wrap:anywhere]">{value}</strong>
             <span className="block text-xs font-bold uppercase tracking-wider text-ink-muted [overflow-wrap:anywhere]">{label}</span>
           </motion.div>
@@ -123,13 +139,13 @@ export default function TeachDashboard() {
         </motion.section>
       ) : (
         <div className="grid grid-cols-1 xl:grid-cols-[1.6fr_1fr] gap-6">
-          <motion.section variants={fadeUp} className="bg-white border-2 border-line rounded-2xl p-6">
+          <motion.section variants={fadeUp} className="bg-white border border-gold/15 rounded-2xl p-6 shadow-[0_8px_24px_rgba(200,142,0,0.08)]">
             <div className="flex items-end justify-between mb-5">
               <div>
                 <h2 className="font-display text-xl font-semibold text-ink-strong">Your courses</h2>
                 <p className="text-sm text-ink-muted">{summary.courses.total} total</p>
               </div>
-              <Link href="/teach/courses" className="text-xs font-bold uppercase tracking-widest text-gold-dark hover:text-gold no-underline">View all</Link>
+              <Link href="/teach/courses" className="text-xs font-bold uppercase tracking-widest text-[#ff7a00] hover:text-[#e06a00] no-underline">View all</Link>
             </div>
             <ul className="divide-y divide-line">
               {courses.slice(0, 5).map((c) => (
@@ -148,7 +164,7 @@ export default function TeachDashboard() {
             </ul>
           </motion.section>
 
-          <motion.section variants={fadeUp} className="bg-white border-2 border-line rounded-2xl p-6">
+          <motion.section variants={fadeUp} className="bg-white border border-gold/15 rounded-2xl p-6 shadow-[0_8px_24px_rgba(200,142,0,0.08)]">
             <h2 className="font-display text-xl font-semibold text-ink-strong">Recent enrollments</h2>
             <p className="text-sm text-ink-muted mb-5">{summary.completions} course completion{summary.completions === 1 ? "" : "s"} so far</p>
             {summary.recent_enrollments.length ? (
@@ -167,7 +183,10 @@ export default function TeachDashboard() {
                 ))}
               </ul>
             ) : (
-              <p className="text-sm text-ink-muted bg-bg-soft rounded-xl p-4">No students yet. They&apos;ll appear here once your course is published.</p>
+              <p className="flex items-center gap-3 text-sm text-ink bg-gold-soft rounded-xl p-4">
+                <GraduationCap size={26} weight="duotone" className="text-[#f59e0b] flex-shrink-0" />
+                No students yet. They&apos;ll appear here once your course is published.
+              </p>
             )}
           </motion.section>
         </div>
@@ -175,3 +194,4 @@ export default function TeachDashboard() {
     </motion.div>
   );
 }
+

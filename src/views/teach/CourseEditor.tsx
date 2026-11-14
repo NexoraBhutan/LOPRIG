@@ -155,6 +155,12 @@ export default function CourseEditor() {
               );
             })}
           </ul>
+          {/* Anything the checklist doesn't cover, e.g. a video still processing or a failed upload. */}
+          {problems.filter((p) => !CHECKLIST.some(([key]) => p.toLowerCase().includes(key))).map((p) => (
+            <p key={p} className="flex items-center gap-2 mt-3 text-sm text-amber-800">
+              <WarningCircle size={18} weight="fill" className="text-amber-500 flex-shrink-0" /> {p}
+            </p>
+          ))}
         </div>
       )}
 

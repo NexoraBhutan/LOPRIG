@@ -268,8 +268,6 @@ UNFOLD = {
                 "items": [
                     _nav("Enrollments", "how_to_reg", "enrollments_enrollment"),
                     _nav("Lesson progress", "trending_up", "learning_lessonprogress"),
-                    _nav("Quiz answers", "rate_review", "learning_quizattempt",
-                         badge="apps.users.dashboard.pending_reviews_badge"),
                     _nav("Lesson comments", "forum", "learning_lessoncomment"),
                     _nav("Lesson views", "visibility", "learning_lessonview"),
                     _nav("Certificates", "workspace_premium", "certificates_certificate"),

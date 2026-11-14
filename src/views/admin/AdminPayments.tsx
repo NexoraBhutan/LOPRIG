@@ -1,12 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Image as ImageIcon } from "@phosphor-icons/react";
 import PageLoader from "@/components/PageLoader";
 import { FilterChips, LoadMore, PageHeader, Pill, SearchBox, TableShell } from "@/components/admin/ui";
 import QrSettingsCard from "@/components/admin/QrSettingsCard";
 import PaymentReview from "@/components/admin/PaymentReview";
 import { useSiteConfig } from "@/lib/siteConfig";
+import { api } from "@/lib/api";
+import { useToast } from "@/context/ToastContext";
 import { useDebounce } from "@/hooks/useDebounce";
 import { usePagedList } from "@/hooks/usePagedList";
 import { PAYMENT_META, formatDate, type AdminPayment, type PaymentStatus } from "@/lib/admin";
@@ -24,6 +27,26 @@ export default function AdminPayments() {
   const [filter, setFilter] = useState<Filter>("PENDING");
   const [search, setSearch] = useState("");
   const [reviewing, setReviewing] = useState<AdminPayment | null>(null);
+  const router = useRouter();
+  const { push } = useToast();
+
+  // Links from the payment email and the bell (/admin/payments?review=<reference>) open that payment.
+  useEffect(() => {
+    const ref = new URLSearchParams(window.location.search).get("review");
+    if (!ref) return;
+    api<{ results: AdminPayment[] }>(`/manage/payments/?search=${encodeURIComponent(ref)}`)
+      .then(({ results }) => {
+        const match = results.find((p) => p.reference === ref);
+        if (match) setReviewing(match);
+        else push("That payment couldn't be found. It may have been removed.", "error");
+      })
+      .catch(() => push("Couldn't open that payment. Find it in the list below.", "error"));
+  }, [push]);
+
+  const closeReview = () => {
+    setReviewing(null);
+    if (window.location.search.includes("review=")) router.replace("/admin/payments", { scroll: false });
+  };
   const query = useDebounce(search, 300);
   const qs = new URLSearchParams();
   if (filter !== "ALL") qs.set("status", filter);
@@ -99,9 +122,9 @@ export default function AdminPayments() {
       {reviewing && (
         <PaymentReview
           payment={reviewing}
-          onClose={() => setReviewing(null)}
+          onClose={closeReview}
           onDone={() => {
-            setReviewing(null);
+            closeReview();
             list.reload();
           }}
         />

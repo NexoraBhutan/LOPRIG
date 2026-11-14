@@ -9,6 +9,7 @@ export interface ApiUser {
   name: string;
   email: string;
   role: string;
+  headline?: string;
   bio: string;
   avatar_color: string;
   avatar?: string;
@@ -68,6 +69,7 @@ export function toUser(u: ApiUser): User {
     role: u.role as UserRole,
     name: u.name,
     email: u.email,
+    headline: u.headline ?? "",
     bio: u.bio,
     avatarColor: u.avatar_color,
     avatar: u.avatar ?? "",

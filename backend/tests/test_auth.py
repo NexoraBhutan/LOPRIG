@@ -111,6 +111,11 @@ class ProfileTests(APITestCase):
         self.assertEqual(self.user.role, User.Role.STUDENT)
         self.assertEqual(self.user.email, "student@example.com")
 
+    def test_update_headline(self):
+        res = self.client.patch("/api/v1/users/me/", {"headline": "Instructor of FNPH"})
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data["headline"], "Instructor of FNPH")
+
     def test_change_password_requires_current_password(self):
         url = "/api/v1/users/me/password/"
         bad = self.client.post(url, {"current_password": "wrong", "new_password": "An0ther-Str0ng-one"})

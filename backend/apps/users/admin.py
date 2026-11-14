@@ -2,6 +2,7 @@ from django import forms
 from django.contrib import admin, messages
 from django.contrib.auth.admin import GroupAdmin as BaseGroupAdmin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth.models import Group
 from django.db.models import Q
 from django.shortcuts import redirect
@@ -10,12 +11,34 @@ from django.urls import reverse
 from unfold.admin import ModelAdmin
 from unfold.decorators import action, display
 from unfold.forms import AdminPasswordChangeForm, UserChangeForm
+from unfold.forms import AuthenticationForm as UnfoldAuthenticationForm
 
 from apps.authentication.services import email_login_details
 
 from .models import User
 
 admin.site.unregister(Group)
+
+
+class AdminLoginForm(UnfoldAuthenticationForm):
+    """Django Admin login for site administrators and the website's admins (same email + password)."""
+
+    def confirm_login_allowed(self, user):
+        AuthenticationForm.confirm_login_allowed(self, user)  # active account
+        if not user.can_use_django_admin:
+            raise forms.ValidationError(self.error_messages["invalid_login"], code="invalid_login",
+                                        params={"username": self.username_field.verbose_name})
+        if user.must_change_password:
+            raise forms.ValidationError("Set your own password on the website first, then sign in here.",
+                                        code="must_change_password")
+
+
+admin.site.login_form = AdminLoginForm
+# Django's default only lets staff in; the website's admins are not staff (see User.has_perm).
+admin.site.has_permission = lambda request: bool(
+    request.user.is_authenticated and request.user.can_use_django_admin
+    and not request.user.must_change_password
+)
 
 EMAIL_FAILED = (
     "Couldn't send the email to {email}. Check the email settings (npm run setup-email), "

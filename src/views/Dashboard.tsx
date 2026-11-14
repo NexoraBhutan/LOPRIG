@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Book, Clock, Trophy, PlayCircle, ArrowRight, Fire, Diamond } from "@phosphor-icons/react";
@@ -13,6 +14,7 @@ import ProgressRing from "@/components/ProgressRing";
 import EmptyState from "@/components/EmptyState";
 import { useCatalog } from "@/context/CatalogContext";
 import { durationToHours } from "@/lib/mappers";
+import { apiAll } from "@/lib/api";
 
 const fadeUp = { hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0 } };
 const stagger = { visible: { transition: { staggerChildren: 0.06 } } };
@@ -21,13 +23,21 @@ export default function Dashboard() {
   const { user } = useAuth();
   const { enrolledCourses, getProgress, enrollments, streak, xp } = useEnrollment();
   const { courses } = useCatalog();
+  // Certificates actually earned (a course can be 100% watched but still have a quiz to pass).
+  const [certificates, setCertificates] = useState<number | null>(null);
 
-  const inProgress = enrolledCourses
-    .map((c) => ({ course: c, progress: getProgress(c.id) }))
-    .sort((a, b) => a.progress - b.progress);
+  useEffect(() => {
+    let alive = true;
+    apiAll<{ code: string }>("/certificates/").then((list) => alive && setCertificates(list.length)).catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, []);
 
+  // Enrollments come most recently studied first, so this is the course they were last on.
+  const inProgress = enrolledCourses.map((c) => ({ course: c, progress: getProgress(c.id) }));
   const continueCourse = inProgress.find((c) => c.progress < 100) || inProgress[0];
-  const completedCount = inProgress.filter((c) => c.progress === 100).length;
+  const completedCount = certificates ?? inProgress.filter((c) => c.progress === 100).length;
   const totalHours = enrolledCourses.reduce((sum, c) => sum + durationToHours(c.duration), 0);
   const overallCompletion = enrolledCourses.length
     ? Math.round(inProgress.reduce((sum, c) => sum + c.progress, 0) / inProgress.length)
@@ -36,7 +46,7 @@ export default function Dashboard() {
   const recommended = courses.filter((c) => !enrollments[c.id]?.enrolledAt).slice(0, 4);
 
   return (
-    <main className="overflow-x-hidden w-full max-w-full px-8 lg:px-16 pt-36 pb-32 md:pb-48 aw-gold-wash">
+    <main className="overflow-x-hidden w-full max-w-full px-5 sm:px-8 lg:px-16 pt-36 pb-32 md:pb-48 aw-gold-wash">
       <div className="max-w-[1280px] mx-auto">
 
         {/* Greeting */}

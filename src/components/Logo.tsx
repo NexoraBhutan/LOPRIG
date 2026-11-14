@@ -6,6 +6,8 @@ import type { LogoSize, LogoTone } from "@/types";
 const SRC: Record<LogoTone, { src: string; ratio: number }> = {
   dark: { src: "/loprig-logo-color.png", ratio: 975 / 284 },
   light: { src: "/loprig-logo-white.png", ratio: 975 / 267 },
+  // Yellow, orange and blue mark with the navy wordmark: only the student site's navbar uses it.
+  gold: { src: "/loprig-logo-navbar.png", ratio: 908 / 264 },
 };
 
 export default function Logo({ size = "md", tone = "dark" }: { size?: LogoSize; tone?: LogoTone }) {

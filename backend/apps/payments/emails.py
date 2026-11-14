@@ -60,7 +60,7 @@ def _alert_recipients() -> list[str]:
 
 def payment_submitted(payment: Payment) -> None:
     student, course = payment.student, payment.course
-    review = _site("/admin/payments")
+    review = _site(f"/admin/payments?review={payment.reference}")  # opens this payment's review
     rows = [
         ("Course", course.title),
         ("Amount paid", _money(payment.amount)),

@@ -92,3 +92,40 @@ class DjangoAdminUserTests(TestCase):
         self.assertEqual(res.status_code, 302)
         teacher.refresh_from_db()
         self.assertTrue(teacher.check_password(PASSWORD))
+
+
+class WebsiteAdminInDjangoAdminTests(TestCase):
+    """The website's admins can use Django Admin fully, with the same email and password,
+    and still use the website. Teachers and students can't get in."""
+
+    def setUp(self):
+        self.admin = User.objects.create_user(email="admin@loprig.bt", password=PASSWORD, name="Pema",
+                                              role=User.Role.ADMIN)
+
+    def login(self, email):
+        return self.client.post("/admin/login/?next=/admin/", {"username": email, "password": PASSWORD})
+
+    def test_admin_signs_in_and_can_do_everything(self):
+        self.assertEqual(self.login("admin@loprig.bt").status_code, 302)
+        for url in ["/admin/", "/admin/users/user/", "/admin/courses/course/", "/admin/courses/category/add/",
+                    "/admin/payments/payment/", "/admin/learning/lessoncomment/"]:
+            self.assertEqual(self.client.get(url).status_code, 200, url)
+        self.assertFalse(User.objects.get(pk=self.admin.pk).is_site_admin)  # not turned into a site-admin account
+
+    def test_admin_still_uses_the_website(self):
+        res = self.client.post("/api/v1/auth/login/", {"email": "admin@loprig.bt", "password": PASSWORD},
+                               content_type="application/json")
+        self.assertEqual(res.status_code, 200, res.content)
+
+    def test_teachers_and_students_are_refused(self):
+        make_teacher()
+        User.objects.create_user(email="kid@example.com", password=PASSWORD, name="Kid")
+        for email in ["teacher@example.com", "kid@example.com"]:
+            self.assertEqual(self.login(email).status_code, 200)  # form shown again with an error
+            self.assertEqual(self.client.get("/admin/").status_code, 302)  # back to the login page
+
+    def test_temporary_password_must_be_changed_first(self):
+        self.admin.must_change_password = True
+        self.admin.save()
+        page = self.login("admin@loprig.bt").content.decode()
+        self.assertIn("Set your own password on the website first", page)

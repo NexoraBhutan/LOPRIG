@@ -13,7 +13,7 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ["id", "name", "email", "role", "bio", "avatar_color", "avatar", "joined", "must_change_password",
+        fields = ["id", "name", "email", "role", "headline", "bio", "avatar_color", "avatar", "joined", "must_change_password",
                   "has_password", "password_changed_at"]
         read_only_fields = ["id", "email", "role", "joined", "must_change_password", "password_changed_at"]
 
@@ -24,7 +24,7 @@ class UserSerializer(serializers.ModelSerializer):
 class ProfileUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ["name", "bio", "avatar_color"]
+        fields = ["name", "headline", "bio", "avatar_color"]
 
     def validate_name(self, value):
         value = value.strip()

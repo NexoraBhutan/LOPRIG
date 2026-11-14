@@ -116,7 +116,7 @@ export default function Navbar() {
     <header className="fixed top-4 left-0 right-0 z-50 flex justify-center px-4 pointer-events-none">
       <div className={`pointer-events-auto w-full max-w-[1280px] flex items-center justify-between h-[64px] pl-5 pr-3 rounded-full transition-all duration-500 ${scrolled ? "aw-glass-pill shadow-elevated" : "bg-white/70 backdrop-blur-xl border border-white/60 shadow-soft"}`}>
         <Link href="/" className="flex-shrink-0" onClick={closeMenu}>
-          <Logo />
+          <Logo tone="gold" />
         </Link>
 
         <nav className="hidden lg:flex items-center gap-1 bg-bg-soft/70 rounded-full p-1" aria-label="Primary">

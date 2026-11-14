@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
-import { Outfit, Space_Grotesk } from "next/font/google";
+import { Cormorant_Garamond, Outfit, Space_Grotesk } from "next/font/google";
 import { AuthProvider } from "@/context/AuthContext";
 import { CatalogProvider } from "@/context/CatalogContext";
 import { EnrollmentProvider } from "@/context/EnrollmentContext";
@@ -24,6 +24,15 @@ const spaceGrotesk = Space_Grotesk({
   display: "swap",
 });
 
+// Serif for quotations, e.g. His Majesty's words on the home page.
+const cormorant = Cormorant_Garamond({
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  style: ["normal", "italic"],
+  variable: "--font-cormorant",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   title: "Lop-rig — Learn. Grow. Build Your Future.",
   description:
@@ -41,7 +50,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     // `data-scroll-behavior="smooth"` opts back into Next's scroll override
     // during route transitions — the project CSS sets `scroll-behavior: smooth`
     // globally, and without this Next 16 would let it animate every navigation.
-    <html lang="en" className={`${outfit.variable} ${spaceGrotesk.variable}`} data-scroll-behavior="smooth">
+    <html lang="en" className={`${outfit.variable} ${spaceGrotesk.variable} ${cormorant.variable}`} data-scroll-behavior="smooth">
       <body>
         <CatalogProvider>
           <AuthProvider>

@@ -148,7 +148,7 @@ export default function Profile() {
       : "Set when your account was created";
 
   return (
-    <main className="overflow-x-hidden w-full max-w-full px-8 lg:px-16 pt-36 pb-32 md:pb-48 aw-gold-wash">
+    <main className="overflow-x-hidden w-full max-w-full px-5 sm:px-8 lg:px-16 pt-36 pb-32 md:pb-48 aw-gold-wash">
       <div className="max-w-[1280px] mx-auto">
 
         <motion.div

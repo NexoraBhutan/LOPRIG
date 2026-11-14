@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowRight, Rocket, Certificate, Code, Palette,
   ChartLineUp, Globe, BookOpen, Lightbulb, CaretLeft, CaretRight, Pause, Play,
@@ -24,6 +24,12 @@ const FAQS = [
 ];
 
 const MARQUEE = ["Web Development", "Data Science", "Digital Marketing", "Graphic Design", "Business", "Photography", "Language", "Finance"];
+
+// His Majesty's words open the page, then it moves on to "Build real skills".
+const HERO_SLIDES = ["Words of His Majesty The King", "Build real skills"];
+const KING_SLIDE = 0;
+const LEARN_SLIDE = 1;
+const HERO_SLIDE_MS = 8000;
 
 const SCRUB_SENTENCE = "Learning should not depend on where you live. Lop-rig brings practical mentors, real projects, and verified certificates to every screen in Bhutan.";
 
@@ -50,6 +56,17 @@ export default function Home() {
   const reducedMotion = usePrefersReducedMotion();
   const carouselInterval = useRef<ReturnType<typeof setInterval> | null>(null);
   const rootRef = useRef<HTMLElement>(null);
+  // Hero slides swap on their own; they pause while a keyboard user is inside, or when the visitor presses pause.
+  // (Not on hover: the hero fills the screen, so the mouse is almost always over it.)
+  const [heroIdx, setHeroIdx] = useState(0);
+  const [heroPaused, setHeroPaused] = useState(false);
+  const [heroStopped, setHeroStopped] = useState(false);
+
+  useEffect(() => {
+    if (heroPaused || heroStopped || reducedMotion) return;
+    const timer = setInterval(() => setHeroIdx((i) => (i + 1) % HERO_SLIDES.length), HERO_SLIDE_MS);
+    return () => clearInterval(timer);
+  }, [heroPaused, heroStopped, reducedMotion]);
 
   useEffect(() => {
     if (carouselPaused || reducedMotion) {
@@ -88,23 +105,54 @@ export default function Home() {
   return (
     <main ref={rootRef} className="overflow-x-hidden w-full max-w-full">
 
-      {/* ATTENTION — Cinematic Center Hero */}
-      <section className="relative min-h-[100dvh] flex items-center justify-center px-6 lg:px-16 pt-32 pb-24 overflow-hidden bg-ink-strong">
-        <div className="absolute inset-0 overflow-hidden">
+      {/* ATTENTION — Cinematic Center Hero: two slides that take turns (learning, then a tribute to His Majesty). */}
+      <section
+        className="relative min-h-[100dvh] flex items-center justify-center px-6 lg:px-16 pt-28 sm:pt-36 pb-24 sm:pb-28 overflow-hidden bg-ink-strong"
+        aria-roledescription="carousel"
+        aria-label="Welcome"
+        onFocus={(e) => e.target.matches(":focus-visible") && setHeroPaused(true)}
+        onBlur={() => setHeroPaused(false)}
+      >
+        <div className={`absolute inset-0 overflow-hidden transition-opacity duration-1000 ${heroIdx === LEARN_SLIDE ? "opacity-100" : "opacity-0"}`} aria-hidden="true">
           <img
             src="/hero-laptop-learning.jpg"
             alt=""
-            aria-hidden="true"
             className="w-full h-full object-cover object-[60%_center] grayscale contrast-125 brightness-[0.4] opacity-90"
           />
           <div className="absolute inset-0 aw-dark-wash" />
         </div>
+        <div className={`absolute inset-0 overflow-hidden transition-opacity duration-1000 ${heroIdx === KING_SLIDE ? "opacity-100" : "opacity-0"}`} aria-hidden="true">
+          {/* Warm glow from the photo's saffron and orange, spreading into the dark side behind the quote. */}
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_30%,rgba(255,154,31,0.18)_0%,transparent_65%)] lg:bg-[radial-gradient(ellipse_at_28%_50%,rgba(255,154,31,0.26)_0%,rgba(120,50,0,0.12)_45%,transparent_75%)]" />
+        </div>
+        {/* His Majesty's photograph, melting into the dark: on the left on wide screens, downwards on phones. */}
+        <img
+          src="/his-majesty-address.jpg"
+          alt="His Majesty the King addressing the nation"
+          className={`hm-photo transition-opacity duration-1000 ${heroIdx === KING_SLIDE ? "opacity-100" : "opacity-0"}`}
+        />
+        {/* Colour grade over the photo: warm saffron light that also tints the dark around it, so the two read as one. */}
+        <div
+          aria-hidden="true"
+          className={`absolute inset-0 pointer-events-none mix-blend-soft-light transition-opacity duration-1000 bg-[radial-gradient(ellipse_at_50%_25%,rgba(255,170,60,0.55)_0%,transparent_60%)] lg:bg-[radial-gradient(ellipse_at_28%_40%,rgba(255,170,60,0.55)_0%,transparent_55%)] ${heroIdx === KING_SLIDE ? "opacity-100" : "opacity-0"}`}
+        />
+        <div
+          aria-hidden="true"
+          className={`absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-ink-strong/60 to-transparent pointer-events-none transition-opacity duration-1000 ${heroIdx === KING_SLIDE ? "opacity-100" : "opacity-0"}`}
+        />
 
+        <AnimatePresence mode="wait">
+        {heroIdx === LEARN_SLIDE ? (
         <motion.div
+          key="learn"
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -20 }}
           transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
           className="relative z-10 w-full max-w-6xl mx-auto text-center"
+          role="group"
+          aria-roledescription="slide"
+          aria-label="2 of 2"
         >
           <h1 className="aw-hero-h1 font-display text-white w-full">
             Build
@@ -128,6 +176,62 @@ export default function Home() {
             </Link>
           </div>
         </motion.div>
+        ) : (
+        <motion.div
+          key="tribute"
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -20 }}
+          transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+          className="relative z-10 w-full max-w-6xl mx-auto pt-40 sm:pt-56 lg:pt-0"
+          role="group"
+          aria-roledescription="slide"
+          aria-label="1 of 2"
+        >
+          <figure className="m-0 text-center lg:ml-auto lg:max-w-[50%] [text-shadow:0_2px_18px_rgba(0,0,0,0.55)]">
+            <span aria-hidden="true" className="block font-quote text-gold text-[5rem] lg:text-[6rem] leading-[0.6] h-9 lg:h-12">&ldquo;</span>
+            <blockquote className="m-0 font-quote text-white">
+              <p className="text-[1.2rem] sm:text-2xl lg:text-[1.7rem] leading-[1.4] italic font-medium [text-wrap:balance]">
+                If we &ndash; the King, government, and people &ndash; work together like members of one family, we can
+                emerge unscathed from any adversity that we may encounter.
+              </p>
+              <p className="mt-4 sm:mt-6 text-base sm:text-xl lg:text-[1.3rem] leading-[1.55] text-white/80 [text-wrap:balance]">
+                That our people from all backgrounds are ready to make personal sacrifices, despite facing difficulties
+                themselves, shows that they place the interest of the nation above all else. I will forever appreciate
+                the unwavering support of our people during this ordeal.<span aria-hidden="true" className="font-quote text-gold text-[2.6rem] lg:text-[3.4rem] leading-none align-[-0.55em] ml-1">&rdquo;</span>
+              </p>
+            </blockquote>
+            <figcaption className="mt-7 inline-flex items-center gap-3 font-quote italic text-gold text-xl lg:text-2xl tracking-wide">
+              <span className="w-1.5 h-1.5 rotate-45 bg-gold/80" aria-hidden="true" />
+              His Majesty The King
+              <span className="w-1.5 h-1.5 rotate-45 bg-gold/80" aria-hidden="true" />
+            </figcaption>
+          </figure>
+        </motion.div>
+        )}
+        </AnimatePresence>
+
+        {/* Slide controls */}
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 flex items-center gap-3 rounded-full bg-black/30 backdrop-blur-sm px-3 py-2">
+          {HERO_SLIDES.map((name, i) => (
+            <button
+              key={name}
+              type="button"
+              onClick={() => setHeroIdx(i)}
+              aria-label={`Show slide ${i + 1}: ${name}`}
+              aria-current={heroIdx === i}
+              className={`h-2.5 rounded-full border-none cursor-pointer transition-all duration-300 ${heroIdx === i ? "w-8 bg-gold" : "w-2.5 bg-white/50 hover:bg-white/80"}`}
+            />
+          ))}
+          <button
+            type="button"
+            onClick={() => setHeroStopped((s) => !s)}
+            aria-label={heroStopped ? "Play slides" : "Pause slides"}
+            className="ml-1 w-7 h-7 rounded-full flex items-center justify-center text-white/80 hover:text-white bg-transparent border-none cursor-pointer"
+          >
+            {heroStopped ? <Play size={14} weight="fill" /> : <Pause size={14} weight="fill" />}
+          </button>
+        </div>
       </section>
 
       {/* INTEREST — Gapless Bento. 4 cols x 2 rows = 8 cells. A(2x2=4) + B(2x1=2) + C(1x1=1) + D(1x1=1) = 8. Zero voids. */}

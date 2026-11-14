@@ -105,6 +105,9 @@ class SummaryView(APIView):
                 "failed_payments_30d": Payment.objects.filter(
                     status=Payment.Status.FAILED, created_at__gte=month_ago
                 ).count(),
+                "payments_to_verify": Payment.objects.filter(
+                    status=Payment.Status.PENDING, provider=Payment.QR
+                ).count(),
             },
             "series": [
                 {"date": d.isoformat(), "signups": int(signups.get(d, 0)),
@@ -362,3 +365,60 @@ class QrSettingsAdminView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data)
+
+
+class LessonOverviewView(APIView):
+    """The Lessons page's top half, same as Django Admin's: teacher cards and course review cards.
+
+    ?teacher=<id> shows that teacher's courses; without it, every course awaiting review.
+    """
+    permission_classes = [IsPlatformAdmin]
+
+    @extend_schema(parameters=[OpenApiParameter("teacher", int, required=False)], responses=dict)
+    def get(self, request):
+        from apps.courses.admin import course_cards  # the Django Admin Lessons page builds the same cards
+
+        teachers = list(
+            User.objects.filter(courses_taught__isnull=False)
+            .annotate(
+                course_count=Count("courses_taught", distinct=True),
+                published_count=Count("courses_taught", distinct=True,
+                                      filter=Q(courses_taught__status=Course.Status.PUBLISHED)),
+                lesson_count=Count("courses_taught__modules__lessons", distinct=True),
+            )
+            .order_by("name")
+        )
+        selected = next((t for t in teachers if str(t.pk) == request.query_params.get("teacher", "")), None)
+        courses = (Course.objects.filter(teacher=selected) if selected
+                   else Course.objects.filter(status=Course.Status.PENDING_REVIEW))
+        return Response({
+            "teachers": [{
+                "id": t.pk, "name": t.name, "email": t.email, "headline": t.headline,
+                "avatar": t.avatar_url, "avatar_color": t.avatar_color,
+                "lesson_count": t.lesson_count, "course_count": t.course_count, "published_count": t.published_count,
+            } for t in teachers],
+            "selected": selected.pk if selected else None,
+            "all_lessons_count": Lesson.objects.count(),
+            "pending_total": Course.objects.filter(status=Course.Status.PENDING_REVIEW).count(),
+            "courses": [_course_card(card) for card in course_cards(courses)],
+        })
+
+
+def _course_card(card: dict) -> dict:
+    c = card["course"]
+    return {
+        "id": c.slug, "title": c.title, "status": c.status, "status_label": card["status_label"], "tone": card["tone"],
+        "category": c.category.title, "level": c.get_level_display(),
+        "price": None if c.is_free else float(c.current_price),
+        "gradient_start": c.gradient_start, "gradient_end": c.gradient_end,
+        "cover": c.cover_image.url if c.cover_image else "",
+        "teacher": {"name": c.teacher.name, "avatar_color": c.teacher.avatar_color},
+        "review_note": c.review_note, "updated_at": c.updated_at, "published_at": c.published_at,
+        "lesson_count": card["lesson_count"], "duration": card["duration"], "problems": card["problems"],
+        "modules": [{
+            "title": m.title,
+            "lessons": [{"id": lesson.pk, "title": lesson.title, "kind": lesson.get_kind_display(),
+                         "is_preview": lesson.is_preview, "duration_seconds": lesson.duration_seconds}
+                        for lesson in m.lessons.all()],
+        } for m in card["modules"]],
+    }

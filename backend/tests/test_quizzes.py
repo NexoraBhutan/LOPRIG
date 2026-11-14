@@ -4,7 +4,7 @@ from apps.certificates.models import Certificate
 from apps.courses.models import CourseModule
 from apps.enrollments.models import Enrollment
 
-from .factories import lessons_of, make_course, make_teacher, make_user
+from .factories import lessons_of, make_admin, make_course, make_teacher, make_user
 
 QUIZ = {
     "title": "Chapter 1 check",
@@ -223,7 +223,7 @@ class WrittenAnswerTests(APITestCase):
 
 
 class AdminQuizPagesTests(WrittenAnswerTests):
-    """The Django admin shows quizzes and students' answers (read only)."""
+    """The Django admin shows chapter quizzes; students' answers stay between the student and their teacher."""
 
     def test_admin_pages_render(self):
         attempt_id = self.attempt([1, "It repeats code."]).data["id"]
@@ -232,10 +232,11 @@ class AdminQuizPagesTests(WrittenAnswerTests):
         admin_user.save()
         self.client.force_login(admin_user)
         for url in ["/admin/courses/quiz/", f"/admin/courses/quiz/{self.quiz_id}/change/",
-                    "/admin/learning/quizattempt/", f"/admin/learning/quizattempt/{attempt_id}/change/",
                     "/admin/learning/lessoncomment/", "/admin/learning/lessonview/"]:
             res = self.client.get(url)
             self.assertEqual(res.status_code, 200, url)
-        detail = self.client.get(f"/admin/learning/quizattempt/{attempt_id}/change/").content.decode()
-        self.assertIn("It repeats code.", detail)
-        self.assertIn("waiting for the teacher", detail)
+        self.assertEqual(self.client.get(f"/admin/learning/quizattempt/{attempt_id}/change/").status_code, 404)
+
+    def test_quiz_answers_are_not_in_the_admin_portal(self):
+        self.client.force_authenticate(make_admin())
+        self.assertEqual(self.client.get("/api/v1/manage/data/quiz-answers/").status_code, 404)

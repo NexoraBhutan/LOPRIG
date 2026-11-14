@@ -27,6 +27,7 @@ interface LoginInput {
 
 interface ProfileUpdates {
   name?: string;
+  headline?: string;
   bio?: string;
 }
 

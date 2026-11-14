@@ -6,7 +6,7 @@ export type RingTone = "brand" | "flat";
 
 export type LogoSize = "sm" | "md" | "lg";
 
-export type LogoTone = "dark" | "light";
+export type LogoTone = "dark" | "light" | "gold";
 
 export type ProgressBarSize = "sm" | "md";
 
@@ -113,6 +113,8 @@ export interface User {
   role: UserRole;
   name: string;
   email: string;
+  /** Teachers: shown under their name on courses, e.g. "Instructor of FNPH". */
+  headline: string;
   bio: string;
   avatarColor: string;
   /** Uploaded photo or Google profile picture; empty = show the initial. */

@@ -94,7 +94,7 @@ export default function Checkout() {
 
   if (!course) {
     return (
-      <main className="overflow-x-hidden w-full max-w-full px-8 lg:px-16 pt-36 pb-32 md:pb-48 aw-gold-wash">
+      <main className="overflow-x-hidden w-full max-w-full px-5 sm:px-8 lg:px-16 pt-36 pb-32 md:pb-48 aw-gold-wash">
         <div className="max-w-[1280px] mx-auto text-center">
           <h1 className="font-display text-3xl md:text-5xl tracking-tighter font-semibold text-ink-strong mb-4">Course not found</h1>
           <p className="text-ink-muted text-lg mb-8">The course you are trying to enroll in does not exist.</p>
