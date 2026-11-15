@@ -199,6 +199,11 @@ BUNNY_STREAM_READONLY_API_KEY = env("BUNNY_STREAM_READONLY_API_KEY", default="")
 VIDEO_PLAYBACK_TTL_SECONDS = env.int("VIDEO_PLAYBACK_TTL_SECONDS", default=4 * 60 * 60)
 VIDEO_MAX_UPLOAD_MB = env.int("VIDEO_MAX_UPLOAD_MB", default=2048)
 PAYMENT_CURRENCY = "BTN"
+# Paying from a bank account through the RMA payment gateway. "preview": the website's bank flow is
+# simulated (no bank is contacted, no money moves) but the payment is recorded, emailed with a TEST
+# receipt and unlocked by an admin, so the whole journey can be tried. "off": bank payments refused.
+# A "live" mode is added when the RMA integration is built.
+RMA_GATEWAY_MODE = env("RMA_GATEWAY_MODE", default="preview")
 
 # --- Admin theme (django-unfold) ------------------------------------------
 

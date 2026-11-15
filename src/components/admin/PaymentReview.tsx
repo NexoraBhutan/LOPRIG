@@ -85,6 +85,25 @@ export default function PaymentReview({ payment, onClose, onDone }: {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-[1fr_320px] gap-6 p-6 overflow-y-auto">
+        {payment.bank ? (
+          <div className="rounded-2xl bg-bg-soft p-6 flex flex-col gap-4">
+            <p className="text-[0.7rem] font-bold uppercase tracking-wider text-ink-muted">Paid from a bank account</p>
+            {payment.bank.test && (
+              <p className="rounded-xl bg-red-soft text-red-dark text-sm px-4 py-3">
+                <strong>Test payment.</strong> The bank gateway isn&apos;t connected yet, so no money was taken. Don&apos;t approve it
+                unless you&apos;re testing.
+              </p>
+            )}
+            <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-3 text-sm">
+              <dt className="text-ink-muted">Bank</dt><dd className="font-semibold text-ink-strong">{payment.bank.name}</dd>
+              <dt className="text-ink-muted">Account</dt><dd className="font-semibold text-ink-strong tabular-nums">ending {payment.bank.account_last4}</dd>
+              <dt className="text-ink-muted">Purpose</dt><dd className="text-ink-strong">{payment.bank.purpose || "—"}</dd>
+              <dt className="text-ink-muted">Remarks</dt><dd className="text-ink-strong break-words">{payment.bank.remarks || "—"}</dd>
+              <dt className="text-ink-muted">Paid</dt><dd className="text-ink-strong">{formatDate(payment.paid_at ?? payment.created_at)}</dd>
+            </dl>
+            <p className="text-xs text-ink-muted">The student received a receipt by email with these details.</p>
+          </div>
+        ) : (
         <div className="rounded-2xl bg-bg-soft min-h-[320px] flex items-center justify-center overflow-hidden">
           {proofUrl ? (
             <a href={proofUrl} target="_blank" rel="noopener noreferrer" title="Open full size">
@@ -97,10 +116,11 @@ export default function PaymentReview({ payment, onClose, onDone }: {
             </p>
           )}
         </div>
+        )}
 
         <div className="flex flex-col gap-5">
           <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2.5 text-sm">
-            <dt className="text-ink-muted">Journal no.</dt>
+            <dt className="text-ink-muted">{payment.bank ? "Transaction ref." : "Journal no."}</dt>
             <dd className="font-mono font-semibold text-ink-strong break-all">{payment.journal_number || "—"}</dd>
             <dt className="text-ink-muted">Amount due</dt>
             <dd className="font-semibold text-ink-strong">{formatMoney(payment.amount)}</dd>
@@ -126,7 +146,7 @@ export default function PaymentReview({ payment, onClose, onDone }: {
             <label className="flex items-start gap-3 text-sm text-ink bg-gold-soft/50 rounded-xl px-4 py-3 cursor-pointer">
               <input type="checkbox" checked={checked} onChange={(e) => setChecked(e.target.checked)} className="w-4 h-4 mt-0.5 accent-gold cursor-pointer flex-shrink-0" />
               <span>
-                I found journal no. <strong className="font-mono">{payment.journal_number || "—"}</strong> in the bank statement,
+                I found {payment.bank ? "transaction ref." : "journal no."} <strong className="font-mono">{payment.journal_number || "—"}</strong> in the bank statement,
                 and the amount received is <strong>{formatMoney(payment.amount)}</strong>.
               </span>
             </label>

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   VideoCamera, Article, PuzzlePiece, PencilSimple, Trash, ArrowUp, ArrowDown, Plus,
-  Check, X, LinkSimple, Eye, Warning, CircleNotch, Exam, UploadSimple,
+  Check, CheckCircle, X, LinkSimple, Eye, Warning, CircleNotch, Exam, UploadSimple, UsersThree,
 } from "@phosphor-icons/react";
 import QuizEditor from "@/components/teach/QuizEditor";
 import { useToast } from "@/context/ToastContext";
@@ -309,6 +309,12 @@ function LessonRow({
           {formatClock(lesson.duration_seconds)}
           {lesson.is_preview && <span className="inline-flex items-center gap-1 text-gold-dark font-semibold"><Eye size={12} /> Free preview</span>}
           {lesson.resources.length > 0 && <span className="inline-flex items-center gap-1"><LinkSimple size={12} /> {lesson.resources.length} resource{lesson.resources.length === 1 ? "" : "s"}</span>}
+          <span className="inline-flex items-center gap-1" title="Students who opened this lesson">
+            <UsersThree size={12} /> {lesson.viewers ?? 0} watched
+          </span>
+          <span className="inline-flex items-center gap-1 text-emerald-700" title="Students who finished this lesson">
+            <CheckCircle size={12} /> {lesson.completed ?? 0} finished
+          </span>
           {missingVideo && <span className="inline-flex items-center gap-1 text-red-dark font-semibold"><Warning size={12} /> No video yet</span>}
           {videoBusy && <span className="inline-flex items-center gap-1 text-gold-dark font-semibold"><CircleNotch size={12} className="animate-spin" /> Video processing</span>}
           {videoFailed && <span className="inline-flex items-center gap-1 text-red-dark font-semibold"><Warning size={12} /> Video failed, upload again</span>}

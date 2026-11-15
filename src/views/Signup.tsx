@@ -10,6 +10,7 @@ import GoogleSignInButton from "@/components/GoogleSignInButton";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
 
+import { photo } from "@/lib/photos";
 function getStrength(pw: string): number {
   let score = 0;
   if (pw.length >= 8) score++;
@@ -53,7 +54,7 @@ export default function Signup() {
         {/* Visual side */}
         <div className="relative hidden lg:block bg-ink-strong overflow-hidden aw-grain">
           <img
-            src="https://picsum.photos/seed/signupbg/1200/1600"
+            src={photo("signupbg")}
             alt=""
             aria-hidden="true"
             className="absolute inset-0 w-full h-full object-cover opacity-40 grayscale contrast-125"

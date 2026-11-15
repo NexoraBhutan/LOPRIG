@@ -34,6 +34,7 @@ class Payment(models.Model):
     """
 
     QR = "qr"
+    RMA = "rma"  # paid from the student's bank account through the RMA payment gateway
 
     class Status(models.TextChoices):
         PENDING = "PENDING", "Pending"

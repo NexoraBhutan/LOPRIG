@@ -126,6 +126,12 @@ class AlreadySubmitted(APIException):
     default_code = "payment_under_review"
 
 
+class AlreadyPaid(APIException):
+    status_code = 409
+    default_detail = "You have already paid for this course."
+    default_code = "already_paid"
+
+
 def normalise_journal(value: str) -> str:
     return re.sub(r"\s+", "", value or "").upper()
 
@@ -146,7 +152,7 @@ def submit_qr_payment(student, course: Course, journal_number: str, proof, conta
     check_image(proof, "proof")
 
     enrollment = enrollment_services.get_or_create_pending(student, course)  # refuses free/owned courses
-    if Payment.objects.filter(enrollment=enrollment, status=Payment.Status.PENDING, provider=Payment.QR).exists():
+    if Payment.objects.filter(enrollment=enrollment, status=Payment.Status.PENDING).exists():
         raise AlreadySubmitted()
     if Payment.objects.filter(journal_number=journal, status__in=[Payment.Status.PENDING, Payment.Status.SUCCEEDED]).exists():
         raise ValidationError({"journal_number": "This journal number has already been used for a payment."})
@@ -170,7 +176,7 @@ def submit_qr_payment(student, course: Course, journal_number: str, proof, conta
 
 def _lock_pending_qr(payment: Payment) -> Payment:
     payment = Payment.objects.select_for_update().select_related("course", "student", "enrollment").get(pk=payment.pk)
-    if payment.provider != Payment.QR or payment.status != Payment.Status.PENDING:
+    if payment.provider not in (Payment.QR, Payment.RMA) or payment.status != Payment.Status.PENDING:
         raise ValidationError({"detail": "Only payments waiting for verification can be approved or rejected."})
     return payment
 
@@ -208,4 +214,55 @@ def reject_qr_payment(payment: Payment, admin, reason: str) -> Payment:
         data={"course": payment.course.slug, "payment": payment.reference},
     )
     emails.after_commit(emails.payment_rejected, payment)
+    return payment
+
+
+# --- Bank account payments (RMA payment gateway) ------------------------------------------------
+
+BANK_NAMES = {
+    "dk": "DK", "bob": "Bank of Bhutan", "bdbl": "Bhutan Development Bank", "bnb": "Bhutan National Bank",
+    "drukpnb": "Druk PNB", "gerab": "Gerab Financials Ltd", "tbank": "T-Bank",
+}
+
+
+@transaction.atomic
+def record_bank_payment(student, course: Course, *, bank: str, account_last4: str, purpose: str, remarks: str,
+                        transaction_id: str) -> Payment:
+    """The student paid from their bank account. Record it, email their receipt, and ask an admin to unlock.
+
+    One payment per course: while a payment is waiting or done, paying again is refused.
+    """
+    if settings.RMA_GATEWAY_MODE != "preview":
+        # The live RMA integration (where the server itself confirms the debit with the bank) isn't built yet.
+        raise ValidationError({"detail": "Paying from a bank account isn't available yet. Please pay by QR."})
+    if course.status != Course.Status.PUBLISHED:
+        raise ValidationError({"course": "This course isn't open for enrollment."})
+    if bank not in BANK_NAMES:
+        raise ValidationError({"bank": "Choose one of the listed banks."})
+
+    enrollment = enrollment_services.get_or_create_pending(student, course)  # refuses free/owned courses
+    if Payment.objects.filter(enrollment=enrollment, status__in=[Payment.Status.PENDING, Payment.Status.SUCCEEDED]).exists():
+        raise AlreadyPaid()
+    reference = transaction_id.strip().upper()
+    if Payment.objects.filter(journal_number=reference, status__in=[Payment.Status.PENDING, Payment.Status.SUCCEEDED]).exists():
+        raise AlreadyPaid("This bank transaction has already been used for a payment.")
+
+    payment = Payment.objects.create(
+        student=student, course=course, enrollment=enrollment, amount=course.current_price,
+        currency=settings.PAYMENT_CURRENCY, provider=Payment.RMA, provider_reference=reference,
+        # The bank's transaction reference doubles as the journal number admins search and check.
+        journal_number=reference, paid_at=timezone.now(),
+        raw_event={
+            "bank": bank, "bank_name": BANK_NAMES[bank], "account_last4": account_last4,
+            "purpose": purpose.strip(), "remarks": remarks.strip(), "test": settings.RMA_GATEWAY_MODE == "preview",
+        },
+    )
+    for admin in User.objects.filter(role=User.Role.ADMIN, is_active=True):
+        notify(
+            admin, Notification.Kind.PAYMENT, "Bank payment: unlock the course",
+            f"{student.name} paid Nu. {payment.amount:,.0f} from {BANK_NAMES[bank]} for “{course.title}”.",
+            data={"payment": payment.reference, "course": course.slug},
+        )
+    emails.after_commit(emails.bank_payment_received, payment)
+    emails.after_commit(emails.bank_payment_alert, payment)
     return payment

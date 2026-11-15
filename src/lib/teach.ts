@@ -26,6 +26,9 @@ export interface TeachLesson {
   has_upload: boolean;
   video_status: "" | "UPLOADING" | "PROCESSING" | "READY" | "FAILED";
   playback: Playback;
+  /** Students who opened this lesson, and students who finished it. */
+  viewers: number;
+  completed: number;
 }
 
 export interface TeachModule {

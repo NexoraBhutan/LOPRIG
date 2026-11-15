@@ -106,7 +106,7 @@ class SummaryView(APIView):
                     status=Payment.Status.FAILED, created_at__gte=month_ago
                 ).count(),
                 "payments_to_verify": Payment.objects.filter(
-                    status=Payment.Status.PENDING, provider=Payment.QR
+                    status=Payment.Status.PENDING, provider__in=[Payment.QR, Payment.RMA]
                 ).count(),
             },
             "series": [

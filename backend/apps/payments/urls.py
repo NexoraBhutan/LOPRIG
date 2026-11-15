@@ -1,6 +1,7 @@
 from django.urls import path
 
 from .views import (
+    BankPaymentView,
     CheckoutView,
     MockPayView,
     PaymentDetailView,
@@ -15,6 +16,7 @@ urlpatterns = [
     path("checkout/", CheckoutView.as_view(), name="payment-checkout"),
     path("qr/", QrSettingsView.as_view(), name="payment-qr"),
     path("qr/submit/", QrSubmitView.as_view(), name="payment-qr-submit"),
+    path("bank/", BankPaymentView.as_view(), name="payment-bank"),
     path("webhooks/<str:provider>/", PaymentWebhookView.as_view(), name="payment-webhook"),
     path("mock/<str:reference>/pay/", MockPayView.as_view(), name="payment-mock-pay"),
     path("<str:reference>/", PaymentDetailView.as_view(), name="payment-detail"),

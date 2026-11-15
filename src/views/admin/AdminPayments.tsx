@@ -80,7 +80,7 @@ export default function AdminPayments() {
       {list.loading ? <PageLoader /> : list.error ? <p role="alert" className="text-sm text-red-dark">{list.error}</p> : (
         <>
           <TableShell
-            head={["Student", "Course", "Amount", "Journal no.", "Status", "Date", ""]}
+            head={["Student", "Course", "Amount", "Method", "Reference", "Status", "Date", ""]}
             empty={list.items.length ? undefined : filter === "PENDING" ? "Nothing to verify. All caught up." : "No payments match."}
           >
             {list.items.map((p) => (
@@ -92,6 +92,17 @@ export default function AdminPayments() {
                 </td>
                 <td className="px-5 py-3.5 text-ink">{p.course}</td>
                 <td className="px-5 py-3.5 font-semibold tabular-nums whitespace-nowrap">{formatMoney(p.amount)}</td>
+                <td className="px-5 py-3.5 text-xs whitespace-nowrap">
+                  {p.bank ? (
+                    <>
+                      <span className="block font-semibold text-ink-strong">Bank account</span>
+                      <span className="block text-ink-muted">{p.bank.name} ••{p.bank.account_last4}</span>
+                      {p.bank.test && <span className="inline-block mt-1 px-1.5 py-0.5 rounded bg-red-soft text-red-dark text-[0.65rem] font-bold uppercase">Test</span>}
+                    </>
+                  ) : (
+                    <span className="font-semibold text-ink-strong">{p.provider === "qr" ? "Scan QR" : p.provider}</span>
+                  )}
+                </td>
                 <td className="px-5 py-3.5 font-mono text-xs text-ink-strong whitespace-nowrap">
                   {p.journal_number || <span className="text-ink-muted">—</span>}
                   {p.has_proof && <ImageIcon size={13} className="inline ml-1.5 text-ink-muted" aria-label="Screenshot attached" />}
@@ -102,7 +113,7 @@ export default function AdminPayments() {
                 </td>
                 <td className="px-5 py-3.5 text-ink-muted whitespace-nowrap">{formatDate(p.paid_at ?? p.created_at)}</td>
                 <td className="px-5 py-3.5 text-right">
-                  {p.provider === "qr" && (
+                  {(p.provider === "qr" || p.provider === "rma") && (
                     <button
                       type="button"
                       onClick={() => setReviewing(p)}

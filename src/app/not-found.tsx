@@ -5,12 +5,13 @@ import { motion } from "framer-motion";
 import { ArrowRight, MagnifyingGlass } from "@phosphor-icons/react";
 import Mascot from "@/components/Mascot";
 
+import { photo } from "@/lib/photos";
 export default function NotFound() {
   return (
     <main className="overflow-x-hidden w-full max-w-full">
       <section className="relative min-h-[100dvh] flex items-center justify-center px-8 py-32 bg-ink-strong overflow-hidden aw-grain">
         <div className="absolute inset-0">
-          <img src="https://picsum.photos/seed/lostpath/1920/1080" alt="" aria-hidden="true" className="w-full h-full object-cover opacity-25 grayscale contrast-125" />
+          <img src={photo("lostpath")} alt="" aria-hidden="true" className="w-full h-full object-cover opacity-25 grayscale contrast-125" />
           <div className="absolute inset-0 aw-dark-wash" />
         </div>
 
@@ -23,7 +24,7 @@ export default function NotFound() {
           <Mascot pose="sad" size={120} className="mx-auto mb-8" />
           <h1 className="aw-hero-h1 font-display text-white w-full">
             Lost
-            <span className="aw-inline-pill mx-3" style={{ backgroundImage: "url(https://picsum.photos/seed/found/400/200)" }} aria-hidden="true" />
+            <span className="aw-inline-pill mx-3" style={{ backgroundImage: `url(${photo("found")})` }} aria-hidden="true" />
             somewhere?
           </h1>
           <p className="text-white/65 text-lg mt-6 max-w-[480px] mx-auto">

@@ -15,6 +15,7 @@ import PageLoader from "@/components/PageLoader";
 import { useCatalog } from "@/context/CatalogContext";
 import type { IconName } from "@/types";
 
+import { photo } from "@/lib/photos";
 const ICONS: Record<string, typeof Code> = {
   Code, ChartBar, Calculator, Briefcase, Palette, Bullhorn: Megaphone,
   ShieldAlt: Shield, Globe, Language: Globe, Rocket, Book,
@@ -111,7 +112,7 @@ export default function Category() {
       {/* ATTENTION — Ink section with oversized numerals, image on right */}
       <section className="relative px-8 lg:px-16 pt-36 pb-20 bg-ink-strong overflow-hidden aw-grain">
         <div className="absolute inset-0">
-          <img src={`https://picsum.photos/seed/cat${category.id}/1920/700`} alt="" aria-hidden="true" className="w-full h-full object-cover opacity-25 grayscale contrast-125" />
+          <img src={photo(`cat${category.id}`)} alt="" aria-hidden="true" className="w-full h-full object-cover opacity-25 grayscale contrast-125" />
           <div className="absolute inset-0 aw-dark-wash" />
         </div>
         <div className="max-w-[1280px] mx-auto w-full relative">

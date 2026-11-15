@@ -8,6 +8,7 @@ import Logo from "@/components/Logo";
 import Mascot from "@/components/Mascot";
 import { ApiError, api, errorMessage } from "@/lib/api";
 
+import { photo } from "@/lib/photos";
 type Step = "email" | "code" | "done";
 
 const RESEND_SECONDS = 60;
@@ -237,7 +238,7 @@ export default function ForgotPassword() {
         {/* Visual side */}
         <div className="relative hidden lg:block bg-ink-strong overflow-hidden aw-grain">
           <img
-            src="https://picsum.photos/seed/resetbg/1200/1600"
+            src={photo("resetbg")}
             alt=""
             aria-hidden="true"
             className="absolute inset-0 w-full h-full object-cover opacity-40 grayscale contrast-125"

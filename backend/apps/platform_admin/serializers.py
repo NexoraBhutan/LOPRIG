@@ -118,15 +118,26 @@ class AdminPaymentSerializer(serializers.ModelSerializer):
     amount = serializers.DecimalField(max_digits=10, decimal_places=2, coerce_to_string=False)
     has_proof = serializers.SerializerMethodField()
     reviewed_by = serializers.CharField(source="reviewed_by.name", default="", read_only=True)
+    bank = serializers.SerializerMethodField()
 
     class Meta:
         model = Payment
         fields = ["reference", "student", "student_email", "course", "course_id", "amount", "currency",
                   "provider", "status", "failure_reason", "journal_number", "contact_number", "has_proof",
-                  "reviewed_by", "reviewed_at", "paid_at", "created_at"]
+                  "bank", "reviewed_by", "reviewed_at", "paid_at", "created_at"]
 
     def get_has_proof(self, obj) -> bool:
         return bool(obj.proof)
+
+    def get_bank(self, obj) -> dict | None:
+        """For payments from a bank account (RMA): which bank, the account's last 4 digits, purpose, remarks."""
+        if obj.provider != Payment.RMA:
+            return None
+        info = obj.raw_event or {}
+        return {
+            "name": info.get("bank_name", ""), "account_last4": info.get("account_last4", ""),
+            "purpose": info.get("purpose", ""), "remarks": info.get("remarks", ""), "test": bool(info.get("test")),
+        }
 
 
 class PaymentRejectSerializer(serializers.Serializer):

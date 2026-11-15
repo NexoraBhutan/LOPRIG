@@ -16,6 +16,7 @@ from . import services
 from .gateways import InvalidWebhook, UnknownGateway
 from .models import Payment, PaymentSettings
 from .serializers import (
+    BankPaymentSerializer,
     CheckoutResponseSerializer,
     MockPaySerializer,
     PaymentSerializer,
@@ -118,5 +119,22 @@ class QrSubmitView(APIView):
         data = serializer.validated_data
         payment = services.submit_qr_payment(
             request.user, data["course"], data["journal_number"], data["proof"], data["contact_number"]
+        )
+        return Response(PaymentSerializer(payment).data, status=status.HTTP_201_CREATED)
+
+
+class BankPaymentView(APIView):
+    """The student paid from their bank account (RMA gateway): record it, email the receipt."""
+
+    permission_classes = [IsStudent]
+
+    @extend_schema(request=BankPaymentSerializer, responses={201: PaymentSerializer})
+    def post(self, request):
+        serializer = BankPaymentSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        payment = services.record_bank_payment(
+            request.user, data["course"], bank=data["bank"], account_last4=data["account_last4"],
+            purpose=data["purpose"], remarks=data["remarks"], transaction_id=data["transaction_id"],
         )
         return Response(PaymentSerializer(payment).data, status=status.HTTP_201_CREATED)

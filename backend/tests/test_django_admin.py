@@ -129,3 +129,29 @@ class WebsiteAdminInDjangoAdminTests(TestCase):
         self.admin.save()
         page = self.login("admin@loprig.bt").content.decode()
         self.assertIn("Set your own password on the website first", page)
+
+
+class EnsureSiteAdminCommandTests(TestCase):
+    """`ensure_site_admin` makes the Django Admin account on hosts without a shell (Render free plan)."""
+
+    def run_command(self, **env):
+        from io import StringIO
+        from unittest import mock
+
+        from django.core.management import call_command
+        out = StringIO()
+        with mock.patch.dict("os.environ", env, clear=False):
+            call_command("ensure_site_admin", stdout=out)
+        return out.getvalue()
+
+    def test_creates_once_and_never_resets_the_password(self):
+        self.assertIn("created", self.run_command(SITE_ADMIN_EMAIL="Root@Example.com", SITE_ADMIN_PASSWORD="first-pass-123"))
+        admin = User.objects.get(email="root@example.com")
+        self.assertTrue(admin.is_site_admin)
+        self.assertIn("already exists", self.run_command(SITE_ADMIN_EMAIL="root@example.com", SITE_ADMIN_PASSWORD="other-pass-456"))
+        admin.refresh_from_db()
+        self.assertTrue(admin.check_password("first-pass-123"))
+
+    def test_skips_without_settings(self):
+        self.assertIn("skipped", self.run_command(SITE_ADMIN_EMAIL="", SITE_ADMIN_PASSWORD=""))
+        self.assertFalse(User.objects.filter(is_superuser=True).exists())

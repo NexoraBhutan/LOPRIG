@@ -153,7 +153,7 @@ export interface Filters {
   minRating: number;
 }
 
-export type SortOption = "popular" | "rating" | "newest" | "price-asc" | "price-desc";
+export type SortOption = "popular" | "newest" | "price-asc" | "price-desc";
 
 export interface NavLinkItem {
   to: string;

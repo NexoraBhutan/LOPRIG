@@ -8,6 +8,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useEnrollment } from "@/context/EnrollmentContext";
 import { useCourseDetail } from "@/hooks/useCourseDetail";
 
+import { photo } from "@/lib/photos";
 const fadeUp = { hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0 } };
 const stagger = { visible: { transition: { staggerChildren: 0.06 } } };
 
@@ -63,7 +64,7 @@ export default function PaymentSuccess() {
           {course && (
             <motion.div variants={fadeUp} className="mt-8">
               <img
-                src={`https://picsum.photos/seed/success${course.id}/1600/900`}
+                src={photo(`success${course.id}`)}
                 alt=""
                 aria-hidden="true"
                 className="rounded-xl w-full aspect-video object-cover"
@@ -84,7 +85,7 @@ export default function PaymentSuccess() {
                   { label: "Lessons", value: String(course.curriculum.reduce((s, sec) => s + sec.lessons.length, 0)) },
                   { label: "Duration", value: course.duration },
                   { label: "Level", value: course.level },
-                  { label: "Rating", value: `${course.rating.toFixed(1)} / 5` },
+                  { label: "Teacher", value: course.instructor.name },
                 ].map((stat) => (
                   <div key={stat.label} className="bg-bg-soft rounded-xl p-4 text-center">
                     <span className="block text-[0.65rem] font-bold text-ink-muted uppercase tracking-wider">{stat.label}</span>

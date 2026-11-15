@@ -11,6 +11,7 @@ import { testimonials, learningPaths } from "@/data/courses";
 import { useCatalog } from "@/context/CatalogContext";
 import { gsap, useGSAP } from "@/utils/gsap";
 
+import { photo } from "@/lib/photos";
 const ICONS: Record<string, typeof Code> = {
   Code, Palette, ChartLineUp, Globe, BookOpen, Lightbulb,
   Bullhorn: Rocket, ShieldAlt: Certificate, Calculator: Code, Briefcase: BookOpen, Language: Globe, Rocket,
@@ -56,17 +57,16 @@ export default function Home() {
   const reducedMotion = usePrefersReducedMotion();
   const carouselInterval = useRef<ReturnType<typeof setInterval> | null>(null);
   const rootRef = useRef<HTMLElement>(null);
-  // Hero slides swap on their own; they pause while a keyboard user is inside, or when the visitor presses pause.
+  // Hero slides swap on their own (and with the arrows); they pause while a keyboard user is inside.
   // (Not on hover: the hero fills the screen, so the mouse is almost always over it.)
   const [heroIdx, setHeroIdx] = useState(0);
   const [heroPaused, setHeroPaused] = useState(false);
-  const [heroStopped, setHeroStopped] = useState(false);
 
   useEffect(() => {
-    if (heroPaused || heroStopped || reducedMotion) return;
+    if (heroPaused || reducedMotion) return;
     const timer = setInterval(() => setHeroIdx((i) => (i + 1) % HERO_SLIDES.length), HERO_SLIDE_MS);
     return () => clearInterval(timer);
-  }, [heroPaused, heroStopped, reducedMotion]);
+  }, [heroPaused, reducedMotion]);
 
   useEffect(() => {
     if (carouselPaused || reducedMotion) {
@@ -156,11 +156,11 @@ export default function Home() {
         >
           <h1 className="aw-hero-h1 font-display text-white w-full">
             Build
-            <span className="aw-inline-pill mx-3" style={{ backgroundImage: "url(https://picsum.photos/seed/craft/400/200)" }} aria-hidden="true" />
+            <span className="aw-inline-pill mx-3" style={{ backgroundImage: `url(${photo("craft")})` }} aria-hidden="true" />
             real skills for Bhutan&apos;s{" "}
             <br className="hidden md:block" />
             bold
-            <span className="aw-inline-pill mx-3" style={{ backgroundImage: "url(https://picsum.photos/seed/future/400/200)" }} aria-hidden="true" />
+            <span className="aw-inline-pill mx-3" style={{ backgroundImage: `url(${photo("future")})` }} aria-hidden="true" />
             future
           </h1>
           <p className="text-white/70 text-lg leading-relaxed max-w-[560px] mx-auto mt-7">
@@ -211,27 +211,21 @@ export default function Home() {
         )}
         </AnimatePresence>
 
-        {/* Slide controls */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 flex items-center gap-3 rounded-full bg-black/30 backdrop-blur-sm px-3 py-2">
-          {HERO_SLIDES.map((name, i) => (
-            <button
-              key={name}
-              type="button"
-              onClick={() => setHeroIdx(i)}
-              aria-label={`Show slide ${i + 1}: ${name}`}
-              aria-current={heroIdx === i}
-              className={`h-2.5 rounded-full border-none cursor-pointer transition-all duration-300 ${heroIdx === i ? "w-8 bg-gold" : "w-2.5 bg-white/50 hover:bg-white/80"}`}
-            />
-          ))}
+        {/* Previous / next, at the middle of each side. */}
+        {[
+          { dir: -1, label: "Previous slide", Icon: CaretLeft, side: "left-3 sm:left-6 lg:left-10" },
+          { dir: 1, label: "Next slide", Icon: CaretRight, side: "right-3 sm:right-6 lg:right-10" },
+        ].map(({ dir, label, Icon, side }) => (
           <button
+            key={label}
             type="button"
-            onClick={() => setHeroStopped((s) => !s)}
-            aria-label={heroStopped ? "Play slides" : "Pause slides"}
-            className="ml-1 w-7 h-7 rounded-full flex items-center justify-center text-white/80 hover:text-white bg-transparent border-none cursor-pointer"
+            onClick={() => setHeroIdx((i) => (i + dir + HERO_SLIDES.length) % HERO_SLIDES.length)}
+            aria-label={label}
+            className={`absolute top-1/2 -translate-y-1/2 ${side} z-20 w-11 h-11 sm:w-14 sm:h-14 rounded-full flex items-center justify-center bg-black/25 hover:bg-gold text-white hover:text-ink-strong border border-white/25 hover:border-gold backdrop-blur-sm cursor-pointer transition-colors`}
           >
-            {heroStopped ? <Play size={14} weight="fill" /> : <Pause size={14} weight="fill" />}
+            <Icon size={22} weight="bold" />
           </button>
-        </div>
+        ))}
       </section>
 
       {/* INTEREST — Gapless Bento. 4 cols x 2 rows = 8 cells. A(2x2=4) + B(2x1=2) + C(1x1=1) + D(1x1=1) = 8. Zero voids. */}
@@ -244,7 +238,7 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-4 auto-rows-[minmax(220px,280px)] gap-5 grid-flow-dense">
             <div className="md:col-span-2 md:row-span-2 bg-bg-soft rounded-xl overflow-hidden flex flex-col group">
               <div className="flex-1 overflow-hidden min-h-[220px]">
-                <img src="https://picsum.photos/seed/courses/800/600" alt="Students collaborating on a coding project" loading="lazy" width="800" height="600" className="aw-scale-img w-full h-full object-cover grayscale-[10%] contrast-[110%] transition-transform duration-700 ease-out group-hover:scale-105" />
+                <img src={photo("courses")} alt="Students collaborating on a coding project" loading="lazy" width="800" height="600" className="aw-scale-img w-full h-full object-cover grayscale-[10%] contrast-[110%] transition-transform duration-700 ease-out group-hover:scale-105" />
               </div>
               <div className="p-7">
                 <h3 className="text-lg font-semibold mb-1.5 font-display">1,200+ video lessons, built for Bhutan</h3>
@@ -329,7 +323,7 @@ export default function Home() {
                 <h3 className="font-display text-xl font-semibold mb-2.5">{s.t}</h3>
                 <p className="text-ink-muted text-[0.95rem] leading-relaxed">{s.d}</p>
                 <div className="mt-6 overflow-hidden rounded-xl">
-                  <img src={`https://picsum.photos/seed/step${i + 1}/800/420`} alt={`Illustration for step ${i + 1}: ${s.t}`} loading="lazy" className="aw-scale-img w-full h-44 object-cover grayscale-[15%] contrast-110 transition-transform duration-700 ease-out hover:scale-105" />
+                  <img src={photo(`step${i + 1}`)} alt={`Illustration for step ${i + 1}: ${s.t}`} loading="lazy" className="aw-scale-img w-full h-44 object-cover grayscale-[15%] contrast-110 transition-transform duration-700 ease-out hover:scale-105" />
                 </div>
               </div>
             ))}
@@ -351,7 +345,7 @@ export default function Home() {
               { seed: "signal", label: "Marketing", alt: "Digital marketing analytics dashboard on screen" },
             ].map((item) => (
               <div key={item.seed} className="relative rounded-xl overflow-hidden aspect-[3/2] group">
-                <img src={`https://picsum.photos/seed/${item.seed}/600/400`} alt={item.alt} loading="lazy" width="600" height="400" className="aw-scale-img w-full h-full object-cover grayscale-[15%] contrast-[110%] transition-transform duration-700 ease-out group-hover:scale-105" />
+                <img src={photo(`${item.seed}`)} alt={item.alt} loading="lazy" width="600" height="400" className="aw-scale-img w-full h-full object-cover grayscale-[15%] contrast-[110%] transition-transform duration-700 ease-out group-hover:scale-105" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
                 <span className="absolute bottom-4 left-4 bg-white/10 backdrop-blur-md border border-white/20 text-white text-xs font-bold px-3.5 py-1.5 rounded-full tracking-wider uppercase">
                   {item.label}
@@ -445,7 +439,7 @@ export default function Home() {
                 style={{ borderTopWidth: "6px", borderTopColor: path.color, top: `${110 + pi * 18}px` }}
               >
                 <div className="overflow-hidden rounded-xl -mt-6 mb-2">
-                  <img src={`https://picsum.photos/seed/path${path.id}/600/320`} alt={`Cover illustration for the ${path.title} learning path`} loading="lazy" className="aw-scale-img w-full h-40 object-cover grayscale-[12%] contrast-110 transition-transform duration-700 ease-out hover:scale-105" />
+                  <img src={photo(`path${path.id}`)} alt={`Cover illustration for the ${path.title} learning path`} loading="lazy" className="aw-scale-img w-full h-40 object-cover grayscale-[12%] contrast-110 transition-transform duration-700 ease-out hover:scale-105" />
                 </div>
                 <h3 className="font-display text-lg font-semibold">{path.title}</h3>
                 <ul className="flex flex-col gap-3">
@@ -510,7 +504,7 @@ export default function Home() {
         <div className="max-w-[1280px] mx-auto">
           <div className="text-center py-24 md:py-32 px-8 rounded-3xl bg-ink-strong relative overflow-hidden aw-grain">
             <div className="absolute inset-0">
-              <img src="https://picsum.photos/seed/celebrate/1600/800" alt="" aria-hidden="true" className="w-full h-full object-cover opacity-25 grayscale contrast-125" />
+              <img src={photo("celebrate")} alt="" aria-hidden="true" className="w-full h-full object-cover opacity-25 grayscale contrast-125" />
               <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,rgba(255,182,6,0.22)_0%,transparent_60%),linear-gradient(to_bottom,rgba(26,26,26,0.55),rgba(26,26,26,0.85))]" />
             </div>
             <h2 className="font-display text-white font-bold tracking-tighter leading-[1.02] text-[clamp(2.4rem,5vw,4.5rem)] max-w-4xl mx-auto relative z-10">

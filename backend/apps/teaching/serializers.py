@@ -39,13 +39,16 @@ class TeacherLessonSerializer(serializers.ModelSerializer):
     duration_seconds = serializers.IntegerField(min_value=0, max_value=6 * 3600, required=False)
     has_upload = serializers.SerializerMethodField()
     playback = serializers.SerializerMethodField()
+    # How many students opened this lesson, and how many finished it.
+    viewers = serializers.SerializerMethodField()
+    completed = serializers.SerializerMethodField()
 
     class Meta:
         model = Lesson
         fields = [
             "id", "title", "order", "kind", "duration_seconds", "is_preview",
             "video_url", "body", "h5p_embed_url", "resources",
-            "has_upload", "video_status", "playback",
+            "has_upload", "video_status", "playback", "viewers", "completed",
         ]
         read_only_fields = ["id", "video_status"]
 
@@ -56,6 +59,17 @@ class TeacherLessonSerializer(serializers.ModelSerializer):
 
     def get_has_upload(self, obj) -> bool:
         return bool(obj.video_id)
+
+    def get_viewers(self, obj) -> int:
+        if hasattr(obj, "n_viewers"):
+            return obj.n_viewers
+        return obj.views.count()
+
+    def get_completed(self, obj) -> int:
+        if hasattr(obj, "n_completed"):
+            return obj.n_completed
+        from apps.learning.models import LessonProgress
+        return LessonProgress.objects.filter(lesson=obj, completed=True).count()
 
     @extend_schema_field(PlaybackSerializer)
     def get_playback(self, obj) -> dict:

@@ -6,10 +6,9 @@ import { useRouter, useParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Clock, Users, ChartBar, Globe, CheckCircle, PlayCircle, Download, Infinity as InfinityIcon,
-  Trophy, CaretDown, CaretRight, Heart, Star, ArrowRight,
+  Trophy, CaretDown, CaretRight, Heart, ArrowRight,
 } from "@phosphor-icons/react";
 import CourseThumb from "@/components/CourseThumb";
-import Rating from "@/components/Rating";
 import CourseCard from "@/components/CourseCard";
 import EmptyState from "@/components/EmptyState";
 import PageLoader from "@/components/PageLoader";
@@ -20,15 +19,10 @@ import { useCourseDetail } from "@/hooks/useCourseDetail";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
 import UserAvatar from "@/components/UserAvatar";
+import RulesAgreement from "@/components/RulesAgreement";
 import { gsap, useGSAP } from "@/utils/gsap";
 
-function ratingBreakdown(rating: number): number[] {
-  const clamped = Math.min(5, Math.max(1, rating));
-  const decay = 0.35 + (5 - clamped) * 0.25;
-  const weights = [1, decay, decay ** 2, decay ** 3, decay ** 4];
-  const total = weights.reduce((s, w) => s + w, 0);
-  return weights.map((w) => Math.round((w / total) * 100));
-}
+import { photo } from "@/lib/photos";
 
 const fadeUp = { hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0 } };
 const stagger = { visible: { transition: { staggerChildren: 0.08 } } };
@@ -44,6 +38,9 @@ export default function CourseDetails() {
   const { push } = useToast();
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
   const [enrolling, setEnrolling] = useState(false);
+  // Free courses skip checkout, so students accept the Rules and Regulations here instead.
+  const [rulesOk, setRulesOk] = useState(false);
+  const [rulesError, setRulesError] = useState(false);
   // Latest QR payment for a paid course ("PENDING" = waiting for an admin to verify it).
   const [paymentStatus, setPaymentStatus] = useState<string | null>(null);
   const rootRef = useRef<HTMLElement>(null);
@@ -106,7 +103,7 @@ export default function CourseDetails() {
 
   const isFree = course.discountPrice === 0;
   const underReview = !enrolled && paymentStatus === "PENDING";
-  const ctaLabel = enrolled ? "Go to course" : isFree ? "Start learning for free" : underReview ? "Payment under review" : "Enroll now";
+  const ctaLabel = enrolled ? "Go to course" : isFree ? "Start learning for free" : underReview ? "Already paid · unlocking soon" : "Enroll now";
 
   const handleEnroll = async () => {
     // Free courses are open to everyone: visitors go straight to the lessons.
@@ -127,7 +124,13 @@ export default function CourseDetails() {
       router.push(`/checkout/${course.id}`);
       return;
     }
-    // Free course: enroll straight away, no checkout.
+    // Free course: enroll straight away, no checkout, once the rules are accepted.
+    if (!rulesOk) {
+      setRulesError(true);
+      push("Please accept the Rules and Regulations to enroll.", "info");
+      document.getElementById("enroll-card")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
     if (enrolling) return;
     setEnrolling(true);
     const res = await enrollFree(course.id);
@@ -160,7 +163,7 @@ export default function CourseDetails() {
       <section className="cd-band relative px-8 lg:px-16 pt-40 pb-56 bg-ink-strong overflow-hidden">
         <div className="cd-art-wrap absolute inset-0 overflow-hidden">
           <img
-            src={`https://picsum.photos/seed/course${course.id}/1920/900`}
+            src={photo(`course${course.id}`)}
             alt=""
             aria-hidden="true"
             className="cd-art w-full h-full object-cover grayscale contrast-125 opacity-90"
@@ -188,7 +191,6 @@ export default function CourseDetails() {
             <p className="text-white/70 text-lg leading-relaxed max-w-[680px] mt-6">{course.description}</p>
 
             <div className="flex flex-wrap items-center gap-x-6 gap-y-3 text-sm text-white/75 mt-8">
-              <Rating value={course.rating} count={course.students} light />
               <span className="flex items-center gap-1.5"><Users size={15} /> {course.students.toLocaleString()} students</span>
               <span className="flex items-center gap-1.5"><Clock size={15} /> {course.duration}</span>
               <span className="flex items-center gap-1.5"><ChartBar size={15} /> {course.level}</span>
@@ -215,7 +217,7 @@ export default function CourseDetails() {
             <motion.div variants={fadeUp}>
               <h2 className="font-display text-2xl md:text-4xl tracking-tighter font-semibold text-ink-strong mb-8">
                 What you&apos;ll
-                <span className="aw-inline-pill mx-2" style={{ backgroundImage: `url(https://picsum.photos/seed/${course.id}win/400/200)` }} aria-hidden="true" />
+                <span className="aw-inline-pill mx-2" style={{ backgroundImage: `url(${photo(`${course.id}win`)})` }} aria-hidden="true" />
                 learn
               </h2>
               <ul className="grid grid-cols-1 sm:grid-cols-2 gap-4 grid-flow-dense">
@@ -297,53 +299,6 @@ export default function CourseDetails() {
                 </p>
               </div>
             </motion.div>
-
-            {/* Reviews */}
-            <motion.div variants={fadeUp}>
-              <h2 className="font-display text-2xl md:text-4xl tracking-tighter font-semibold text-ink-strong mb-8">Student reviews</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-6 mb-6">
-                <div className="flex flex-col items-center justify-center py-8 bg-white border-2 border-line rounded-2xl">
-                  <strong className="font-display text-5xl font-bold text-ink-strong">{course.rating.toFixed(1)}</strong>
-                  <div className="flex gap-0.5 my-2">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <Star key={i} size={15} weight={i < Math.round(course.rating) ? "fill" : "regular"} className="text-gold" />
-                    ))}
-                  </div>
-                  <span className="text-xs text-ink-muted">Course rating</span>
-                </div>
-                <div className="flex flex-col gap-2.5 justify-center">
-                  {ratingBreakdown(course.rating).map((pct, i) => (
-                    <div key={5 - i} className="flex items-center gap-3">
-                      <span className="text-xs font-bold text-ink-strong w-8">{5 - i} <Star size={10} weight="fill" className="text-gold inline" /></span>
-                      <div className="flex-1 h-2 bg-bg-sunken rounded-full overflow-hidden">
-                        <div className="h-full bg-gold rounded-full" style={{ width: `${pct}%` }} />
-                      </div>
-                      <span className="text-xs text-ink-muted w-10 text-right">{pct}%</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                {[
-                  { name: "Sonam Choki", text: "Very clear explanations and practical exercises. Helped me a lot with my studies.", rating: 5, color: "bg-ink-strong" },
-                  { name: "Pema Tobgay", text: "Good pacing and the instructor explains concepts step by step.", rating: 4.5, color: "bg-gold-dark" },
-                ].map((r) => (
-                  <div key={r.name} className="group flex gap-4 p-6 bg-white border-2 border-line rounded-2xl hover:border-gold hover:-translate-y-0.5 transition-all duration-300">
-                    <span className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0 ${r.color}`}>
-                      {r.name.charAt(0)}
-                    </span>
-                    <div>
-                      <div className="flex items-center gap-3 mb-1.5">
-                        <strong className="text-sm text-ink-strong">{r.name}</strong>
-                        <Rating value={r.rating} showCount={false} size={12} />
-                      </div>
-                      <p className="text-sm text-ink-muted leading-relaxed">{r.text}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
           </motion.div>
 
           {/* COMMERCE RAIL — overlaps the band, sticks on scroll */}
@@ -351,6 +306,7 @@ export default function CourseDetails() {
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.9, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            id="enroll-card"
             className="lg:sticky lg:top-28 lg:-mt-40"
           >
             <div className="group bg-white border-2 border-line rounded-3xl overflow-hidden shadow-elevated">
@@ -377,17 +333,33 @@ export default function CourseDetails() {
                     <PlayCircle size={17} /> Go to Course
                   </Link>
                 ) : (
-                  <button className="btn btn-primary btn-lg btn-block" onClick={handleEnroll} disabled={enrolling}>
+                  <>
+                  {isFree && user?.role === "STUDENT" && (
+                    <RulesAgreement
+                      checked={rulesOk}
+                      onChange={(v) => { setRulesOk(v); if (v) setRulesError(false); }}
+                      error={rulesError}
+                      className="mb-4"
+                    />
+                  )}
+                  <button
+                    className="btn btn-primary btn-lg btn-block disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={handleEnroll}
+                    disabled={enrolling || (isFree && user?.role === "STUDENT" && !rulesOk)}
+                  >
                     {enrolling ? "Opening…" : ctaLabel}
                   </button>
+                  </>
                 )}
                 {underReview && (
                   <p className="text-xs text-ink-muted mt-3 text-center">
-                    We received your payment details. You&apos;ll get a notification once an admin verifies them.
+                    You have already paid for this course. We&apos;re unlocking it and will email you when it&apos;s ready.
                   </p>
                 )}
                 {!enrolled && !isFree && !underReview && (
-                  <p className="text-xs text-ink-muted mt-3 text-center">Pay by scanning our bank QR code with mBoB or any Bhutanese bank app.</p>
+                  <p className="text-xs text-ink-muted mt-3 text-center">
+                    Pay from your bank account or by QR. You&apos;ll accept the <Link href="/rules" target="_blank" className="font-semibold text-gold-dark hover:text-gold">Rules and Regulations</Link> first.
+                  </p>
                 )}
 
                 <button

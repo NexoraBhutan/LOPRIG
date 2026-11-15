@@ -5,13 +5,15 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
-  QrCode, Receipt, UploadSimple, ArrowRight, CheckCircle, Hourglass, Warning, X, ShieldCheck,
+  Bank, QrCode, Receipt, UploadSimple, ArrowRight, CheckCircle, Hourglass, Warning, X, ShieldCheck,
 } from "@phosphor-icons/react";
 import { useAuth } from "@/context/AuthContext";
 import { useEnrollment } from "@/context/EnrollmentContext";
 import { useToast } from "@/context/ToastContext";
 import { useCatalog } from "@/context/CatalogContext";
 import PageLoader from "@/components/PageLoader";
+import BankPayment from "@/components/payment/BankPayment";
+import RulesAgreement from "@/components/RulesAgreement";
 import { api, errorMessage } from "@/lib/api";
 import { fieldErrors } from "@/lib/teach";
 
@@ -26,6 +28,7 @@ interface QrSettings {
 
 interface MyPayment {
   reference: string;
+  provider: string;
   status: "PENDING" | "SUCCEEDED" | "FAILED" | "CANCELLED";
   amount: number;
   journal_number: string;
@@ -43,12 +46,16 @@ export default function Checkout() {
   const params = useParams<{ id: string }>();
   const courseId = params?.id ?? "";
   const router = useRouter();
-  const { getCourse, ready } = useCatalog();
+  const { getCourse, categories, ready } = useCatalog();
   const course = getCourse(courseId);
   const { user } = useAuth();
   const { isEnrolled } = useEnrollment();
   const { push } = useToast();
 
+  // Pay from a bank account (RMA gateway) or by scanning Lop-rig's QR and sending the receipt.
+  const [method, setMethod] = useState<"bank" | "qr">("bank");
+  // Students accept the Rules and Regulations before they can pay and enroll.
+  const [rulesOk, setRulesOk] = useState(false);
   const [qr, setQr] = useState<QrSettings | null>(null);
   const [latest, setLatest] = useState<MyPayment | null | undefined>(undefined);
   const [journal, setJournal] = useState("");
@@ -106,6 +113,7 @@ export default function Checkout() {
   if (enrolled || free) return <PageLoader />;
 
   const amount = course.discountPrice;
+  const categoryTitle = categories.find((c) => c.id === course.category)?.title ?? course.category;
   const underReview = latest?.status === "PENDING";
   const rejected = latest?.status === "FAILED" ? latest : null;
 
@@ -165,20 +173,32 @@ export default function Checkout() {
         >
           <Link href={`/courses/${course.id}`} className="text-xs font-bold text-gold-dark hover:text-gold no-underline">← Back to course</Link>
           <h1 className="font-display text-3xl md:text-5xl tracking-tighter font-semibold text-ink-strong mt-4">Enroll in {course.title}</h1>
-          <p className="text-ink-muted text-lg mt-3">Pay with any Bhutanese bank app by scanning the QR code, then send us the receipt details.</p>
+          <p className="text-ink-muted text-lg mt-3">Pay straight from your bank account, or scan the QR code with any Bhutanese bank app.</p>
         </motion.div>
 
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-8 items-start">
           <div className="flex flex-col gap-6">
             {underReview && latest && (
-              <section className="bg-white border-2 border-gold rounded-2xl p-7 flex gap-4" aria-live="polite">
-                <Hourglass size={28} weight="duotone" className="text-gold-dark flex-shrink-0" />
+              <section className="bg-white border-2 border-emerald-300 rounded-2xl p-7 flex gap-4" aria-live="polite">
+                <CheckCircle size={30} weight="fill" className="text-emerald-600 flex-shrink-0" />
                 <div>
-                  <h2 className="font-semibold text-ink-strong text-lg">Payment under review</h2>
-                  <p className="text-sm text-ink mt-1">
-                    We received journal number <strong className="text-ink-strong">{latest.journal_number}</strong> for{" "}
-                    <strong className="text-ink-strong">Nu. {latest.amount.toLocaleString()}</strong>. An admin will check it against
-                    the bank statement and unlock the course. You&apos;ll get a notification, usually within a day.
+                  <h2 className="font-semibold text-ink-strong text-lg">You have already paid for this course</h2>
+                  {latest.provider === "rma" ? (
+                    <p className="text-sm text-ink mt-1">
+                      We received <strong className="text-ink-strong">Nu. {latest.amount.toLocaleString()}</strong> from your bank account
+                      (transaction ref. <strong className="text-ink-strong">{latest.journal_number}</strong>). Your receipt is in your
+                      email, and we&apos;re unlocking the course for you. You&apos;ll get an email and a notification the moment
+                      it&apos;s ready, usually within a day.
+                    </p>
+                  ) : (
+                    <p className="text-sm text-ink mt-1">
+                      We received journal number <strong className="text-ink-strong">{latest.journal_number}</strong> for{" "}
+                      <strong className="text-ink-strong">Nu. {latest.amount.toLocaleString()}</strong>. An admin will check it against
+                      the bank statement and unlock the course. You&apos;ll get a notification, usually within a day.
+                    </p>
+                  )}
+                  <p className="inline-flex items-center gap-1.5 mt-3 text-xs text-ink-muted">
+                    <Hourglass size={13} /> Waiting for the course to be unlocked. There&apos;s no need to pay again.
                   </p>
                   <Link href="/courses" className="inline-flex items-center gap-1 text-sm font-bold text-gold-dark hover:text-gold no-underline mt-4">
                     Keep browsing courses <ArrowRight size={13} weight="bold" />
@@ -198,7 +218,63 @@ export default function Checkout() {
               </section>
             )}
 
-            {!underReview && !qr?.ready && (
+            {!underReview && (
+              <RulesAgreement checked={rulesOk} onChange={setRulesOk} />
+            )}
+
+            {/* Payment stays locked (not clickable or focusable) until the rules are accepted. */}
+            <div
+              inert={!underReview && !rulesOk}
+              aria-disabled={!underReview && !rulesOk}
+              className={`flex flex-col gap-6 transition-opacity ${!underReview && !rulesOk ? "opacity-40 select-none" : ""}`}
+            >
+            {!underReview && (
+              <div role="tablist" aria-label="How do you want to pay?" className="grid grid-cols-2 gap-2 p-1.5 rounded-2xl bg-white border-2 border-line">
+                {([
+                  { id: "bank", label: "Bank account", hint: "Pay from your account", icon: Bank },
+                  { id: "qr", label: "Scan QR", hint: "mBoB, mPAY & more", icon: QrCode },
+                ] as const).map(({ id, label, hint, icon: Icon }) => (
+                  <button
+                    key={id}
+                    type="button"
+                    role="tab"
+                    aria-selected={method === id}
+                    onClick={() => setMethod(id)}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-xl text-left border-none cursor-pointer transition-colors ${
+                      method === id ? "bg-ink-strong text-white" : "bg-transparent text-ink hover:bg-bg-soft"
+                    }`}
+                  >
+                    <Icon size={22} weight={method === id ? "fill" : "regular"} className={method === id ? "text-gold" : "text-ink-muted"} />
+                    <span className="min-w-0">
+                      <span className="block text-sm font-bold">{label}</span>
+                      <span className={`block text-xs truncate ${method === id ? "text-white/60" : "text-ink-muted"}`}>{hint}</span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {!underReview && method === "bank" && (
+              <BankPayment
+                amount={amount}
+                enrollment={{
+                  courseId: course.id,
+                  courseTitle: course.title,
+                  category: categoryTitle,
+                  level: course.level,
+                  teacher: course.instructor.name,
+                  lessons: course.lessonsCount,
+                  duration: course.duration,
+                  studentName: user.name,
+                  studentEmail: user.email,
+                }}
+                payee={qr?.account_name ? { name: qr.account_name, bank: qr.bank_name, account: qr.account_number } : null}
+                onPaid={(payment) => { setLatest(payment); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                onUseQr={() => { setMethod("qr"); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+              />
+            )}
+
+            {!underReview && method === "qr" && !qr?.ready && (
               <section className="bg-white border-2 border-line rounded-2xl p-8 text-center">
                 <QrCode size={36} weight="duotone" className="text-ink-muted mx-auto" />
                 <h2 className="font-semibold text-ink-strong mt-3">Payments open soon</h2>
@@ -206,7 +282,7 @@ export default function Checkout() {
               </section>
             )}
 
-            {!underReview && qr?.ready && (
+            {!underReview && method === "qr" && qr?.ready && (
               <>
                 {/* Step 1: pay */}
                 <section className="bg-white border-2 border-line rounded-2xl p-7 md:p-8">
@@ -306,6 +382,7 @@ export default function Checkout() {
                 </form>
               </>
             )}
+            </div>
           </div>
 
           {/* Summary */}
@@ -313,15 +390,20 @@ export default function Checkout() {
             <h2 className="text-sm font-bold text-ink-strong uppercase tracking-wider">Order summary</h2>
             <div>
               <h3 className="font-semibold text-ink-strong leading-snug">{course.title}</h3>
-              <p className="text-xs text-ink-muted mt-1">{course.instructor.name}</p>
+              <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 mt-3 text-xs">
+                <dt className="text-ink-muted">Category</dt><dd className="text-ink-strong font-medium">{categoryTitle}</dd>
+                <dt className="text-ink-muted">Level</dt><dd className="text-ink-strong font-medium">{course.level}</dd>
+                <dt className="text-ink-muted">Teacher</dt><dd className="text-ink-strong font-medium">{course.instructor.name}</dd>
+                <dt className="text-ink-muted">Lessons</dt><dd className="text-ink-strong font-medium">{course.lessonsCount} · {course.duration}</dd>
+              </dl>
             </div>
             <div className="flex items-center justify-between pt-4 border-t border-line">
               <span className="text-sm font-bold text-ink-strong">Total</span>
               <span className="text-xl font-bold text-ink-strong">Nu. {amount.toLocaleString()}</span>
             </div>
             <ul className="flex flex-col gap-3 text-sm text-ink">
-              <li className="flex gap-2.5"><Receipt size={17} className="text-gold-dark flex-shrink-0" /> One journal number unlocks one course.</li>
-              <li className="flex gap-2.5"><ShieldCheck size={17} className="text-gold-dark flex-shrink-0" /> Only Lop-rig admins see your screenshot.</li>
+              <li className="flex gap-2.5"><Receipt size={17} className="text-gold-dark flex-shrink-0" /> One payment unlocks one course.</li>
+              <li className="flex gap-2.5"><ShieldCheck size={17} className="text-gold-dark flex-shrink-0" /> Your bank confirms every payment with a code.</li>
               <li className="flex gap-2.5"><CheckCircle size={17} className="text-gold-dark flex-shrink-0" /> Lifetime access once verified.</li>
             </ul>
           </aside>

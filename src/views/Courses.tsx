@@ -10,9 +10,9 @@ import EmptyState from "@/components/EmptyState";
 import { useCatalog } from "@/context/CatalogContext";
 import type { Filters, SortOption } from "@/types";
 
+import { photo } from "@/lib/photos";
 const SORT_LABELS: Record<SortOption, string> = {
   popular: "Most Popular",
-  rating: "Highest Rated",
   newest: "Newest",
   "price-asc": "Price: Low to High",
   "price-desc": "Price: High to Low",
@@ -102,7 +102,7 @@ export default function Courses() {
             transition={{ duration: 0.9, delay: 0.12, ease: [0.16, 1, 0.3, 1] }}
             className="hidden lg:block rounded-3xl overflow-hidden aspect-[4/3] group"
           >
-            <img src="https://picsum.photos/seed/catalog/800/600" alt="Learners browsing course materials together" className="w-full h-full object-cover grayscale-[12%] contrast-110 transition-transform duration-700 ease-out group-hover:scale-105" />
+            <img src={photo("catalog")} alt="Learners browsing course materials together" className="w-full h-full object-cover grayscale-[12%] contrast-110 transition-transform duration-700 ease-out group-hover:scale-105" />
           </motion.div>
         </div>
 

@@ -1,6 +1,5 @@
 "use client";
 
-import { Star } from "@phosphor-icons/react";
 import type { Course, CourseLevel, Filters } from "@/types";
 import { useCatalog } from "@/context/CatalogContext";
 
@@ -11,7 +10,6 @@ const PRICES = [
   { id: "500-1000", label: "Nu. 500 - 1,000" },
   { id: "over1000", label: "Over Nu. 1,000" },
 ] as const;
-const RATINGS = [4.5, 4.0, 3.5] as const;
 
 export default function FilterSidebar({
   filters,
@@ -94,31 +92,6 @@ export default function FilterSidebar({
         ))}
       </div>}
 
-      <div className="flex flex-col gap-3">
-        <h4 className="text-xs font-bold text-ink-strong uppercase tracking-wider">Rating</h4>
-        {RATINGS.map((r) => (
-          <label key={r} className="flex items-center gap-2.5 text-sm text-ink cursor-pointer hover:text-gold-dark transition-colors">
-            <input
-              type="radio"
-              name="rating"
-              checked={filters.minRating === r}
-              onChange={() => setFilters((f) => ({ ...f, minRating: r }))}
-              className="w-4 h-4 accent-gold"
-            />
-            <span className="inline-flex items-center gap-0.5">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <Star key={i} size={12} weight={i <= Math.round(r) ? "fill" : "regular"} className="text-gold" />
-              ))}
-            </span>
-            <span>{r}+ &amp; up</span>
-          </label>
-        ))}
-        <label className="flex items-center gap-2.5 text-sm text-ink cursor-pointer hover:text-gold-dark transition-colors">
-          <input type="radio" name="rating" checked={filters.minRating === 0} onChange={() => setFilters((f) => ({ ...f, minRating: 0 }))} className="w-4 h-4 accent-gold" />
-          <span>Any rating</span>
-        </label>
-      </div>
-
       {resultCount != null && (
         <p className="text-xs text-ink-muted border-t border-line pt-4">{resultCount} course{resultCount !== 1 ? "s" : ""} found</p>
       )}
@@ -138,9 +111,6 @@ export function applyFilters(list: Course[], filters: Filters, sort: string): Co
   });
 
   switch (sort) {
-    case "rating":
-      result = [...result].sort((a, b) => b.rating - a.rating);
-      break;
     case "newest":
       result = [...result].reverse();
       break;

@@ -108,6 +108,8 @@ export interface AdminPayment {
   journal_number: string;
   contact_number: string;
   has_proof: boolean;
+  /** Paid from a bank account (RMA gateway): which bank and account. Null for QR payments. */
+  bank: { name: string; account_last4: string; purpose: string; remarks: string; test: boolean } | null;
   reviewed_by: string;
   reviewed_at: string | null;
   paid_at: string | null;

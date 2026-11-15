@@ -52,8 +52,21 @@ def my_courses(user):
     )
 
 
+def lessons_with_stats():
+    """Lessons with how many students opened them and how many finished them."""
+    from apps.learning.models import LessonProgress
+
+    finished = (
+        LessonProgress.objects.filter(lesson=OuterRef("pk"), completed=True)
+        .order_by().values("lesson").annotate(n=Count("id")).values("n")
+    )
+    return Lesson.objects.prefetch_related("resources").annotate(
+        n_viewers=Count("views", distinct=True), n_completed=Coalesce(Subquery(finished), 0),
+    )
+
+
 def course_with_curriculum(user, slug):
-    lessons = Prefetch("lessons", queryset=Lesson.objects.prefetch_related("resources"))
+    lessons = Prefetch("lessons", queryset=lessons_with_stats())
     modules = Prefetch("modules", queryset=CourseModule.objects.prefetch_related(lessons))
     return get_object_or_404(my_courses(user).prefetch_related(modules), slug=slug)
 

@@ -4,7 +4,6 @@ import Link from "next/link";
 import { Clock, Users, Heart, ChartBar } from "@phosphor-icons/react";
 import type { Course } from "@/types";
 import CourseThumb from "@/components/CourseThumb";
-import Rating from "@/components/Rating";
 import { useEnrollment } from "@/context/EnrollmentContext";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
@@ -52,8 +51,7 @@ export default function CourseCard({ course }: { course: Course }) {
         <span className="text-[0.7rem] font-bold text-gold-dark uppercase tracking-wider">{course.category.replace("-", " ")}</span>
         <h3 className="text-sm font-semibold text-ink-strong mt-1.5 mb-1 leading-snug line-clamp-2">{course.title}</h3>
         <p className="text-xs text-ink-muted mb-3">{course.instructor.name}</p>
-        <Rating value={course.rating} count={course.students} size={13} />
-        <div className="flex items-center gap-4 mt-3 pt-3 border-t border-line text-[0.75rem] text-ink-muted">
+        <div className="flex items-center gap-4 pt-3 border-t border-line text-[0.75rem] text-ink-muted">
           <span className="flex items-center gap-1.5"><Clock size={13} /> {course.duration}</span>
           <span className="flex items-center gap-1.5"><ChartBar size={13} /> {course.level}</span>
           <span className="flex items-center gap-1.5"><Users size={13} /> {course.students.toLocaleString()}</span>

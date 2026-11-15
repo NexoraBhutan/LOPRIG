@@ -6,6 +6,7 @@ import { ArrowRight, Target, Users, BookOpen } from "@phosphor-icons/react";
 import { gsap, useGSAP } from "@/utils/gsap";
 import Mascot from "@/components/Mascot";
 
+import { photo } from "@/lib/photos";
 const VALUES = [
   { icon: Target, title: "Our mission", body: "Make high-quality, practical education reachable from anywhere in Bhutan, regardless of where a student lives." },
   { icon: Users, title: "Who we serve", body: "Students preparing for exams, professionals upskilling for their careers, and anyone curious to learn something new." },
@@ -70,7 +71,7 @@ export default function About() {
           >
             <div className="absolute inset-x-8 top-0 bottom-16 rounded-3xl overflow-hidden group">
               <img
-                src="https://picsum.photos/seed/bhutanvalley/900/1100"
+                src={photo("bhutanvalley")}
                 alt="Valley town in Bhutan at golden hour"
                 className="aw-scale-img w-full h-full object-cover grayscale-[15%] contrast-110 transition-transform duration-700 ease-out group-hover:scale-105"
               />
@@ -93,7 +94,7 @@ export default function About() {
           <div className="lg:sticky lg:top-32 self-start">
             <h2 className="font-display text-3xl md:text-5xl tracking-tighter font-semibold text-ink-strong leading-[1.05] max-w-[480px]">
               What drives
-              <span className="aw-inline-pill mx-3" style={{ backgroundImage: "url(https://picsum.photos/seed/drive/400/200)" }} aria-hidden="true" />
+              <span className="aw-inline-pill mx-3" style={{ backgroundImage: `url(${photo("drive")})` }} aria-hidden="true" />
               us
             </h2>
             <p className="text-ink-muted text-lg mt-5 max-w-[400px] leading-relaxed">Three commitments behind every course we publish.</p>
@@ -135,7 +136,7 @@ export default function About() {
         <div className="max-w-[1280px] mx-auto">
           <div className="py-24 md:py-32 px-8 rounded-3xl bg-ink-strong relative overflow-hidden aw-grain text-center">
             <div className="absolute inset-0">
-              <img src="https://picsum.photos/seed/callback/1600/800" alt="" aria-hidden="true" className="w-full h-full object-cover opacity-25 grayscale contrast-125" />
+              <img src={photo("callback")} alt="" aria-hidden="true" className="w-full h-full object-cover opacity-25 grayscale contrast-125" />
               <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,rgba(255,182,6,0.22)_0%,transparent_60%),linear-gradient(to_bottom,rgba(26,26,26,0.55),rgba(26,26,26,0.85))]" />
             </div>
             <h2 className="font-display text-white font-bold tracking-tighter leading-[1.02] text-[clamp(2.2rem,5vw,4.2rem)] max-w-3xl mx-auto relative z-10">

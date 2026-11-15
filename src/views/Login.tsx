@@ -13,6 +13,7 @@ import { rememberTemporaryPassword } from "@/lib/password";
 import { homeFor } from "@/utils/routes";
 import GoogleSignInButton from "@/components/GoogleSignInButton";
 
+import { photo } from "@/lib/photos";
 /** Site administrators sign in to Django Admin on the API server, not here. */
 const SITE_ADMIN_URL = `${API_URL.replace(/\/api\/v1$/, "")}/admin/`;
 
@@ -58,7 +59,7 @@ export default function Login() {
         {/* Visual side */}
         <div className="relative hidden lg:block bg-ink-strong overflow-hidden aw-grain">
           <img
-            src="https://picsum.photos/seed/loginbg/1200/1600"
+            src={photo("loginbg")}
             alt=""
             aria-hidden="true"
             className="absolute inset-0 w-full h-full object-cover opacity-40 grayscale contrast-125"
