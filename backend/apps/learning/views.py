@@ -1,12 +1,17 @@
+from datetime import timedelta
+
+from django.conf import settings
 from django.db.models import Count, Prefetch
+from django.utils import timezone
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema
-from rest_framework.exceptions import NotAuthenticated, PermissionDenied
+from rest_framework.exceptions import APIException, NotAuthenticated, PermissionDenied, ValidationError
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.certificates.models import Certificate
+from apps.courses import video
 from apps.courses.models import Course, CourseModule, Lesson
 from apps.courses.serializers import CourseListSerializer
 from apps.users.permissions import IsStudent
@@ -131,3 +136,38 @@ class LearningSummaryView(APIView):
     @extend_schema(responses=LearningSummarySerializer)
     def get(self, request):
         return Response(services.learning_summary(request.user))
+
+
+class OfflineUnavailable(APIException):
+    status_code = 503
+    default_detail = "Offline downloads aren't available right now."
+    default_code = "offline_unavailable"
+
+
+class LessonDownloadView(APIView):
+    """A short-lived link to save one lesson's video inside Lop-rig for offline viewing.
+
+    Only students with access to the course. The browser encrypts the file and keeps it for
+    OFFLINE_DOWNLOAD_DAYS; it plays only in Lop-rig's own player.
+    """
+
+    permission_classes = [IsStudent]
+
+    @extend_schema(request=None, responses=dict)
+    def post(self, request, pk):
+        lesson = get_object_or_404(Lesson.objects.select_related("module__course"), pk=pk)
+        services.require_access(request.user, lesson.module.course)
+        if not lesson.video_id or lesson.video_status != Lesson.VideoStatus.READY:
+            raise ValidationError({"detail": "Only uploaded lesson videos can be saved for offline."})
+        try:
+            url, resolution = video.offline_file_url(lesson.video_id)
+        except video.VideoServiceError as exc:
+            raise OfflineUnavailable(str(exc)) from exc
+        return Response({
+            "url": url,
+            "resolution": resolution,
+            "lesson": lesson.pk,
+            "title": lesson.title,
+            "course": lesson.module.course.slug,
+            "keep_until": timezone.now() + timedelta(days=settings.OFFLINE_DOWNLOAD_DAYS),
+        })

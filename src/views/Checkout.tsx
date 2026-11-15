@@ -200,8 +200,42 @@ export default function Checkout() {
                   <p className="inline-flex items-center gap-1.5 mt-3 text-xs text-ink-muted">
                     <Hourglass size={13} /> Waiting for the course to be unlocked. There&apos;s no need to pay again.
                   </p>
-                  <Link href="/courses" className="inline-flex items-center gap-1 text-sm font-bold text-gold-dark hover:text-gold no-underline mt-4">
-                    Keep browsing courses <ArrowRight size={13} weight="bold" />
+                </div>
+              </section>
+            )}
+
+            {/* What happens next, so the student knows where to find the course. */}
+            {underReview && latest && (
+              <section className="bg-white border-2 border-line rounded-2xl p-7" aria-labelledby="next-steps-title">
+                <h2 id="next-steps-title" className="font-semibold text-ink-strong text-lg">What happens next</h2>
+                <ol className="mt-5 flex flex-col gap-0 list-none p-0">
+                  {[
+                    { done: true, title: "Payment received", text: latest.provider === "rma"
+                      ? `We received your payment of Nu. ${latest.amount.toLocaleString()}. Your receipt has been emailed to you.`
+                      : `We received your payment details (journal no. ${latest.journal_number}) for Nu. ${latest.amount.toLocaleString()}.` },
+                    { done: false, title: "Lop-rig verifies your payment", text: "An admin checks it and unlocks the course, usually within a day. You'll get an email and a notification." },
+                    { done: false, title: "Start learning in My Learning", text: "Your course is already listed under My Learning, marked “Payment received”. Once it's verified, open it from there and press Start." },
+                  ].map((step, i, all) => (
+                    <li key={step.title} className="relative flex gap-4 pb-6 last:pb-0">
+                      {i < all.length - 1 && <span aria-hidden="true" className={`absolute left-[15px] top-9 bottom-1 w-0.5 ${step.done ? "bg-emerald-300" : "bg-line"}`} />}
+                      <span className={`relative w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-bold ${
+                        step.done ? "bg-emerald-600 text-white" : i === 1 ? "bg-gold text-ink-strong" : "bg-bg-soft border-2 border-line text-ink-muted"
+                      }`}>
+                        {step.done ? <CheckCircle size={18} weight="fill" /> : i + 1}
+                      </span>
+                      <span className="pt-1">
+                        <span className="block font-semibold text-ink-strong">{step.title}</span>
+                        <span className="block text-sm text-ink-muted mt-0.5">{step.text}</span>
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+                <div className="flex flex-col sm:flex-row gap-3 mt-7">
+                  <Link href="/my-learning" className="btn btn-primary btn-lg no-underline inline-flex items-center justify-center gap-2">
+                    Go to My Learning <ArrowRight size={15} weight="bold" />
+                  </Link>
+                  <Link href="/courses" className="btn btn-lg btn-outline-neutral no-underline inline-flex items-center justify-center">
+                    Keep browsing courses
                   </Link>
                 </div>
               </section>

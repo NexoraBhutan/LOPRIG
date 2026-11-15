@@ -107,7 +107,7 @@ export default function Home() {
 
       {/* ATTENTION — Cinematic Center Hero: two slides that take turns (learning, then a tribute to His Majesty). */}
       <section
-        className="relative min-h-[100dvh] flex items-center justify-center px-6 lg:px-16 pt-28 sm:pt-36 pb-24 sm:pb-28 overflow-hidden bg-ink-strong"
+        className="relative min-h-[100dvh] flex items-center justify-center px-12 sm:px-20 lg:px-24 pt-28 sm:pt-36 pb-24 sm:pb-28 overflow-hidden bg-ink-strong"
         aria-roledescription="carousel"
         aria-label="Welcome"
         onFocus={(e) => e.target.matches(":focus-visible") && setHeroPaused(true)}
@@ -213,17 +213,17 @@ export default function Home() {
 
         {/* Previous / next, at the middle of each side. */}
         {[
-          { dir: -1, label: "Previous slide", Icon: CaretLeft, side: "left-3 sm:left-6 lg:left-10" },
-          { dir: 1, label: "Next slide", Icon: CaretRight, side: "right-3 sm:right-6 lg:right-10" },
+          { dir: -1, label: "Previous slide", Icon: CaretLeft, side: "left-1.5 sm:left-5 lg:left-8" },
+          { dir: 1, label: "Next slide", Icon: CaretRight, side: "right-1.5 sm:right-5 lg:right-8" },
         ].map(({ dir, label, Icon, side }) => (
           <button
             key={label}
             type="button"
             onClick={() => setHeroIdx((i) => (i + dir + HERO_SLIDES.length) % HERO_SLIDES.length)}
             aria-label={label}
-            className={`absolute top-1/2 -translate-y-1/2 ${side} z-20 w-11 h-11 sm:w-14 sm:h-14 rounded-full flex items-center justify-center bg-black/25 hover:bg-gold text-white hover:text-ink-strong border border-white/25 hover:border-gold backdrop-blur-sm cursor-pointer transition-colors`}
+            className={`absolute top-1/2 -translate-y-1/2 ${side} z-20 w-9 h-9 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-full flex items-center justify-center bg-black/25 hover:bg-gold text-white hover:text-ink-strong border border-white/25 hover:border-gold backdrop-blur-sm cursor-pointer transition-colors`}
           >
-            <Icon size={22} weight="bold" />
+            <Icon size={20} weight="bold" />
           </button>
         ))}
       </section>

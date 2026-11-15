@@ -196,6 +196,11 @@ BUNNY_STREAM_LIBRARY_ID = env("BUNNY_STREAM_LIBRARY_ID", default="")
 BUNNY_STREAM_API_KEY = env("BUNNY_STREAM_API_KEY", default="")
 BUNNY_STREAM_TOKEN_KEY = env("BUNNY_STREAM_TOKEN_KEY", default="")
 BUNNY_STREAM_READONLY_API_KEY = env("BUNNY_STREAM_READONLY_API_KEY", default="")
+# The library's CDN hostname (Bunny: Stream > API > CDN Hostname), e.g. vz-xxxx.b-cdn.net. Needed for
+# "Download for offline", which saves an encrypted copy of a lesson inside the student's browser.
+BUNNY_STREAM_CDN_HOSTNAME = env("BUNNY_STREAM_CDN_HOSTNAME", default="")
+# How long an offline copy may be kept before the student must download it again (while still enrolled).
+OFFLINE_DOWNLOAD_DAYS = env.int("OFFLINE_DOWNLOAD_DAYS", default=14)
 VIDEO_PLAYBACK_TTL_SECONDS = env.int("VIDEO_PLAYBACK_TTL_SECONDS", default=4 * 60 * 60)
 VIDEO_MAX_UPLOAD_MB = env.int("VIDEO_MAX_UPLOAD_MB", default=2048)
 PAYMENT_CURRENCY = "BTN"
@@ -225,7 +230,7 @@ UNFOLD = {
         "light": lambda request: static("admin/loprig-logo-color.png"),
         "dark": lambda request: static("admin/loprig-logo-white.png"),
     },
-    "SITE_FAVICONS": [{"rel": "icon", "type": "image/png", "href": lambda request: static("admin/loprig-icon.png")}],
+    "SITE_FAVICONS": [{"rel": "icon", "type": "image/png", "href": lambda request: static("admin/loprig-icon-color.png")}],
     "SHOW_VIEW_ON_SITE": False,
     "SHOW_HISTORY": True,
     "DASHBOARD_CALLBACK": "apps.users.dashboard.dashboard_callback",

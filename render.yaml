@@ -88,6 +88,8 @@ envVarGroups:
         sync: false
       - key: BUNNY_STREAM_READONLY_API_KEY
         sync: false
+      - key: BUNNY_STREAM_CDN_HOSTNAME
+        value: vz-9fda3e93-869.b-cdn.net # Bunny: Stream > API > CDN Hostname (for offline downloads)
       - key: PAYMENTS_ENABLED
         sync: false
       - key: PAYMENT_PROVIDER

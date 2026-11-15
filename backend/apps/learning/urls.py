@@ -2,7 +2,7 @@ from django.urls import path
 
 from .comments import LessonCommentDetailView, LessonCommentsView, LessonViewView
 from .quizzes import QuizAttemptView, QuizDetailView
-from .views import LearnCourseView, LearningSummaryView, LessonDetailView, LessonProgressView
+from .views import LearnCourseView, LearningSummaryView, LessonDetailView, LessonDownloadView, LessonProgressView
 
 urlpatterns = [
     path("lessons/<int:pk>/comments/", LessonCommentsView.as_view(), name="lesson-comments"),
@@ -14,4 +14,5 @@ urlpatterns = [
     path("courses/<slug:slug>/", LearnCourseView.as_view(), name="learn-course"),
     path("lessons/<int:pk>/", LessonDetailView.as_view(), name="learn-lesson"),
     path("lessons/<int:pk>/progress/", LessonProgressView.as_view(), name="lesson-progress"),
+    path("lessons/<int:pk>/download/", LessonDownloadView.as_view(), name="lesson-download"),
 ]

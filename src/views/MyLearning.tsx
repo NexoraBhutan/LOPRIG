@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { PlayCircle, Bookmark, Fire, Diamond, Certificate, Hourglass, WarningCircle, ArrowRight } from "@phosphor-icons/react";
 import { apiAll } from "@/lib/api";
 import { useEnrollment } from "@/context/EnrollmentContext";
+import { useCatalog } from "@/context/CatalogContext";
 import CourseThumb from "@/components/CourseThumb";
 import ProgressBar from "@/components/ProgressBar";
 import ProgressRing from "@/components/ProgressRing";
@@ -30,10 +31,11 @@ const stagger = { visible: { transition: { staggerChildren: 0.06 } } };
 
 export default function MyLearning() {
   const { enrolledCourses, savedCourses, isEnrolled, getProgress, streak, xp } = useEnrollment();
+  const { getCourse } = useCatalog();
   const [tab, setTab] = useState<Tab>("All");
   // course slug -> certificate code, for "View certificate" on finished courses.
   const [certificates, setCertificates] = useState<Record<string, string>>({});
-  // Each course's latest payment, to show QR payments being checked or sent back.
+  // Each course's latest payment: paid courses waiting to be unlocked, or payments sent back.
   const [payments, setPayments] = useState<MyPayment[]>([]);
 
   useEffect(() => {
@@ -58,13 +60,23 @@ export default function MyLearning() {
   }, []);
   const rootRef = useRef<HTMLElement>(null);
 
+  const waiting = useMemo(
+    () => payments
+      .filter((p) => p.status === "PENDING" && !isEnrolled(p.course))
+      .flatMap((p) => {
+        const course = getCourse(p.course);
+        return course ? [{ course, progress: 0, payment: p as MyPayment | null }] : [];
+      }),
+    [payments, isEnrolled, getCourse],
+  );
+
   const items = useMemo(() => {
-    const withProgress = enrolledCourses.map((c) => ({ course: c, progress: getProgress(c.id) }));
-    if (tab === "In Progress") return withProgress.filter((x) => x.progress < 100);
+    const withProgress = enrolledCourses.map((c) => ({ course: c, progress: getProgress(c.id), payment: null as MyPayment | null }));
+    if (tab === "In Progress") return [...waiting, ...withProgress.filter((x) => x.progress < 100)];
     if (tab === "Completed") return withProgress.filter((x) => x.progress === 100);
-    if (tab === "Saved") return savedCourses.map((c) => ({ course: c, progress: getProgress(c.id) }));
-    return withProgress;
-  }, [tab, enrolledCourses, savedCourses, getProgress]);
+    if (tab === "Saved") return savedCourses.map((c) => ({ course: c, progress: getProgress(c.id), payment: null as MyPayment | null }));
+    return [...waiting, ...withProgress];
+  }, [tab, enrolledCourses, savedCourses, getProgress, waiting]);
 
   // Enrollments come most recently studied first, so this is the course they were last on.
   const continueCourse = useMemo(() => {
@@ -72,8 +84,7 @@ export default function MyLearning() {
     return list.find((c) => c.progress < 100) || list[0];
   }, [enrolledCourses, getProgress]);
 
-  const paymentNotices = payments.filter((p) =>
-    !isEnrolled(p.course) && ((p.status === "PENDING" && p.provider === "QR") || p.status === "FAILED"));
+  const paymentNotices = payments.filter((p) => !isEnrolled(p.course) && p.status === "FAILED");
 
   useGSAP(() => {
     const ctx = gsap.context(() => {
@@ -112,20 +123,12 @@ export default function MyLearning() {
           </div>
         </motion.div>
 
-        {/* QR payments waiting for an admin, or sent back */}
+        {/* Payments that were sent back */}
         {paymentNotices.length > 0 && (
           <ul className="flex flex-col gap-3 mb-10 list-none p-0">
             {paymentNotices.map((p) => (
               <li key={p.reference}>
-                {p.status === "PENDING" ? (
-                  <div role="status" className="flex items-start gap-4 p-5 rounded-2xl border-2 border-gold/40 bg-gold-soft">
-                    <Hourglass size={24} weight="fill" className="text-gold-dark flex-shrink-0" />
-                    <p className="text-sm text-ink">
-                      <strong className="text-ink-strong">We&apos;re checking your payment for “{p.course_title}”.</strong>{" "}
-                      An admin is matching it with the bank statement. The course unlocks here as soon as it&apos;s approved, and we&apos;ll email you.
-                    </p>
-                  </div>
-                ) : (
+                {(
                   <Link href={`/checkout/${p.course}`} className="group flex items-start gap-4 p-5 rounded-2xl border-2 border-red/30 bg-red-soft no-underline hover:border-red transition-colors">
                     <WarningCircle size={24} weight="fill" className="text-red-dark flex-shrink-0" />
                     <span className="flex-1 text-sm text-ink">
@@ -192,7 +195,7 @@ export default function MyLearning() {
             variants={stagger}
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
           >
-            {items.map(({ course, progress }) => {
+            {items.map(({ course, progress, payment }) => {
               const enrolled = isEnrolled(course.id);
               return (
                 <motion.div key={course.id} variants={fadeUp} className="ml-card group bg-white border-2 border-line rounded-xl overflow-hidden hover:border-gold hover:shadow-elevated hover:-translate-y-1 transition-all duration-300">
@@ -201,7 +204,12 @@ export default function MyLearning() {
                     {progress === 100 && (
                       <span className="absolute top-3 left-3 bg-emerald-500 text-white text-[0.65rem] font-bold px-3 py-1 rounded-[4px] tracking-wider uppercase">Completed</span>
                     )}
-                    {!enrolled && (
+                    {payment && (
+                      <span className="absolute top-3 left-3 bg-gold text-ink-strong text-[0.65rem] font-bold px-3 py-1 rounded-[4px] tracking-wider uppercase inline-flex items-center gap-1">
+                        <Hourglass size={11} weight="fill" /> Payment received
+                      </span>
+                    )}
+                    {!enrolled && !payment && (
                       <span className="absolute top-3 left-3 bg-white/90 text-ink-strong text-[0.65rem] font-bold px-3 py-1 rounded-[4px] tracking-wider uppercase inline-flex items-center gap-1">
                         <Bookmark size={11} weight="fill" /> Saved
                       </span>
@@ -210,8 +218,19 @@ export default function MyLearning() {
                   <div className="p-5 flex flex-col gap-3">
                     <h3 className="text-sm font-semibold text-ink-strong leading-snug line-clamp-2">{course.title}</h3>
                     <p className="text-xs text-ink-muted">{course.instructor.name}</p>
+                    {payment ? (
+                      <div className="flex flex-col gap-2 mt-1">
+                        <p className="text-xs text-ink">
+                          You&apos;ve paid for this course. We&apos;re unlocking it now and will email you the moment it&apos;s ready.
+                        </p>
+                        <span className="btn btn-sm btn-outline-neutral self-start opacity-70 cursor-default inline-flex items-center gap-1.5" aria-disabled="true">
+                          <Hourglass size={14} /> Unlocking soon
+                        </span>
+                      </div>
+                    ) : (
                     <ProgressBar value={progress} />
-                    {enrolled ? (
+                    )}
+                    {payment ? null : enrolled ? (
                       <div className="flex flex-wrap gap-2 mt-1">
                         {certificates[course.id] ? (
                           <>

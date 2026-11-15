@@ -16,6 +16,9 @@ import { CoverArt } from "@/components/CourseThumb";
 import { ApiError, api, errorMessage } from "@/lib/api";
 import type { ApiCourse, ApiModule } from "@/lib/mappers";
 import VideoFrame from "@/components/VideoFrame";
+import VideoShield from "@/components/VideoShield";
+import OfflineButton from "@/components/OfflineButton";
+import { openLesson, savedLessons, type SavedLesson } from "@/lib/offline";
 import type { Playback } from "@/lib/video";
 
 /** Lessons without a known length come back as "0:00"; don't show that. */
@@ -95,6 +98,9 @@ export default function CoursePlayer() {
   const [notesOpen, setNotesOpen] = useState(false);
   // A chapter quiz shown in place of the video; null = a lesson is showing.
   const [activeQuizId, setActiveQuizId] = useState<number | null>(null);
+  // Lessons saved for offline (encrypted, inside Lop-rig only), and the active one's in-memory link.
+  const [offline, setOffline] = useState<Map<number, SavedLesson>>(new Map());
+  const [offlinePlay, setOfflinePlay] = useState<{ lessonId: number; url: string } | null>(null);
   const openedLesson = useRef<number | undefined>(undefined);
   const viewed = useRef<Set<number>>(new Set());
 
@@ -164,6 +170,37 @@ export default function CoursePlayer() {
     [data]
   );
 
+  useEffect(() => {
+    if (!userId || !id) return;
+    savedLessons(userId, id).then(setOffline).catch(() => undefined);
+  }, [userId, id]);
+
+  const activeSaved = activeLessonId !== undefined && offline.has(activeLessonId);
+  useEffect(() => {
+    if (!userId || activeLessonId === undefined || !activeSaved) return;
+    let url: string | null = null;
+    let alive = true;
+    openLesson(userId, activeLessonId)
+      .then((u) => {
+        url = u;
+        if (alive && u) setOfflinePlay({ lessonId: activeLessonId, url: u });
+        else if (u) URL.revokeObjectURL(u);
+      })
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+      if (url) URL.revokeObjectURL(url);
+    };
+  }, [userId, activeLessonId, activeSaved]);
+
+  const updateOffline = useCallback((lessonId: number, saved: SavedLesson | null) =>
+    setOffline((current) => {
+      const next = new Map(current);
+      if (saved) next.set(lessonId, saved);
+      else next.delete(lessonId);
+      return next;
+    }), []);
+
   const selectLesson = useCallback((lessonId: number) => {
     setActiveLessonId(lessonId);
     setActiveQuizId(null);
@@ -210,6 +247,9 @@ export default function CoursePlayer() {
   const progress = data.progress.percent;
   const activeIndex = allLessons.findIndex((l) => l.id === activeLessonId);
   const activeLesson = allLessons[activeIndex];
+  // Play the saved copy only when it belongs to the lesson on screen.
+  const offlineUrl = offlinePlay && offlinePlay.lessonId === activeLesson?.id && offline.has(offlinePlay.lessonId)
+    ? offlinePlay.url : null;
   const isCompleted = Boolean(activeLesson?.completed);
   const loginHref = `/login?from=${encodeURIComponent(`/learn/${id}`)}`;
 
@@ -352,17 +392,20 @@ export default function CoursePlayer() {
           <>
           <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-ink-strong shadow-soft">
             {activeLesson?.video.url ? (
-              <VideoFrame
-                key={activeLesson.id}
-                playback={activeLesson.video}
-                title={activeLesson.title}
-                className="absolute inset-0 w-full h-full object-contain"
-                videoProps={{
-                  onLoadedMetadata: (e) => {
-                    if (activeLesson.position_seconds) e.currentTarget.currentTime = activeLesson.position_seconds;
-                  },
-                }}
-              />
+              <VideoShield viewer={{ name: user?.name ?? "", email: user?.email ?? "" }}>
+                <VideoFrame
+                  key={`${activeLesson.id}-${offlineUrl ? "offline" : "online"}`}
+                  playback={offlineUrl ? { source: "FILE", url: offlineUrl } : activeLesson.video}
+                  title={activeLesson.title}
+                  className="absolute inset-0 w-full h-full object-contain"
+                  allowFullscreen={false}
+                  videoProps={{
+                    onLoadedMetadata: (e) => {
+                      if (activeLesson.position_seconds) e.currentTarget.currentTime = activeLesson.position_seconds;
+                    },
+                  }}
+                />
+              </VideoShield>
             ) : (
               activeLesson && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6 aw-dark-wash">
@@ -419,6 +462,17 @@ export default function CoursePlayer() {
                     <CheckCircle size={15} weight={isCompleted ? "fill" : "bold"} />
                     {isCompleted ? "Completed" : saving ? "Saving…" : "Mark as complete"}
                   </button>
+                  {userId && activeLesson.video.source === "BUNNY" && (
+                    <OfflineButton
+                      key={activeLesson.id}
+                      userId={userId}
+                      lessonId={activeLesson.id}
+                      courseId={id}
+                      title={activeLesson.title}
+                      saved={offline.get(activeLesson.id)}
+                      onChange={updateOffline}
+                    />
+                  )}
                 </div>
               </div>
 
@@ -550,7 +604,10 @@ export default function CoursePlayer() {
                           </CoverArt>
                           <span className="flex-1 min-w-0 py-0.5">
                             <span className={`block text-sm leading-snug line-clamp-2 ${active ? "font-bold text-ink-strong" : "font-semibold text-ink"}`}>{l.title}</span>
-                            <span className="block text-xs text-ink-muted mt-1">{viewsLabel(l.views ?? 0)}</span>
+                            <span className="block text-xs text-ink-muted mt-1">
+                              {viewsLabel(l.views ?? 0)}
+                              {offline.has(l.id) && <span className="ml-1.5 font-bold text-emerald-700">· Downloaded</span>}
+                            </span>
                             {l.completed && <span className="block text-xs font-bold text-emerald-600 mt-0.5">Completed</span>}
                           </span>
                         </button>

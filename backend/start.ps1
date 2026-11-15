@@ -19,6 +19,7 @@ if ($OpenAdmin) { Start-Process "http://localhost:8000/admin/" }
 if ($running) {
     Write-Host "API is already running on http://localhost:8000" -ForegroundColor Green
 } else {
-    Write-Host "Starting API on http://localhost:8000 (Ctrl+C to stop)" -ForegroundColor Green
-    & .\.venv\Scripts\python.exe manage.py runserver 8000
+    Write-Host "Starting API on http://localhost:8000, also reachable from laptops on the same Wi-Fi (Ctrl+C to stop)" -ForegroundColor Green
+    # 0.0.0.0: group members' laptops on the same Wi-Fi can reach it too (they also need ALLOWED_HOSTS in .env).
+    & .\.venv\Scripts\python.exe manage.py runserver 0.0.0.0:8000
 }

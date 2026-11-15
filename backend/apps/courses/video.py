@@ -7,6 +7,7 @@ signed embed link, created only after the normal enrollment check.
 Docs: https://bunny.net/docs/reference/tus-resumable-uploads
       https://bunny.net/docs/stream-embed-token-authentication
 """
+import base64
 import hashlib
 import hmac
 import json
@@ -97,6 +98,37 @@ def delete_video(video_id: str) -> None:
         _request("DELETE", f"/{video_id}")
     except VideoServiceError:
         logger.warning("Could not delete Bunny video %s; remove it from the library by hand.", video_id)
+
+
+# Offline copies: the smallest file that's still clear to watch on a laptop or phone.
+OFFLINE_RESOLUTIONS = ("480p", "360p", "720p", "240p")
+OFFLINE_LINK_TTL_SECONDS = 60 * 60
+
+
+def offline_file_url(video_id: str) -> tuple[str, str]:
+    """(signed MP4 link, resolution) for saving a lesson inside Lop-rig for offline viewing.
+
+    Uses Bunny's MP4 fallback files. The link is signed with the library's token key (Bunny CDN token
+    authentication) and expires after an hour; the student's browser stores it encrypted.
+    """
+    host = settings.BUNNY_STREAM_CDN_HOSTNAME
+    if not (host and is_configured()):
+        raise VideoServiceError("Offline downloads aren't set up yet.")
+    data = _request("GET", f"/{video_id}")
+    if not data.get("hasMP4Fallback"):
+        raise VideoServiceError("This video can't be downloaded yet.")
+    available = {r.strip() for r in str(data.get("availableResolutions") or "").split(",") if r.strip()}
+    resolution = next((r for r in OFFLINE_RESOLUTIONS if r in available), None)
+    if resolution is None:
+        raise VideoServiceError("This video can't be downloaded yet.")
+    path = f"/{video_id}/play_{resolution}.mp4"
+    url = f"https://{host}{path}"
+    if settings.BUNNY_STREAM_TOKEN_KEY:
+        expires = int(time.time()) + OFFLINE_LINK_TTL_SECONDS
+        digest = hashlib.sha256(f"{settings.BUNNY_STREAM_TOKEN_KEY}{path}{expires}".encode()).digest()
+        token = base64.urlsafe_b64encode(digest).decode().rstrip("=")
+        url = f"{url}?token={token}&expires={expires}"
+    return url, resolution
 
 
 def embed_url(video_id: str) -> str:

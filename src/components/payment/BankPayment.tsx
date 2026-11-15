@@ -63,8 +63,8 @@ export default function BankPayment({ amount, enrollment, payee, onPaid, onUseQr
   const { courseId, courseTitle, studentName } = enrollment;
   const [stage, setStage] = useState<Stage>("bank");
   const [bank, setBank] = useState<Bank | null>(null);
-  // The bank list can be folded away with the arrow next to "Select bank".
-  const [listOpen, setListOpen] = useState(true);
+  // The bank list starts folded; the arrow next to "Select bank" opens it.
+  const [listOpen, setListOpen] = useState(false);
   const [account, setAccount] = useState("");
   const [purpose, setPurpose] = useState<string>(PAYMENT_PURPOSES[0]);
   const [remarks, setRemarks] = useState("");
@@ -279,7 +279,7 @@ export default function BankPayment({ amount, enrollment, payee, onPaid, onUseQr
                 <div className="flex items-center gap-3 p-3 rounded-xl bg-bg-soft">
                   <BankLogo bank={bank} />
                   <span className="flex-1 font-semibold text-ink-strong">{bank.name}</span>
-                  <button type="button" onClick={() => go("bank")} className="text-xs font-bold text-gold-dark hover:text-gold bg-transparent border-none cursor-pointer">
+                  <button type="button" onClick={() => { setListOpen(true); go("bank"); }} className="text-xs font-bold text-gold-dark hover:text-gold bg-transparent border-none cursor-pointer">
                     Change
                   </button>
                 </div>
