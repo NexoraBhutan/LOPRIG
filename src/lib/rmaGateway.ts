@@ -3,7 +3,8 @@
  *
  * The flow the RMA gateway uses:
  *   1. accountInquiry  - the student's bank confirms the account exists and returns the holder's name
- *   2. requestDebit    - the bank sends a one-time code (OTP) to the phone registered with the account
+ *   2. requestDebit    - the student approves with their bank T-PIN; the bank then sends a one-time
+ *                        code (OTP) to the phone registered with the account
  *   3. confirmDebit    - the student enters the OTP and the bank moves the money
  *
  * The backend part is not built yet, so these run in PREVIEW: nothing reaches a bank, no money moves
@@ -55,8 +56,14 @@ export async function accountInquiry(bankId: string, accountNumber: string, prev
   return { holderName: previewName.toUpperCase() };
 }
 
-export async function requestDebit(_request: DebitRequest): Promise<DebitStarted> {
+/**
+ * `tpin` is the student's bank transaction PIN. It goes only to the bank: Lop-rig never stores it or
+ * sends it to its own server. A resent code (`tpin` omitted) reuses the approval already given.
+ * Preview: the T-PIN 0000 is "wrong".
+ */
+export async function requestDebit(_request: DebitRequest, tpin?: string): Promise<DebitStarted> {
   await wait(1000);
+  if (tpin === "0000") throw new GatewayError("That T-PIN isn't right. Check it and try again.");
   return { transactionId: `RMA-PREVIEW-${Date.now().toString(36).toUpperCase()}`, otpSentTo: "•••• 3456" };
 }
 

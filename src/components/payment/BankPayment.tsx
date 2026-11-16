@@ -20,6 +20,7 @@ const STEPS: { id: Stage; label: string }[] = [
   { id: "otp", label: "Verify" },
 ];
 const REMARKS_MAX = 60;
+const TPIN = /^\d{4,6}$/;
 const RESEND_SECONDS = 30;
 
 const inputClass =
@@ -73,6 +74,9 @@ export default function BankPayment({ amount, enrollment, payee, onPaid, onUseQr
   const [holder, setHolder] = useState("");
   const [inquiryError, setInquiryError] = useState("");
   const [agreed, setAgreed] = useState(false);
+  // The student's bank T-PIN: kept only in this form, sent only to the bank, cleared right after.
+  const [tpin, setTpin] = useState("");
+  const [tpinError, setTpinError] = useState("");
   const [debit, setDebit] = useState<DebitStarted | null>(null);
   const [otp, setOtp] = useState("");
   const [otpError, setOtpError] = useState("");
@@ -127,20 +131,27 @@ export default function BankPayment({ amount, enrollment, payee, onPaid, onUseQr
     bank ? { bankId: bank.id, accountNumber: account, amount, purpose, remarks: remarks.trim(), course: courseId } : null;
 
   // Confirm -> the bank sends an OTP to the account holder's phone.
-  const startDebit = async () => {
+  const startDebit = async (resend = false) => {
     const request = debitRequest();
     if (!request) return;
+    if (!resend && !TPIN.test(tpin)) {
+      setTpinError(`Enter your ${bank?.name} T-PIN (4 to 6 digits).`);
+      return;
+    }
     setBusy(true);
+    setTpinError("");
     try {
-      const started = await requestDebit(request);
+      const started = await requestDebit(request, resend ? undefined : tpin);
       setDebit(started);
       setOtp("");
       setOtpError("");
       setResendIn(RESEND_SECONDS);
       go("otp");
-    } catch {
-      setInquiryError("The bank couldn't start the payment. Please try again.");
+    } catch (err) {
+      if (err instanceof GatewayError && !resend) setTpinError(err.message);
+      else setInquiryError("The bank couldn't start the payment. Please try again.");
     } finally {
+      setTpin(""); // never kept after it's been used
       setBusy(false);
     }
   };
@@ -179,7 +190,7 @@ export default function BankPayment({ amount, enrollment, payee, onPaid, onUseQr
   const resend = async () => {
     setOtp("");
     setOtpError("");
-    await startDebit();
+    await startDebit(true);
   };
 
   const stepIndex = STEPS.findIndex((s) => s.id === stage);
@@ -402,14 +413,36 @@ export default function BankPayment({ amount, enrollment, payee, onPaid, onUseQr
                   </label>
                 )}
 
+                {holder && (
+                  <div className="flex flex-col gap-2">
+                    <label htmlFor="rma-tpin" className={labelClass}>{bank.name} T-PIN</label>
+                    <input
+                      id="rma-tpin"
+                      type="password"
+                      inputMode="numeric"
+                      autoComplete="off"
+                      maxLength={6}
+                      value={tpin}
+                      onChange={(e) => { setTpin(e.target.value.replace(/\D/g, "").slice(0, 6)); setTpinError(""); }}
+                      placeholder="••••"
+                      className={`${inputClass} max-w-[220px] text-center text-lg tracking-[0.5em]`}
+                      aria-invalid={!!tpinError}
+                      aria-describedby="rma-tpin-hint"
+                    />
+                    <p id="rma-tpin-hint" role={tpinError ? "alert" : undefined} className={`text-xs ${tpinError ? "text-red-dark" : "text-ink-muted"}`}>
+                      {tpinError || "Your bank's transaction PIN. It goes only to your bank; Lop-rig never sees or keeps it."}
+                    </p>
+                  </div>
+                )}
+
                 <div className="flex flex-col-reverse sm:flex-row gap-3">
                   <button type="button" onClick={() => go("details")} className="btn btn-lg btn-outline-neutral inline-flex items-center justify-center gap-2">
                     <ArrowLeft size={15} weight="bold" /> Back
                   </button>
                   <button
                     type="button"
-                    onClick={startDebit}
-                    disabled={!holder || !agreed || busy}
+                    onClick={() => startDebit()}
+                    disabled={!holder || !agreed || busy || !TPIN.test(tpin)}
                     className="btn btn-primary btn-lg flex-1 inline-flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {busy && holder ? "Sending code…" : <>Confirm and get code <ArrowRight size={15} weight="bold" /></>}
@@ -508,7 +541,7 @@ export default function BankPayment({ amount, enrollment, payee, onPaid, onUseQr
             <Info size={15} className="flex-shrink-0 mt-px" />
             <span>
               Test mode: the bank gateway isn&apos;t connected yet, so no bank is contacted and no money moves. The payment is
-              still recorded and you get a test receipt by email. An account number ending in 0000 shows &ldquo;not found&rdquo;;
+              still recorded and you get a test receipt by email. An account number ending in 0000 shows &ldquo;not found&rdquo;; the T-PIN 0000 is &ldquo;wrong&rdquo;;
               the code 000000 is &ldquo;wrong&rdquo;.
             </span>
           </p>
