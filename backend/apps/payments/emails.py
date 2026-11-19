@@ -11,6 +11,7 @@ import logging
 import mimetypes
 from html import escape
 
+from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
@@ -222,6 +223,8 @@ def _receipt_pdf(payment: Payment) -> tuple[str, bytes, str]:
         amount=_money(payment.amount),
         status="Paid. The course will be unlocked by Lop-rig shortly.",
         test_mode=bool((payment.raw_event or {}).get("test")),
+        contact=[("web", settings.COMPANY_WEBSITE), ("email", settings.COMPANY_EMAIL), ("phone", settings.COMPANY_PHONE)],
+        emblem=settings.LETTERHEAD_NATIONAL_EMBLEM,
     )
     return f"Lop-rig-receipt-{payment.journal_number}.pdf", pdf, "application/pdf"
 

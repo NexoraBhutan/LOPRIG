@@ -5,7 +5,9 @@ the same in Gmail, Outlook and phone mail apps). Write warmly: greet by first na
 happened and what to do next, and sign off from the team.
 """
 import logging
+from functools import cache
 from html import escape
+from pathlib import Path
 
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
@@ -15,6 +17,12 @@ logger = logging.getLogger(__name__)
 GOLD = "#ffb606"
 INK = "#1a1a1a"
 MUTED = "#6b6b6b"
+# The header is one picture (1120x176, shown at 560 wide): white bar, navy wordmark, the emblem
+# when LETTERHEAD_NATIONAL_EMBLEM is on, and the yellow / orange / blue rule. Mail apps in dark
+# mode recolour backgrounds but never pictures, so it reads the same everywhere. It travels inside
+# each email (an inline "cid:" image), so it shows even when the site itself isn't public yet.
+ASSETS = Path(__file__).resolve().parent / "assets"
+HEADER_CID = "loprig-header"
 SIGN_OFF_TEXT = "Warm regards,\nThe Lop-rig team"
 SIGN_OFF_HTML = "<p style='margin:24px 0 0'>Warm regards,<br><strong>The Lop-rig team</strong></p>"
 
@@ -44,12 +52,15 @@ def layout(preheader: str, body_html: str, button: tuple[str, str] | None = None
         )
     note = f"{escape(footer_note)}<br><br>" if footer_note else ""
     return f"""<!doctype html>
-<html><body style="margin:0;padding:0;background:#f6f5f2;font-family:Segoe UI,Helvetica,Arial,sans-serif;color:{INK}">
+<html><head><meta name="color-scheme" content="light only"><meta name="supported-color-schemes" content="light only"></head>
+<body style="margin:0;padding:0;background:#f6f5f2;color-scheme:light only;font-family:Segoe UI,Helvetica,Arial,sans-serif;color:{INK}">
 <span style="display:none;max-height:0;overflow:hidden">{escape(preheader)}</span>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f6f5f2;padding:32px 12px">
 <tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:18px;overflow:hidden">
-<tr><td style="background:{INK};padding:22px 32px;font-size:20px;font-weight:700;color:#ffffff">Lop<span style="color:{GOLD}">-rig</span></td></tr>
+<tr><td style="padding:0;line-height:0;font-size:0;background:#ffffff">\
+<img src="cid:{HEADER_CID}" width="560" alt="Lop-rig" style="display:block;width:100%;max-width:560px;height:auto;border:0;outline:none;\
+font-size:22px;line-height:28px;font-weight:700;color:#1b3a52"></td></tr>
 <tr><td style="padding:32px;font-size:15px;line-height:1.65">{body_html}{cta}</td></tr>
 <tr><td style="padding:18px 32px 28px;font-size:12px;line-height:1.6;color:{MUTED};border-top:1px solid #eee">
 {note}Lop-rig · Learn. Grow. Build your future, made in Bhutan.</td></tr>
@@ -84,13 +95,37 @@ def notice(html: str, tone: str = "info") -> str:
     return f"<p style='margin:20px 0 14px;background:{bg};border-radius:12px;padding:14px 18px;font-size:14px'>{html}</p>"
 
 
+@cache
+def _header_image(emblem: bool) -> bytes | None:
+    path = ASSETS / ("email-header-emblem.png" if emblem else "email-header.png")
+    try:
+        return path.read_bytes()
+    except OSError:
+        logger.warning("Email header %s is missing; emails go out without it.", path)
+        return None
+
+
+class BrandedEmail(EmailMultiAlternatives):
+    """Puts the header picture next to the HTML body (multipart/related), where cid: images are found."""
+
+    def message(self, **kwargs):
+        msg = super().message(**kwargs)
+        header = _header_image(settings.LETTERHEAD_NATIONAL_EMBLEM)
+        if header:
+            for part in msg.walk():
+                if part.get_content_type() == "text/html":
+                    part.add_related(header, "image", "png", cid=f"<{HEADER_CID}>", disposition="inline")
+                    break
+        return msg
+
+
 def send(subject: str, to: list[str], text: str, html: str, reply_to: list[str] | None = None,
          attachments: list[tuple[str, bytes, str]] | None = None, fail_silently: bool = True) -> bool:
     """Send a text + HTML email. By default a mail-server problem is logged, not raised."""
     if not to:
         logger.warning("Email %r has no recipients; skipped.", subject)
         return False
-    message = EmailMultiAlternatives(subject, text, None, to, reply_to=reply_to or None)
+    message = BrandedEmail(subject, text, None, to, reply_to=reply_to or None)
     message.attach_alternative(html, "text/html")
     for name, content, mimetype in attachments or []:
         message.attach(name, content, mimetype)

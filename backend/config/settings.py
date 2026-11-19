@@ -173,6 +173,13 @@ EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
 EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
 EMAIL_TIMEOUT = 15
 FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:3000")
+# Printed at the foot of PDF receipts (website, email, phone); an empty one is left out.
+COMPANY_WEBSITE = env("COMPANY_WEBSITE", default="")
+COMPANY_EMAIL = env("COMPANY_EMAIL", default=EMAIL_HOST_USER)
+COMPANY_PHONE = env("COMPANY_PHONE", default="")
+# The national emblem top right on PDF receipts and in the email header. Turn off unless its
+# use has been approved.
+LETTERHEAD_NATIONAL_EMBLEM = env.bool("LETTERHEAD_NATIONAL_EMBLEM", default=True)
 
 # "Continue with Google" (also brings in the user's Google profile picture). Empty = button hidden.
 # Create a Web OAuth client ID in Google Cloud Console; only the client ID is needed, no secret.

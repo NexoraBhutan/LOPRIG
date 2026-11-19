@@ -125,7 +125,7 @@ function Sheet({ c, className = "" }: { c: CertificateData; className?: string }
       {/* Body */}
       <div className="absolute inset-0 flex flex-col items-center text-center" style={{ padding: `${cq(4.6)} ${cq(10)} 0`, color: INK }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/loprig-logo-color.png" alt="Lop-rig" style={{ height: cq(3.4), width: "auto" }} />
+        <img src="/brand/loprig-logo-color.png" alt="Lop-rig" style={{ height: cq(3.4), width: "auto" }} />
 
         <div className="flex items-center" style={{ marginTop: cq(1.8), gap: cq(1.4) }}>
           <span style={{ width: cq(6), height: cq(0.12), background: GOLD }} />

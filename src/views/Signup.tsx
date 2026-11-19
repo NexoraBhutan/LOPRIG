@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { User, Envelope, Lock, Eye, EyeSlash, ArrowRight } from "@phosphor-icons/react";
-import Logo from "@/components/Logo";
 import GoogleSignInButton from "@/components/GoogleSignInButton";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
@@ -78,10 +77,6 @@ export default function Signup() {
           className="flex items-center justify-center px-8 py-32 bg-bg-soft"
         >
           <div className="w-full max-w-[460px]">
-            <div className="mb-8">
-              <Link href="/" className="inline-block"><Logo /></Link>
-            </div>
-
             <h1 className="font-display text-3xl md:text-4xl tracking-tight font-semibold text-ink-strong mb-2">Create your account</h1>
             <p className="text-sm text-ink-muted mb-8">Free forever. Start learning in minutes.</p>
 

@@ -63,11 +63,14 @@ export default function GoogleSignInButton({
   from,
   onError,
   text = "continue_with",
+  placement = "above",
 }: {
   /** Where to go after signing in (e.g. the page that sent them to log in). */
   from?: string | null;
   onError: (message: string, code?: string) => void;
   text?: "continue_with" | "signup_with" | "signin_with";
+  /** Whether the button sits above the email form or below it; the "or" divider goes between. */
+  placement?: "above" | "below";
 }) {
   const config = useSiteConfig();
   const clientId = config?.google_client_id;
@@ -124,8 +127,18 @@ export default function GoogleSignInButton({
 
   if (!clientId || failed) return null;
 
+  const below = placement === "below";
+  const divider = (
+    <div className="flex items-center gap-3 text-xs text-ink-muted" aria-hidden="true">
+      <span className="flex-1 h-px bg-line" />
+      {below ? "or" : "or use your email"}
+      <span className="flex-1 h-px bg-line" />
+    </div>
+  );
+
   return (
-    <div className="flex flex-col gap-5 mb-5">
+    <div className={`flex flex-col gap-5 ${below ? "mt-5" : "mb-5"}`}>
+      {below && divider}
       {localhostUrl ? (
         <div role="note" className="flex items-start gap-3 rounded-2xl border-2 border-line bg-white px-4 py-3 text-sm text-ink">
           <GoogleMark />
@@ -133,17 +146,13 @@ export default function GoogleSignInButton({
             <strong className="block text-ink-strong">Google sign-in isn&apos;t available at this address</strong>
             On this computer, open{" "}
             <a href={localhostUrl} className="font-bold text-gold-dark hover:text-gold">{new URL(localhostUrl).host}</a>{" "}
-            instead. On other devices, use your email below.
+            instead. On other devices, use your email {below ? "above" : "below"}.
           </p>
         </div>
       ) : (
         <div ref={slot} className="flex justify-center min-h-[44px]" />
       )}
-      <div className="flex items-center gap-3 text-xs text-ink-muted" aria-hidden="true">
-        <span className="flex-1 h-px bg-line" />
-        or use your email
-        <span className="flex-1 h-px bg-line" />
-      </div>
+      {!below && divider}
     </div>
   );
 }

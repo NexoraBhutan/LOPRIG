@@ -6,10 +6,10 @@ import { ArrowSquareOut, CaretRight } from "@phosphor-icons/react";
 import PageLoader from "@/components/PageLoader";
 import EmptyState from "@/components/EmptyState";
 import { PageHeader } from "@/components/admin/ui";
-import { API_URL, api, errorMessage } from "@/lib/api";
+import { DJANGO_URL, api, errorMessage } from "@/lib/api";
 import { tableIcon, type DataTables } from "@/lib/adminData";
 
-const DJANGO_ADMIN_URL = `${new URL(API_URL).origin}/admin/`;
+const DJANGO_ADMIN_URL = `${DJANGO_URL}/admin/`;
 
 /** Every table on the platform, grouped like the Django admin's sidebar. */
 export default function AdminData() {

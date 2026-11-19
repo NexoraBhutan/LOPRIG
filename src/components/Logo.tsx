@@ -1,13 +1,13 @@
 import Image from "next/image";
 import type { LogoSize, LogoTone } from "@/types";
 
-// Both PNGs have transparent backgrounds. The navy-and-teal one (975x284) is for light
-// surfaces like the navbar; the all-white one (975x267) is for dark surfaces like the footer.
+// Both PNGs (699x200) have transparent backgrounds. The colour one (yellow, orange and blue
+// mark, navy wordmark) is for light surfaces; the all-white one is for dark surfaces like the footer.
+const COLOR = { src: "/brand/loprig-logo-color.png", ratio: 699 / 200 };
 const SRC: Record<LogoTone, { src: string; ratio: number }> = {
-  dark: { src: "/loprig-logo-color.png", ratio: 975 / 284 },
-  light: { src: "/loprig-logo-white.png", ratio: 975 / 267 },
-  // Yellow, orange and blue mark with the navy wordmark: only the student site's navbar uses it.
-  gold: { src: "/loprig-logo-navbar.png", ratio: 908 / 264 },
+  dark: COLOR,
+  light: { src: "/brand/loprig-logo-white.png", ratio: 699 / 200 },
+  gold: COLOR,
 };
 
 export default function Logo({ size = "md", tone = "dark" }: { size?: LogoSize; tone?: LogoTone }) {

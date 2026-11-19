@@ -5,9 +5,8 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { Envelope, Lock, Eye, EyeSlash, ArrowRight } from "@phosphor-icons/react";
-import Logo from "@/components/Logo";
 import { useAuth } from "@/context/AuthContext";
-import { API_URL } from "@/lib/api";
+import { DJANGO_URL } from "@/lib/api";
 import { useToast } from "@/context/ToastContext";
 import { rememberTemporaryPassword } from "@/lib/password";
 import { homeFor } from "@/utils/routes";
@@ -15,7 +14,7 @@ import GoogleSignInButton from "@/components/GoogleSignInButton";
 
 import { photo } from "@/lib/photos";
 /** Site administrators sign in to Django Admin on the API server, not here. */
-const SITE_ADMIN_URL = `${API_URL.replace(/\/api\/v1$/, "")}/admin/`;
+const SITE_ADMIN_URL = `${DJANGO_URL}/admin/`;
 
 export default function Login() {
   const { login } = useAuth();
@@ -83,20 +82,8 @@ export default function Login() {
           className="flex items-center justify-center px-8 py-32 bg-bg-soft"
         >
           <div className="w-full max-w-[460px]">
-            <div className="mb-8">
-              <Link href="/" className="inline-block"><Logo /></Link>
-            </div>
-
             <h1 className="font-display text-3xl md:text-4xl tracking-tight font-semibold text-ink-strong mb-2">Welcome back</h1>
             <p className="text-sm text-ink-muted mb-8">Enter your credentials to continue your learning.</p>
-
-            <GoogleSignInButton
-              from={from}
-              onError={(message, code) => {
-                setSiteAdmin(code === "site_admin_account");
-                setError(message);
-              }}
-            />
 
             <form onSubmit={onSubmit} className="flex flex-col gap-5">
               <div className="flex flex-col gap-2">
@@ -146,6 +133,15 @@ export default function Login() {
                 Log In <ArrowRight size={14} weight="bold" />
               </button>
             </form>
+
+            <GoogleSignInButton
+              from={from}
+              placement="below"
+              onError={(message, code) => {
+                setSiteAdmin(code === "site_admin_account");
+                setError(message);
+              }}
+            />
 
             <div className="flex items-center justify-between mt-6 text-xs text-ink-muted">
               <Link href="/forgot-password" className="font-bold text-gold-dark hover:text-gold no-underline">Forgot password?</Link>

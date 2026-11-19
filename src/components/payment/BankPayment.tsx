@@ -197,6 +197,19 @@ export default function BankPayment({ amount, enrollment, payee, onPaid, onUseQr
 
   return (
     <section className="bg-white border-2 border-line rounded-2xl overflow-hidden" aria-label="Pay from your bank account">
+      {/* Gateway */}
+      <div className="flex items-center gap-3 px-5 sm:px-8 py-3.5 border-b border-line">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/banks/rma.png" alt="Royal Monetary Authority of Bhutan" className="w-11 h-11 object-contain flex-shrink-0" />
+        <span className="flex-1 min-w-0">
+          <span className="block font-semibold text-ink-strong text-sm">RMA Payment Gateway</span>
+          <span className="block text-xs text-ink-muted truncate">Royal Monetary Authority of Bhutan</span>
+        </span>
+        <span className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700 flex-shrink-0">
+          <LockSimple size={14} weight="fill" /> <span className="hidden sm:inline">Secure payment</span>
+        </span>
+      </div>
+
       {/* Steps */}
       {stage !== "done" && stage !== "failed" && (
         <ol className="flex items-center gap-1 sm:gap-2 px-5 sm:px-8 py-5 border-b border-line bg-bg-soft/60 list-none m-0">

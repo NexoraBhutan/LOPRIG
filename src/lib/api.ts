@@ -7,12 +7,22 @@
  */
 import { safeGetItem, safeRemoveItem, safeSetItem } from "@/utils/storage";
 
-export const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1").replace(/\/$/, "");
+// Either the API's full address, or "/api/v1": this site then forwards /api and /media to Django
+// itself (see next.config.ts), so the browser only talks to the address it opened.
+export const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1").replace(/\/$/, "");
+const API_ORIGIN = API_URL.startsWith("http") ? new URL(API_URL).origin : "";
+
+/** Django's own pages (its admin) can't go through this site, which has an /admin of its own. */
+export const DJANGO_URL = (process.env.NEXT_PUBLIC_DJANGO_URL || API_ORIGIN || "http://localhost:8000").replace(/\/$/, "");
 
 /** Uploaded files can come back as "/media/…"; those live on the API's server, not this site. */
 export function mediaUrl(url: string | null | undefined): string {
   if (!url) return "";
-  return url.startsWith("/") ? `${new URL(API_URL).origin}${url}` : url;
+  if (url.startsWith("/")) return `${API_ORIGIN}${url}`;
+  // Forwarded through this site, Django names its own files by the address it was reached at
+  // (e.g. http://127.0.0.1:8000/media/…), which other devices can't open: keep just the path.
+  if (!API_ORIGIN) return url.replace(/^https?:\/\/[^/]+(?=\/media\/)/, "");
+  return url;
 }
 
 const REFRESH_KEY = "loprig_refresh";

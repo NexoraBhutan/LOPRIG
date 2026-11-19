@@ -50,7 +50,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     // `data-scroll-behavior="smooth"` opts back into Next's scroll override
     // during route transitions — the project CSS sets `scroll-behavior: smooth`
     // globally, and without this Next 16 would let it animate every navigation.
-    <html lang="en" className={`${outfit.variable} ${spaceGrotesk.variable} ${cormorant.variable}`} data-scroll-behavior="smooth">
+    // suppressHydrationWarning: some browsers (e.g. Chrome on iPhone) add their own attributes to
+    // <html> before React starts; this only ignores attribute differences on this one tag.
+    <html lang="en" className={`${outfit.variable} ${spaceGrotesk.variable} ${cormorant.variable}`} data-scroll-behavior="smooth" suppressHydrationWarning>
       <body>
         <CatalogProvider>
           <AuthProvider>

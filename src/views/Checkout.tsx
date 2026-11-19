@@ -14,7 +14,7 @@ import { useCatalog } from "@/context/CatalogContext";
 import PageLoader from "@/components/PageLoader";
 import BankPayment from "@/components/payment/BankPayment";
 import RulesAgreement from "@/components/RulesAgreement";
-import { api, errorMessage } from "@/lib/api";
+import { api, errorMessage, mediaUrl } from "@/lib/api";
 import { fieldErrors } from "@/lib/teach";
 
 interface QrSettings {
@@ -324,7 +324,7 @@ export default function Checkout() {
                   <div className="grid grid-cols-1 md:grid-cols-[240px_1fr] gap-8 mt-6 items-start">
                     <div className="rounded-2xl border-2 border-line p-3 bg-white">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={qr.qr_image} alt={`Payment QR code for ${qr.account_name}`} className="w-full aspect-square object-contain" />
+                      <img src={mediaUrl(qr.qr_image)} alt={`Payment QR code for ${qr.account_name}`} className="w-full aspect-square object-contain" />
                     </div>
                     <div className="flex flex-col gap-4 text-sm">
                       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2">
