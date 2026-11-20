@@ -14,6 +14,8 @@ const SOCIAL_LABELS = ["Facebook", "Instagram", "LinkedIn", "YouTube"];
 export default function Footer() {
   const pathname = usePathname() ?? "/";
   if (!usesSiteChrome(pathname)) return null;
+  // My Learning is a workspace, not a landing page: it ends with the student's courses.
+  if (pathname === "/my-learning" || pathname.startsWith("/my-learning/")) return null;
   return (
     <footer className="bg-ink-strong text-white relative overflow-hidden aw-grain">
       <FooterPhoto />

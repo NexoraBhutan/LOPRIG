@@ -49,7 +49,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   ];
 
   return (
-    <PortalShell label="Admin portal" home="/admin" nav={nav} searchable backgroundImage="/admin-account-desk.png">
+    <PortalShell label="Admin portal" home="/admin" nav={nav} searchable footer={false} backgroundImage="/admin-account-desk.png">
       {children}
     </PortalShell>
   );

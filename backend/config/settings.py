@@ -173,6 +173,9 @@ EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
 EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
 EMAIL_TIMEOUT = 15
 FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:3000")
+# Public https address the email header picture is loaded from (the site's /brand folder). Mail
+# apps list an embedded picture as an attachment, so once the site is public it is linked instead.
+EMAIL_ASSET_URL = env("EMAIL_ASSET_URL", default=FRONTEND_URL if FRONTEND_URL.startswith("https://") else "")
 # Printed at the foot of PDF receipts (website, email, phone); an empty one is left out.
 COMPANY_WEBSITE = env("COMPANY_WEBSITE", default="")
 COMPANY_EMAIL = env("COMPANY_EMAIL", default=EMAIL_HOST_USER)

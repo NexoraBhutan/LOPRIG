@@ -19,8 +19,9 @@ INK = "#1a1a1a"
 MUTED = "#6b6b6b"
 # The header is one picture (1120x176, shown at 560 wide): white bar, navy wordmark, the emblem
 # when LETTERHEAD_NATIONAL_EMBLEM is on, and the yellow / orange / blue rule. Mail apps in dark
-# mode recolour backgrounds but never pictures, so it reads the same everywhere. It travels inside
-# each email (an inline "cid:" image), so it shows even when the site itself isn't public yet.
+# mode recolour backgrounds but never pictures, so it reads the same everywhere. Once the site is
+# public (EMAIL_ASSET_URL) it is loaded from its /brand folder; until then it travels inside each
+# email as an inline "cid:" image, which some mail apps (Gmail on phones) also list as an attachment.
 ASSETS = Path(__file__).resolve().parent / "assets"
 HEADER_CID = "loprig-header"
 SIGN_OFF_TEXT = "Warm regards,\nThe Lop-rig team"
@@ -59,7 +60,7 @@ def layout(preheader: str, body_html: str, button: tuple[str, str] | None = None
 <tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:18px;overflow:hidden">
 <tr><td style="padding:0;line-height:0;font-size:0;background:#ffffff">\
-<img src="cid:{HEADER_CID}" width="560" alt="Lop-rig" style="display:block;width:100%;max-width:560px;height:auto;border:0;outline:none;\
+<img src="{escape(_header_src())}" width="560" alt="Lop-rig" style="display:block;width:100%;max-width:560px;height:auto;border:0;outline:none;\
 font-size:22px;line-height:28px;font-weight:700;color:#1b3a52"></td></tr>
 <tr><td style="padding:32px;font-size:15px;line-height:1.65">{body_html}{cta}</td></tr>
 <tr><td style="padding:18px 32px 28px;font-size:12px;line-height:1.6;color:{MUTED};border-top:1px solid #eee">
@@ -95,9 +96,19 @@ def notice(html: str, tone: str = "info") -> str:
     return f"<p style='margin:20px 0 14px;background:{bg};border-radius:12px;padding:14px 18px;font-size:14px'>{html}</p>"
 
 
+def _header_name(emblem: bool) -> str:
+    return "email-header-emblem.png" if emblem else "email-header.png"
+
+
+def _header_src() -> str:
+    """The header picture's address: on the public site when there is one, else the embedded copy."""
+    base = settings.EMAIL_ASSET_URL.rstrip("/")
+    return f"{base}/brand/{_header_name(settings.LETTERHEAD_NATIONAL_EMBLEM)}" if base else f"cid:{HEADER_CID}"
+
+
 @cache
 def _header_image(emblem: bool) -> bytes | None:
-    path = ASSETS / ("email-header-emblem.png" if emblem else "email-header.png")
+    path = ASSETS / _header_name(emblem)
     try:
         return path.read_bytes()
     except OSError:
@@ -106,15 +117,20 @@ def _header_image(emblem: bool) -> bytes | None:
 
 
 class BrandedEmail(EmailMultiAlternatives):
-    """Puts the header picture next to the HTML body (multipart/related), where cid: images are found."""
+    """Puts the header picture next to the HTML body (multipart/related), where cid: images are found.
+
+    Skipped when the picture is linked from the public site instead (EMAIL_ASSET_URL).
+    """
 
     def message(self, **kwargs):
         msg = super().message(**kwargs)
-        header = _header_image(settings.LETTERHEAD_NATIONAL_EMBLEM)
+        header = None if settings.EMAIL_ASSET_URL else _header_image(settings.LETTERHEAD_NATIONAL_EMBLEM)
         if header:
             for part in msg.walk():
                 if part.get_content_type() == "text/html":
-                    part.add_related(header, "image", "png", cid=f"<{HEADER_CID}>", disposition="inline")
+                    # A real file name, so an app that lists it shows "Lop-rig.png", not "noname".
+                    part.add_related(header, "image", "png", cid=f"<{HEADER_CID}>", disposition="inline",
+                                     filename="Lop-rig.png")
                     break
         return msg
 

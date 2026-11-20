@@ -87,6 +87,7 @@ export default function PortalShell({
   backgroundImage,
   searchable = false,
   theme = "dark",
+  footer = true,
   children,
 }: {
   label: string;
@@ -97,6 +98,8 @@ export default function PortalShell({
   /** Show a box above the menu that filters its items (handy for long menus). */
   searchable?: boolean;
   theme?: PortalTheme;
+  /** Show the dark footer with the logo and quick links under every page. */
+  footer?: boolean;
   children: React.ReactNode;
 }) {
   const t = THEMES[theme];
@@ -308,7 +311,7 @@ export default function PortalShell({
         <main className="flex-1">
           <div className="max-w-[1180px] mx-auto px-5 sm:px-8 lg:px-12 py-8 lg:py-10">{children}</div>
         </main>
-        <PortalFooter label={label} />
+        {footer && <PortalFooter label={label} />}
       </div>
     </div>
   );
